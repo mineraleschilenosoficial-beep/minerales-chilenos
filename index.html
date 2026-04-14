@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Minerales Chilenos</title>
+  <meta name="description" content="Sitio en construccion de Minerales Chilenos.">
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0f172a;
+      --card: #111827;
+      --text: #f8fafc;
+      --muted: #cbd5e1;
+      --accent: #38bdf8;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: radial-gradient(circle at top, #1e293b 0%, var(--bg) 45%);
+      color: var(--text);
+      padding: 24px;
+    }
+
+    main {
+      width: min(680px, 100%);
+      background: color-mix(in srgb, var(--card) 92%, black);
+      border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+      border-radius: 16px;
+      padding: clamp(24px, 5vw, 40px);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #bae6fd;
+      background: color-mix(in srgb, var(--accent) 16%, transparent);
+      padding: 6px 10px;
+      border-radius: 999px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(28px, 5vw, 42px);
+      line-height: 1.1;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(16px, 2.4vw, 18px);
+      line-height: 1.6;
+    }
+
+    footer {
+      margin-top: 24px;
+      font-size: 14px;
+      color: color-mix(in srgb, var(--muted) 85%, black);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <span class="badge">En desarrollo</span>
+    <h1>Minerales Chilenos</h1>
+    <p>Estamos preparando el catalogo y contenido del sitio. Pronto estara disponible.</p>
+    <footer>Placeholder para publicacion en GitHub Pages.</footer>
+  </main>
+</body>
+</html>

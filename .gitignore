@@ -1,0 +1,16 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Local tooling
+.serena/
+
+# Logs / env
+*.log
+.env
+.env.*
+
+# Common dependencies
+node_modules/
