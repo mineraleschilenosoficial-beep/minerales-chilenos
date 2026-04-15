@@ -83,6 +83,12 @@ yarn workspace @minerales/api prisma:migrate:dev
 yarn workspace @minerales/api prisma:seed
 ```
 
+The seed process inserts:
+- pricing plans
+- directory categories
+- Chilean regions and cities (initial subset)
+- sample companies for local development
+
 ## Local Database (Docker Compose)
 
 ```bash

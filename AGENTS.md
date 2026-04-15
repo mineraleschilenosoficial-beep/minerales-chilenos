@@ -49,11 +49,18 @@ Reglas:
 - TypeScript estricto (`strict: true`).
 - Prohibido `any` salvo justificacion explicita.
 - Validar entrada/salida con Zod en bordes de API.
+- Validar formularios en frontend con los mismos schemas de `packages/contracts` usados en backend.
 - Mantener separacion:
   - Modelo DB (Prisma) != Contrato API (Zod).
   - `packages/types`: enums y tipos de dominio compartidos (sin logica de validacion).
   - `packages/contracts`: schemas Zod + DTOs de entrada/salida.
 - Errores con estructura consistente (`code`, `message`, `details`).
+
+## Internacionalizacion (i18n)
+- Soporte multilenguaje obligatorio en frontend para texto visible al usuario.
+- Prohibido hardcodear strings de UI en componentes.
+- Centralizar textos en archivos de traduccion por locale (por ejemplo `en`, `es`).
+- Labels de enums/categorias/planes deben resolverse via diccionario de traducciones.
 
 ## TSDoc obligatorio
 - Documentar toda funcion o clase exportada con TSDoc.

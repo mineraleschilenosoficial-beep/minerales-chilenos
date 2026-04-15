@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { Company } from "@minerales/contracts";
+import { createCompanyRequestSchema, type Company } from "@minerales/contracts";
 import { CompanyCategory, CompanyPlan } from "@minerales/types";
-import { categoryLabels, planLabels } from "@/modules/directory/data/directory-labels";
 import {
   initialRequestFormState,
   type RequestFormState
 } from "@/modules/directory/models/directory.types";
+import {
+  directoryTranslations,
+  type SupportedLocale
+} from "@/modules/i18n/directory-translations";
 import {
   fetchCompanies,
   fetchCompanyById,
@@ -16,6 +19,7 @@ import {
 import styles from "./page.module.css";
 
 export default function HomePage() {
+  const [locale, setLocale] = useState<SupportedLocale>("en");
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [search, setSearch] = useState<string>("");
@@ -25,6 +29,7 @@ export default function HomePage() {
   const [feedbackMessage, setFeedbackMessage] = useState<string>("");
   const [feedbackIsError, setFeedbackIsError] = useState<boolean>(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const t = directoryTranslations[locale];
 
   useEffect(() => {
     const controller = new AbortController();
@@ -58,18 +63,14 @@ export default function HomePage() {
     setFeedbackMessage("");
     setFeedbackIsError(false);
 
-    const hasRequiredFields =
-      formState.name.trim().length > 1 &&
-      formState.tagline.trim().length > 1 &&
-      formState.description.trim().length > 9 &&
-      formState.city.trim().length > 1 &&
-      formState.region.trim().length > 1 &&
-      formState.phone.trim().length > 5 &&
-      formState.email.trim().length > 3;
+    const parsedPayload = createCompanyRequestSchema.safeParse({
+      ...formState,
+      website: formState.website.trim() || undefined
+    });
 
-    if (!hasRequiredFields) {
+    if (!parsedPayload.success) {
       setFeedbackIsError(true);
-      setFeedbackMessage("Please complete the form with valid values.");
+      setFeedbackMessage(t.invalidFormFeedback);
       return;
     }
 
@@ -78,11 +79,11 @@ export default function HomePage() {
       await submitCompanyRequest(formState);
 
       setFeedbackIsError(false);
-      setFeedbackMessage("Request submitted successfully. We will contact you soon.");
+      setFeedbackMessage(t.submitSuccessFeedback);
       setFormState(initialRequestFormState);
     } catch {
       setFeedbackIsError(true);
-      setFeedbackMessage("Unable to submit request right now. Please try again.");
+      setFeedbackMessage(t.submitErrorFeedback);
     } finally {
       setSubmitting(false);
     }
@@ -92,24 +93,40 @@ export default function HomePage() {
     <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.headerInner}>
-          <div className={styles.brand}>MineralesChilenos.cl</div>
-          <div>B2B Mining Supplier Directory</div>
+          <div className={styles.brand}>{t.brandName}</div>
+          <div>{t.brandTagline}</div>
+          <div>
+            <span className={styles.formLabel}>{t.localeSwitcherLabel} </span>
+            <button
+              type="button"
+              className={styles.linkButton}
+              onClick={() => setLocale("en")}
+              disabled={locale === "en"}
+            >
+              {t.localeEnglish}
+            </button>
+            <button
+              type="button"
+              className={styles.linkButton}
+              onClick={() => setLocale("es")}
+              disabled={locale === "es"}
+            >
+              {t.localeSpanish}
+            </button>
+          </div>
         </div>
       </header>
 
       <section className={styles.hero}>
-        <h1 className={styles.heroTitle}>Find trusted mining suppliers in Chile.</h1>
-        <p className={styles.heroSubtitle}>
-          Search companies by category, compare supplier profiles, and submit your company for
-          publication in the directory.
-        </p>
+        <h1 className={styles.heroTitle}>{t.heroTitle}</h1>
+        <p className={styles.heroSubtitle}>{t.heroSubtitle}</p>
         <div className={styles.stats}>
           <div className={styles.statCard}>
-            <div className={styles.statLabel}>Published Suppliers</div>
+            <div className={styles.statLabel}>{t.statsPublishedSuppliers}</div>
             <div className={styles.statValue}>{loading ? "..." : companies.length}</div>
           </div>
           <div className={styles.statCard}>
-            <div className={styles.statLabel}>Active Categories</div>
+            <div className={styles.statLabel}>{t.statsActiveCategories}</div>
             <div className={styles.statValue}>{loading ? "..." : categoriesCount}</div>
           </div>
         </div>
@@ -117,22 +134,22 @@ export default function HomePage() {
 
       <section className={styles.content}>
         <div className={styles.panel}>
-          <h2 className={styles.panelTitle}>Supplier Directory</h2>
+          <h2 className={styles.panelTitle}>{t.directoryTitle}</h2>
           <div className={styles.toolbar}>
             <input
               className={styles.input}
               type="text"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search by company, city, or tagline"
+              placeholder={t.searchPlaceholder}
             />
             <select
               className={styles.select}
               value={category}
               onChange={(event) => setCategory(event.target.value as CompanyCategory | "all")}
             >
-              <option value="all">All categories</option>
-              {Object.entries(categoryLabels).map(([value, label]) => (
+              <option value="all">{t.allCategoriesOption}</option>
+              {Object.entries(t.categories).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
                 </option>
@@ -142,17 +159,17 @@ export default function HomePage() {
 
           <div className={styles.cards}>
             {loading ? (
-              <div className={styles.card}>Loading suppliers...</div>
+              <div className={styles.card}>{t.loadingSuppliers}</div>
             ) : companies.length === 0 ? (
-              <div className={styles.card}>No suppliers match your search.</div>
+              <div className={styles.card}>{t.noSupplierResults}</div>
             ) : (
               companies.map((company) => (
                 <article key={company.id} className={styles.card}>
                   <h3 className={styles.cardName}>{company.name}</h3>
-                  <p className={styles.cardTagline}>{company.tagline}</p>
+                  <p className={styles.cardTagline}>{company.tagline || t.defaultCompanyTagline}</p>
                   <div className={styles.chipRow}>
-                    <span className={styles.chip}>{categoryLabels[company.category]}</span>
-                    <span className={styles.chip}>{planLabels[company.plan]}</span>
+                    <span className={styles.chip}>{t.categories[company.category]}</span>
+                    <span className={styles.chip}>{t.plans[company.plan]}</span>
                   </div>
                   <div className={styles.meta}>
                     <span>
@@ -173,7 +190,7 @@ export default function HomePage() {
                       }
                     }}
                   >
-                    View details
+                    {t.viewDetailsAction}
                   </button>
                 </article>
               ))
@@ -182,10 +199,10 @@ export default function HomePage() {
         </div>
 
         <aside className={styles.panel}>
-          <h2 className={styles.panelTitle}>Submit Your Company</h2>
+          <h2 className={styles.panelTitle}>{t.requestTitle}</h2>
           <form className={styles.form} onSubmit={handleFormSubmit}>
             <label className={styles.formLabel} htmlFor="name">
-              Company name
+              {t.formNameLabel}
             </label>
             <input
               id="name"
@@ -195,7 +212,7 @@ export default function HomePage() {
             />
 
             <label className={styles.formLabel} htmlFor="tagline">
-              Tagline
+              {t.formTaglineLabel}
             </label>
             <input
               id="tagline"
@@ -207,7 +224,7 @@ export default function HomePage() {
             />
 
             <label className={styles.formLabel} htmlFor="description">
-              Description
+              {t.formDescriptionLabel}
             </label>
             <textarea
               id="description"
@@ -220,7 +237,7 @@ export default function HomePage() {
             />
 
             <label className={styles.formLabel} htmlFor="city">
-              City
+              {t.formCityLabel}
             </label>
             <input
               id="city"
@@ -230,7 +247,7 @@ export default function HomePage() {
             />
 
             <label className={styles.formLabel} htmlFor="region">
-              Region
+              {t.formRegionLabel}
             </label>
             <input
               id="region"
@@ -242,7 +259,7 @@ export default function HomePage() {
             />
 
             <label className={styles.formLabel} htmlFor="phone">
-              Phone
+              {t.formPhoneLabel}
             </label>
             <input
               id="phone"
@@ -254,7 +271,7 @@ export default function HomePage() {
             />
 
             <label className={styles.formLabel} htmlFor="email">
-              Email
+              {t.formEmailLabel}
             </label>
             <input
               id="email"
@@ -267,7 +284,7 @@ export default function HomePage() {
             />
 
             <label className={styles.formLabel} htmlFor="website">
-              Website (optional)
+              {t.formWebsiteLabel}
             </label>
             <input
               id="website"
@@ -279,7 +296,7 @@ export default function HomePage() {
             />
 
             <label className={styles.formLabel} htmlFor="category">
-              Category
+              {t.formCategoryLabel}
             </label>
             <select
               id="category"
@@ -292,7 +309,7 @@ export default function HomePage() {
                 }))
               }
             >
-              {Object.entries(categoryLabels).map(([value, label]) => (
+              {Object.entries(t.categories).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
                 </option>
@@ -300,7 +317,7 @@ export default function HomePage() {
             </select>
 
             <label className={styles.formLabel} htmlFor="requestedPlan">
-              Requested plan
+              {t.formPlanLabel}
             </label>
             <select
               id="requestedPlan"
@@ -313,7 +330,7 @@ export default function HomePage() {
                 }))
               }
             >
-              {Object.entries(planLabels).map(([value, label]) => (
+              {Object.entries(t.plans).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
                 </option>
@@ -321,7 +338,7 @@ export default function HomePage() {
             </select>
 
             <button className={styles.button} disabled={submitting} type="submit">
-              {submitting ? "Submitting..." : "Submit request"}
+              {submitting ? t.submittingAction : t.submitAction}
             </button>
             {feedbackMessage ? (
               <p
@@ -346,12 +363,12 @@ export default function HomePage() {
                 className={styles.closeButton}
                 onClick={() => setSelectedCompany(null)}
               >
-                Close
+                {t.closeAction}
               </button>
             </div>
             <div className={styles.chipRow} style={{ marginTop: "8px" }}>
-              <span className={styles.chip}>{categoryLabels[selectedCompany.category]}</span>
-              <span className={styles.chip}>{planLabels[selectedCompany.plan]}</span>
+              <span className={styles.chip}>{t.categories[selectedCompany.category]}</span>
+              <span className={styles.chip}>{t.plans[selectedCompany.plan]}</span>
             </div>
             <p className={styles.modalBody}>{selectedCompany.description}</p>
           </div>

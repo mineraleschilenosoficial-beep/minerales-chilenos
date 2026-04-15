@@ -8,6 +8,12 @@ import type { RequestFormState } from "../models/directory.types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
+const DIRECTORY_API_ERRORS = {
+  FETCH_COMPANIES_FAILED: "FETCH_COMPANIES_FAILED",
+  FETCH_COMPANY_DETAILS_FAILED: "FETCH_COMPANY_DETAILS_FAILED",
+  SUBMIT_COMPANY_REQUEST_FAILED: "SUBMIT_COMPANY_REQUEST_FAILED"
+} as const;
+
 /**
  * Fetches companies based on optional search and category filters.
  */
@@ -26,7 +32,7 @@ export async function fetchCompanies(params: {
 
   const response = await fetch(url.toString());
   if (!response.ok) {
-    throw new Error("Failed to fetch companies");
+    throw new Error(DIRECTORY_API_ERRORS.FETCH_COMPANIES_FAILED);
   }
 
   const payload = await response.json();
@@ -40,7 +46,7 @@ export async function fetchCompanies(params: {
 export async function fetchCompanyById(id: string): Promise<Company> {
   const response = await fetch(new URL(`/companies/${id}`, API_BASE_URL));
   if (!response.ok) {
-    throw new Error("Failed to fetch company details");
+    throw new Error(DIRECTORY_API_ERRORS.FETCH_COMPANY_DETAILS_FAILED);
   }
 
   const payload = await response.json();
@@ -67,6 +73,6 @@ export async function submitCompanyRequest(formState: RequestFormState): Promise
   });
 
   if (!response.ok) {
-    throw new Error("Failed to submit request");
+    throw new Error(DIRECTORY_API_ERRORS.SUBMIT_COMPANY_REQUEST_FAILED);
   }
 }
