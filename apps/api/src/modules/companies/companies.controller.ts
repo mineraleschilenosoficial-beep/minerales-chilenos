@@ -43,6 +43,11 @@ export class CompaniesController {
     };
   }
 
+  @Get("metrics")
+  async getDirectoryMetrics() {
+    return await this.companiesService.getDirectoryMetrics();
+  }
+
   @Get(":id")
   async getCompanyById(@Param("id") id: string) {
     return await this.companiesService.getCompanyById(id);

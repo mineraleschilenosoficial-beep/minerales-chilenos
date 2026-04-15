@@ -9,6 +9,13 @@ type ListCompaniesFilters = {
   category?: string;
 };
 
+type CompanyMetrics = {
+  totalCompanies: number;
+  totalCategories: number;
+  byPlan: Record<CompanyPlan, number>;
+  byCategory: Array<{ category: CompanyCategory; total: number }>;
+};
+
 @Injectable()
 export class CompaniesService {
   constructor(private readonly prisma: PrismaService) {}
@@ -101,6 +108,40 @@ export class CompaniesService {
     }
 
     return this.mapCompanyToContract(company);
+  }
+
+  /**
+   * Returns aggregate metrics for directory monitoring and dashboards.
+   */
+  async getDirectoryMetrics(): Promise<CompanyMetrics> {
+    const companies = await this.listCompanies({
+      search: "",
+      category: "all"
+    });
+
+    const byPlan: Record<CompanyPlan, number> = {
+      [CompanyPlan.FREE]: 0,
+      [CompanyPlan.STANDARD]: 0,
+      [CompanyPlan.PREMIUM]: 0
+    };
+
+    const categoryCounter = new Map<CompanyCategory, number>();
+
+    for (const company of companies) {
+      byPlan[company.plan] += 1;
+      categoryCounter.set(company.category, (categoryCounter.get(company.category) ?? 0) + 1);
+    }
+
+    const byCategory = Array.from(categoryCounter.entries())
+      .map(([category, total]) => ({ category, total }))
+      .sort((leftEntry, rightEntry) => rightEntry.total - leftEntry.total);
+
+    return {
+      totalCompanies: companies.length,
+      totalCategories: categoryCounter.size,
+      byPlan,
+      byCategory
+    };
   }
 
   private companyIncludes() {
