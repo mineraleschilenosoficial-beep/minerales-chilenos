@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Post } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Param, Patch, Post } from "@nestjs/common";
 import { CompanyRequestsService } from "./company-requests.service";
 
 @Controller("company-requests")
@@ -7,12 +7,17 @@ export class CompanyRequestsController {
 
   @Post()
   @HttpCode(201)
-  createRequest(@Body() payload: unknown) {
-    return this.companyRequestsService.createRequest(payload);
+  async createRequest(@Body() payload: unknown) {
+    return await this.companyRequestsService.createRequest(payload);
   }
 
   @Get()
-  listRequests() {
-    return this.companyRequestsService.listRequests();
+  async listRequests() {
+    return await this.companyRequestsService.listRequests();
+  }
+
+  @Patch(":id/review")
+  async reviewRequest(@Param("id") id: string, @Body() payload: unknown) {
+    return await this.companyRequestsService.reviewRequest(id, payload);
   }
 }

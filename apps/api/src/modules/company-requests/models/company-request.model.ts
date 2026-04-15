@@ -12,4 +12,5 @@ export type CompanyRequestModel = Omit<CreateCompanyRequestInput, "requestedPlan
   createdAt: string;
   status: CompanyRequestStatus;
   reviewNotes?: string;
+  companyId?: string;
 };

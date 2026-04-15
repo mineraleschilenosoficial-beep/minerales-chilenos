@@ -1,5 +1,9 @@
-import { Injectable } from "@nestjs/common";
-import { createCompanyRequestSchema } from "@minerales/contracts";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  createCompanyRequestSchema,
+  reviewCompanyRequestSchema,
+  type ReviewCompanyRequestInput
+} from "@minerales/contracts";
 import { CompanyPlan } from "@minerales/types";
 import { PrismaService } from "../../database/prisma.service";
 import type { CompanyRequestModel } from "./models/company-request.model";
@@ -28,7 +32,7 @@ export class CompanyRequestsService {
     ]);
 
     if (!requestedPlan || !requestedCategory) {
-      throw new Error("Invalid plan or category for company request");
+      throw new BadRequestException("Invalid plan or category for company request");
     }
 
     const createdRequest = await this.prisma.companyRequest.create({
@@ -79,6 +83,63 @@ export class CompanyRequestsService {
     };
   }
 
+  /**
+   * Reviews a request and optionally publishes a new company when approved.
+   */
+  async reviewRequest(requestId: string, payload: unknown) {
+    const parsedPayload = reviewCompanyRequestSchema.parse(payload);
+
+    const existingRequest = await this.prisma.companyRequest.findUnique({
+      where: { id: requestId },
+      include: {
+        requestedPlan: true,
+        categories: {
+          include: {
+            category: true
+          }
+        }
+      }
+    });
+
+    if (!existingRequest) {
+      throw new NotFoundException("Company request not found");
+    }
+
+    if (parsedPayload.status === "approved") {
+      const company = await this.upsertCompanyFromRequest(existingRequest);
+      await this.prisma.companyRequest.update({
+        where: { id: requestId },
+        data: {
+          status: "APPROVED",
+          reviewNotes: parsedPayload.reviewNotes,
+          reviewedAt: new Date(),
+          companyId: company.id
+        }
+      });
+
+      return {
+        id: requestId,
+        status: "approved",
+        companyId: company.id
+      };
+    }
+
+    const prismaStatus = this.toPrismaRequestStatus(parsedPayload.status);
+    await this.prisma.companyRequest.update({
+      where: { id: requestId },
+      data: {
+        status: prismaStatus,
+        reviewNotes: parsedPayload.reviewNotes,
+        reviewedAt: new Date()
+      }
+    });
+
+    return {
+      id: requestId,
+      status: parsedPayload.status
+    };
+  }
+
   private toPrismaPlan(plan: CompanyPlan): "FREE" | "STANDARD" | "PREMIUM" {
     switch (plan) {
       case CompanyPlan.PREMIUM:
@@ -90,8 +151,180 @@ export class CompanyRequestsService {
     }
   }
 
+  private toPrismaRequestStatus(
+    status: ReviewCompanyRequestInput["status"]
+  ): "UNDER_REVIEW" | "APPROVED" | "REJECTED" {
+    switch (status) {
+      case "under_review":
+        return "UNDER_REVIEW";
+      case "approved":
+        return "APPROVED";
+      default:
+        return "REJECTED";
+    }
+  }
+
+  private async upsertCompanyFromRequest(request: {
+    id: string;
+    companyName: string;
+    tagline: string | null;
+    description: string;
+    contactPhone: string;
+    website: string | null;
+    cityText: string;
+    requestedPlanId: string;
+    categories: Array<{ category: { id: string } }>;
+  }) {
+    const companySlug = this.toSlug(request.companyName);
+
+    const [city, existingCompany] = await Promise.all([
+      this.prisma.city.findFirst({
+        where: {
+          name: {
+            equals: request.cityText,
+            mode: "insensitive"
+          }
+        }
+      }),
+      this.prisma.company.findUnique({
+        where: { slug: companySlug }
+      })
+    ]);
+
+    if (!city) {
+      throw new BadRequestException(
+        `City '${request.cityText}' is not configured. Add it to catalog before approval.`
+      );
+    }
+
+    const persistedCompany = existingCompany
+      ? await this.prisma.company.update({
+          where: { id: existingCompany.id },
+          data: {
+            legalName: request.companyName,
+            displayName: request.companyName,
+            tagline: request.tagline,
+            description: request.description,
+            status: "ACTIVE",
+            publishedAt: new Date()
+          }
+        })
+      : await this.prisma.company.create({
+          data: {
+            slug: companySlug,
+            legalName: request.companyName,
+            displayName: request.companyName,
+            tagline: request.tagline,
+            description: request.description,
+            status: "ACTIVE",
+            publishedAt: new Date()
+          }
+        });
+
+    const firstCategory = request.categories[0];
+    if (!firstCategory) {
+      throw new BadRequestException("Request does not include a valid category");
+    }
+
+    await this.prisma.companyCategoryLink.upsert({
+      where: {
+        companyId_categoryId: {
+          companyId: persistedCompany.id,
+          categoryId: firstCategory.category.id
+        }
+      },
+      update: {
+        isPrimary: true
+      },
+      create: {
+        companyId: persistedCompany.id,
+        categoryId: firstCategory.category.id,
+        isPrimary: true
+      }
+    });
+
+    await this.prisma.companyAddress.upsert({
+      where: {
+        id: `${persistedCompany.id}_hq`
+      },
+      update: {
+        cityId: city.id,
+        addressLine1: "Main Office",
+        type: "HEADQUARTERS",
+        isPrimary: true
+      },
+      create: {
+        id: `${persistedCompany.id}_hq`,
+        companyId: persistedCompany.id,
+        cityId: city.id,
+        addressLine1: "Main Office",
+        type: "HEADQUARTERS",
+        isPrimary: true
+      }
+    });
+
+    await this.prisma.companyContact.upsert({
+      where: {
+        id: `${persistedCompany.id}_general`
+      },
+      update: {
+        type: "GENERAL",
+        phone: request.contactPhone,
+        website: request.website,
+        isPrimary: true
+      },
+      create: {
+        id: `${persistedCompany.id}_general`,
+        companyId: persistedCompany.id,
+        type: "GENERAL",
+        phone: request.contactPhone,
+        website: request.website,
+        isPrimary: true
+      }
+    });
+
+    const existingSubscription = await this.prisma.companySubscription.findFirst({
+      where: {
+        companyId: persistedCompany.id,
+        planId: request.requestedPlanId
+      }
+    });
+
+    if (existingSubscription) {
+      await this.prisma.companySubscription.update({
+        where: { id: existingSubscription.id },
+        data: {
+          status: "ACTIVE",
+          currentPeriodStartAt: new Date()
+        }
+      });
+    } else {
+      await this.prisma.companySubscription.create({
+        data: {
+          companyId: persistedCompany.id,
+          planId: request.requestedPlanId,
+          status: "ACTIVE",
+          currentPeriodStartAt: new Date()
+        }
+      });
+    }
+
+    return persistedCompany;
+  }
+
+  private toSlug(value: string): string {
+    return value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 64);
+  }
+
   private mapRequest(request: {
     id: string;
+    companyId: string | null;
     companyName: string;
     tagline: string | null;
     description: string;
@@ -119,9 +352,23 @@ export class CompanyRequestsService {
       category: (request.categories[0]?.category.key ?? "consulting") as CompanyRequestModel["category"],
       requestedPlan: this.toCompanyPlan(request.requestedPlan.code),
       createdAt: request.createdAt.toISOString(),
-      status: request.status.toLowerCase() as CompanyRequestModel["status"],
-      reviewNotes: request.reviewNotes ?? undefined
+      status: this.toCompanyRequestStatus(request.status),
+      reviewNotes: request.reviewNotes ?? undefined,
+      companyId: request.companyId ?? undefined
     };
+  }
+
+  private toCompanyRequestStatus(rawValue: string): CompanyRequestModel["status"] {
+    switch (rawValue) {
+      case "UNDER_REVIEW":
+        return "under_review";
+      case "APPROVED":
+        return "approved";
+      case "REJECTED":
+        return "rejected";
+      default:
+        return "pending";
+    }
   }
 
   private toCompanyPlan(rawValue: string): CompanyPlan {

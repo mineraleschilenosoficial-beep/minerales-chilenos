@@ -50,6 +50,14 @@ export const createCompanyRequestSchema = z.object({
 });
 
 /**
+ * Schema used to review a pending company request.
+ */
+export const reviewCompanyRequestSchema = z.object({
+  status: z.enum(["under_review", "approved", "rejected"]),
+  reviewNotes: z.string().max(2000).optional()
+});
+
+/**
  * Schema used in the admin panel to update a published company profile.
  */
 export const updateCompanySchema = z.object({
@@ -74,6 +82,11 @@ export type CreateCompanyRequestInput = z.infer<typeof createCompanyRequestSchem
  * Type-safe payload for company profile updates.
  */
 export type UpdateCompanyInput = z.infer<typeof updateCompanySchema>;
+
+/**
+ * Type-safe payload for request review actions.
+ */
+export type ReviewCompanyRequestInput = z.infer<typeof reviewCompanyRequestSchema>;
 
 /**
  * Type-safe company model used by frontend and backend.
