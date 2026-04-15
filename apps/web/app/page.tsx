@@ -1,90 +1,41 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createCompanyRequestSchema, type Company } from "@minerales/contracts";
+import type { Company } from "@minerales/contracts";
 import { CompanyCategory, CompanyPlan } from "@minerales/types";
+import { categoryLabels, planLabels } from "@/modules/directory/data/directory-labels";
+import {
+  initialRequestFormState,
+  type RequestFormState
+} from "@/modules/directory/models/directory.types";
+import {
+  fetchCompanies,
+  fetchCompanyById,
+  submitCompanyRequest
+} from "@/modules/directory/services/directory-api.service";
 import styles from "./page.module.css";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-
-type CompanyListResponse = {
-  total: number;
-  items: Company[];
-};
-
-type RequestFormState = {
-  name: string;
-  tagline: string;
-  description: string;
-  city: string;
-  region: string;
-  phone: string;
-  email: string;
-  website: string;
-  category: CompanyCategory;
-  requestedPlan: CompanyPlan;
-};
-
-const categoryLabels: Record<CompanyCategory, string> = {
-  [CompanyCategory.LABORATORY]: "Laboratory",
-  [CompanyCategory.CONSULTING]: "Consulting",
-  [CompanyCategory.EQUIPMENT]: "Equipment",
-  [CompanyCategory.EXPLOSIVES]: "Explosives",
-  [CompanyCategory.SAFETY]: "Safety",
-  [CompanyCategory.TRANSPORT]: "Transport",
-  [CompanyCategory.SOFTWARE]: "Software",
-  [CompanyCategory.ENGINEERING]: "Engineering"
-};
-
-const planLabels: Record<CompanyPlan, string> = {
-  [CompanyPlan.FREE]: "Free",
-  [CompanyPlan.STANDARD]: "Standard",
-  [CompanyPlan.PREMIUM]: "Premium"
-};
-
-const initialFormState: RequestFormState = {
-  name: "",
-  tagline: "",
-  description: "",
-  city: "",
-  region: "",
-  phone: "",
-  email: "",
-  website: "",
-  category: CompanyCategory.LABORATORY,
-  requestedPlan: CompanyPlan.FREE
-};
 
 export default function HomePage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [search, setSearch] = useState<string>("");
   const [category, setCategory] = useState<CompanyCategory | "all">("all");
-  const [formState, setFormState] = useState<RequestFormState>(initialFormState);
+  const [formState, setFormState] = useState<RequestFormState>(initialRequestFormState);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [feedbackMessage, setFeedbackMessage] = useState<string>("");
   const [feedbackIsError, setFeedbackIsError] = useState<boolean>(false);
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
     const timeout = setTimeout(async () => {
       setLoading(true);
       try {
-        const url = new URL("/companies", API_BASE_URL);
-        if (search.trim().length > 0) {
-          url.searchParams.set("search", search.trim());
-        }
-        if (category !== "all") {
-          url.searchParams.set("category", category);
-        }
-
-        const response = await fetch(url.toString(), { signal: controller.signal });
-        if (!response.ok) {
-          throw new Error("Failed to fetch companies");
-        }
-
-        const payload = (await response.json()) as CompanyListResponse;
-        setCompanies(payload.items);
+        const items = await fetchCompanies({
+          search,
+          category
+        });
+        setCompanies(items);
       } catch {
         setCompanies([]);
       } finally {
@@ -107,13 +58,16 @@ export default function HomePage() {
     setFeedbackMessage("");
     setFeedbackIsError(false);
 
-    const payload = {
-      ...formState,
-      website: formState.website.trim() || undefined
-    };
+    const hasRequiredFields =
+      formState.name.trim().length > 1 &&
+      formState.tagline.trim().length > 1 &&
+      formState.description.trim().length > 9 &&
+      formState.city.trim().length > 1 &&
+      formState.region.trim().length > 1 &&
+      formState.phone.trim().length > 5 &&
+      formState.email.trim().length > 3;
 
-    const parsedPayload = createCompanyRequestSchema.safeParse(payload);
-    if (!parsedPayload.success) {
+    if (!hasRequiredFields) {
       setFeedbackIsError(true);
       setFeedbackMessage("Please complete the form with valid values.");
       return;
@@ -121,21 +75,11 @@ export default function HomePage() {
 
     setSubmitting(true);
     try {
-      const response = await fetch(new URL("/company-requests", API_BASE_URL), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(parsedPayload.data)
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to submit request");
-      }
+      await submitCompanyRequest(formState);
 
       setFeedbackIsError(false);
       setFeedbackMessage("Request submitted successfully. We will contact you soon.");
-      setFormState(initialFormState);
+      setFormState(initialRequestFormState);
     } catch {
       setFeedbackIsError(true);
       setFeedbackMessage("Unable to submit request right now. Please try again.");
@@ -217,6 +161,20 @@ export default function HomePage() {
                     <span>{company.phone}</span>
                     {company.website ? <span>{company.website}</span> : null}
                   </div>
+                  <button
+                    type="button"
+                    className={styles.linkButton}
+                    onClick={async () => {
+                      try {
+                        const companyDetails = await fetchCompanyById(company.id);
+                        setSelectedCompany(companyDetails);
+                      } catch {
+                        setSelectedCompany(company);
+                      }
+                    }}
+                  >
+                    View details
+                  </button>
                 </article>
               ))
             )}
@@ -377,6 +335,28 @@ export default function HomePage() {
           </form>
         </aside>
       </section>
+
+      {selectedCompany ? (
+        <div className={styles.modalBackdrop} onClick={() => setSelectedCompany(null)}>
+          <div className={styles.modal} onClick={(event) => event.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3 className={styles.modalTitle}>{selectedCompany.name}</h3>
+              <button
+                type="button"
+                className={styles.closeButton}
+                onClick={() => setSelectedCompany(null)}
+              >
+                Close
+              </button>
+            </div>
+            <div className={styles.chipRow} style={{ marginTop: "8px" }}>
+              <span className={styles.chip}>{categoryLabels[selectedCompany.category]}</span>
+              <span className={styles.chip}>{planLabels[selectedCompany.plan]}</span>
+            </div>
+            <p className={styles.modalBody}>{selectedCompany.description}</p>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

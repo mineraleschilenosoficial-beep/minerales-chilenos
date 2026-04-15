@@ -9,7 +9,10 @@
     "start": "node dist/main.js",
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate:dev": "prisma migrate dev",
+    "prisma:studio": "prisma studio"
   },
   "dependencies": {
     "@minerales/contracts": "0.1.0",
@@ -17,11 +20,13 @@
     "@nestjs/common": "^11.0.20",
     "@nestjs/core": "^11.0.20",
     "@nestjs/platform-express": "^11.0.20",
+    "@prisma/client": "^6.6.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.8",
-    "@types/node": "^22.15.2"
+    "@types/node": "^22.15.2",
+    "prisma": "^6.6.0"
   }
 }

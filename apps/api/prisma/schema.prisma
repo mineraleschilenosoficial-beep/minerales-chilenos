@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CompanyPlan {
+  FREE
+  STANDARD
+  PREMIUM
+}
+
+enum CompanyStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum CompanyCategory {
+  LABORATORY
+  CONSULTING
+  EQUIPMENT
+  EXPLOSIVES
+  SAFETY
+  TRANSPORT
+  SOFTWARE
+  ENGINEERING
+}
+
+enum CompanyRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Company {
+  id          String         @id @default(cuid())
+  name        String
+  tagline     String
+  description String
+  city        String
+  region      String
+  phone       String
+  website     String?
+  category    CompanyCategory
+  plan        CompanyPlan    @default(FREE)
+  status      CompanyStatus  @default(ACTIVE)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model CompanyRequest {
+  id            String               @id @default(cuid())
+  name          String
+  tagline       String
+  description   String
+  city          String
+  region        String
+  phone         String
+  email         String
+  website       String?
+  category      CompanyCategory
+  requestedPlan CompanyPlan          @default(FREE)
+  status        CompanyRequestStatus @default(PENDING)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+}

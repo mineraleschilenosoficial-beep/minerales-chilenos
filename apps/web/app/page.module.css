@@ -127,6 +127,8 @@
   background: #101317;
   border: 1px solid rgba(255, 255, 255, 0.06);
   padding: 12px;
+  display: grid;
+  gap: 6px;
 }
 
 .cardName {
@@ -159,6 +161,17 @@
   color: #9f9a90;
   display: grid;
   gap: 4px;
+}
+
+.linkButton {
+  margin-top: 6px;
+  width: fit-content;
+  border: 1px solid rgba(201, 168, 76, 0.28);
+  background: transparent;
+  color: #dcc687;
+  padding: 6px 8px;
+  font-size: 12px;
+  cursor: pointer;
 }
 
 .form {
@@ -196,6 +209,49 @@
 
 .feedbackError {
   color: #ff8e8e;
+}
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  z-index: 50;
+}
+
+.modal {
+  width: min(720px, 100%);
+  background: #12161a;
+  border: 1px solid rgba(201, 168, 76, 0.25);
+  padding: 18px;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.modalTitle {
+  margin: 0;
+  font-size: 22px;
+}
+
+.closeButton {
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  background: transparent;
+  color: #f2ede1;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.modalBody {
+  margin-top: 12px;
+  color: #c7c2b5;
+  line-height: 1.6;
 }
 
 @media (max-width: 980px) {
