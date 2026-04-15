@@ -48,9 +48,11 @@ export class CompaniesService {
       orderBy: [{ verificationScore: "desc" }, { displayName: "asc" }]
     });
 
-    return companies.map((company: Awaited<typeof companies>[number]) =>
+    const mappedCompanies = companies.map((company: Awaited<typeof companies>[number]) =>
       this.mapCompanyToContract(company)
     );
+
+    return this.sortByPlanPriority(mappedCompanies);
   }
 
   /**
@@ -77,9 +79,11 @@ export class CompaniesService {
       take: limit
     });
 
-    return companies.map((company: Awaited<typeof companies>[number]) =>
+    const mappedCompanies = companies.map((company: Awaited<typeof companies>[number]) =>
       this.mapCompanyToContract(company)
     );
+
+    return this.sortByPlanPriority(mappedCompanies).slice(0, limit);
   }
 
   /**
@@ -184,5 +188,28 @@ export class CompaniesService {
 
   private toCompanyStatus(rawValue: string): CompanyStatus {
     return rawValue === "ACTIVE" ? CompanyStatus.ACTIVE : CompanyStatus.INACTIVE;
+  }
+
+  private sortByPlanPriority(companies: CompanyModel[]): CompanyModel[] {
+    return [...companies].sort((leftCompany, rightCompany) => {
+      const planScoreDiff =
+        this.getPlanPriorityScore(rightCompany.plan) - this.getPlanPriorityScore(leftCompany.plan);
+      if (planScoreDiff !== 0) {
+        return planScoreDiff;
+      }
+
+      return leftCompany.name.localeCompare(rightCompany.name);
+    });
+  }
+
+  private getPlanPriorityScore(plan: CompanyPlan): number {
+    switch (plan) {
+      case CompanyPlan.PREMIUM:
+        return 3;
+      case CompanyPlan.STANDARD:
+        return 2;
+      default:
+        return 1;
+    }
   }
 }
