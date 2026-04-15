@@ -70,6 +70,84 @@ const regionSeeds = [
   }
 ];
 
+const companySeeds = [
+  {
+    slug: "sgs-chile",
+    legalName: "SGS Chile Ltda.",
+    displayName: "SGS Chile",
+    tagline: "Laboratory and certification services for mining operations.",
+    description:
+      "Global inspection, testing, and certification provider with local mining expertise.",
+    categoryKey: "laboratory",
+    regionCode: "CL-RM",
+    cityName: "Santiago",
+    phone: "+56 2 2793 2000",
+    website: "https://www.sgs.com",
+    planCode: "PREMIUM",
+    verificationScore: 95
+  },
+  {
+    slug: "als-chemex-chile",
+    legalName: "ALS Chemex Chile",
+    displayName: "ALS Chemex Chile",
+    tagline: "Geochemical and metallurgical assay services.",
+    description:
+      "Laboratory focused on analytical quality and turnaround time for exploration projects.",
+    categoryKey: "laboratory",
+    regionCode: "CL-AN",
+    cityName: "Antofagasta",
+    phone: "+56 55 2281 000",
+    website: "https://www.alsglobal.com",
+    planCode: "STANDARD",
+    verificationScore: 88
+  },
+  {
+    slug: "srk-consulting-chile",
+    legalName: "SRK Consulting Chile",
+    displayName: "SRK Consulting Chile",
+    tagline: "Geotechnical and mining consulting.",
+    description:
+      "Independent consulting for technical studies, mine planning, and risk assessment.",
+    categoryKey: "consulting",
+    regionCode: "CL-RM",
+    cityName: "Santiago",
+    phone: "+56 2 2448 3000",
+    website: "https://www.srk.com",
+    planCode: "PREMIUM",
+    verificationScore: 92
+  },
+  {
+    slug: "finning-chile",
+    legalName: "Finning Chile S.A.",
+    displayName: "Finning Chile",
+    tagline: "Heavy equipment and maintenance for mining fleets.",
+    description:
+      "Caterpillar distributor with field support, parts logistics, and maintenance contracts.",
+    categoryKey: "equipment",
+    regionCode: "CL-RM",
+    cityName: "Santiago",
+    phone: "+56 2 2928 4000",
+    website: "https://www.finning.com",
+    planCode: "PREMIUM",
+    verificationScore: 90
+  },
+  {
+    slug: "maptek-chile",
+    legalName: "Maptek Chile",
+    displayName: "Maptek Chile",
+    tagline: "Mining software and geological modeling.",
+    description:
+      "Digital tools for geological modeling, planning, and production optimization.",
+    categoryKey: "software",
+    regionCode: "CL-RM",
+    cityName: "Santiago",
+    phone: "+56 2 2720 9100",
+    website: "https://www.maptek.com",
+    planCode: "STANDARD",
+    verificationScore: 86
+  }
+];
+
 async function seedPlans() {
   for (const plan of planSeeds) {
     await prisma.plan.upsert({
@@ -150,10 +228,147 @@ async function seedRegionsAndCities() {
   }
 }
 
+async function seedCompanies() {
+  for (const company of companySeeds) {
+    const [category, region, plan] = await Promise.all([
+      prisma.category.findUnique({ where: { key: company.categoryKey } }),
+      prisma.region.findUnique({ where: { code: company.regionCode } }),
+      prisma.plan.findUnique({ where: { code: company.planCode } })
+    ]);
+
+    if (!category || !region || !plan) {
+      throw new Error(`Missing category, region, or plan reference for ${company.slug}`);
+    }
+
+    const city = await prisma.city.findUnique({
+      where: {
+        regionId_name: {
+          regionId: region.id,
+          name: company.cityName
+        }
+      }
+    });
+
+    if (!city) {
+      throw new Error(`Missing city ${company.cityName} for ${company.slug}`);
+    }
+
+    const persistedCompany = await prisma.company.upsert({
+      where: { slug: company.slug },
+      update: {
+        legalName: company.legalName,
+        displayName: company.displayName,
+        tagline: company.tagline,
+        description: company.description,
+        status: "ACTIVE",
+        verificationScore: company.verificationScore,
+        publishedAt: new Date()
+      },
+      create: {
+        slug: company.slug,
+        legalName: company.legalName,
+        displayName: company.displayName,
+        tagline: company.tagline,
+        description: company.description,
+        status: "ACTIVE",
+        verificationScore: company.verificationScore,
+        publishedAt: new Date()
+      }
+    });
+
+    await prisma.companyCategoryLink.upsert({
+      where: {
+        companyId_categoryId: {
+          companyId: persistedCompany.id,
+          categoryId: category.id
+        }
+      },
+      update: {
+        isPrimary: true
+      },
+      create: {
+        companyId: persistedCompany.id,
+        categoryId: category.id,
+        isPrimary: true
+      }
+    });
+
+    await prisma.companyAddress.upsert({
+      where: {
+        id: `${persistedCompany.id}_hq`
+      },
+      update: {
+        cityId: city.id,
+        type: "HEADQUARTERS",
+        addressLine1: "Mining District Office",
+        countryCode: "CL",
+        isPrimary: true
+      },
+      create: {
+        id: `${persistedCompany.id}_hq`,
+        companyId: persistedCompany.id,
+        cityId: city.id,
+        type: "HEADQUARTERS",
+        addressLine1: "Mining District Office",
+        countryCode: "CL",
+        isPrimary: true
+      }
+    });
+
+    await prisma.companyContact.upsert({
+      where: {
+        id: `${persistedCompany.id}_general`
+      },
+      update: {
+        type: "GENERAL",
+        phone: company.phone,
+        website: company.website,
+        isPrimary: true
+      },
+      create: {
+        id: `${persistedCompany.id}_general`,
+        companyId: persistedCompany.id,
+        type: "GENERAL",
+        phone: company.phone,
+        website: company.website,
+        isPrimary: true
+      }
+    });
+
+    const existingSubscription = await prisma.companySubscription.findFirst({
+      where: {
+        companyId: persistedCompany.id,
+        planId: plan.id
+      }
+    });
+
+    if (existingSubscription) {
+      await prisma.companySubscription.update({
+        where: { id: existingSubscription.id },
+        data: {
+          status: "ACTIVE",
+          currentPeriodStartAt: new Date(),
+          currentPeriodEndAt: null
+        }
+      });
+    } else {
+      await prisma.companySubscription.create({
+        data: {
+          companyId: persistedCompany.id,
+          planId: plan.id,
+          status: "ACTIVE",
+          currentPeriodStartAt: new Date()
+        }
+      });
+    }
+  }
+}
+
 async function main() {
   await seedPlans();
   await seedCategories();
   await seedRegionsAndCities();
+  await seedCompanies();
 }
 
 main()

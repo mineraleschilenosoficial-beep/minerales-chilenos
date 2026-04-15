@@ -34,7 +34,6 @@ apps/api/src/
     health/
       health.controller.ts
     companies/
-      data/
       models/
       companies.controller.ts
       companies.service.ts
@@ -81,6 +80,7 @@ Prisma commands:
 ```bash
 yarn workspace @minerales/api prisma:generate
 yarn workspace @minerales/api prisma:migrate:dev
+yarn workspace @minerales/api prisma:seed
 ```
 
 ## Local Database (Docker Compose)

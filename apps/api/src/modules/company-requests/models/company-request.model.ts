@@ -1,10 +1,15 @@
 import type { CreateCompanyRequestInput } from "@minerales/contracts";
+import { CompanyPlan } from "@minerales/types";
+
+type CompanyRequestStatus = "pending" | "under_review" | "approved" | "rejected";
 
 /**
  * Stored request model for company publication flow.
  */
-export type CompanyRequestModel = CreateCompanyRequestInput & {
+export type CompanyRequestModel = Omit<CreateCompanyRequestInput, "requestedPlan"> & {
   id: string;
+  requestedPlan: CompanyPlan;
   createdAt: string;
-  status: "pending";
+  status: CompanyRequestStatus;
+  reviewNotes?: string;
 };

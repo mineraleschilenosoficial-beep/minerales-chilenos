@@ -12,8 +12,8 @@ export class CompaniesController {
   constructor(private readonly companiesService: CompaniesService) {}
 
   @Get()
-  listCompanies(@Query() query: CompanyQuery) {
-    const filteredCompanies = this.companiesService.listCompanies(query);
+  async listCompanies(@Query() query: CompanyQuery) {
+    const filteredCompanies = await this.companiesService.listCompanies(query);
 
     const response = {
       total: filteredCompanies.length,
@@ -24,8 +24,8 @@ export class CompaniesController {
   }
 
   @Get("categories")
-  listCategories() {
-    const categories = this.companiesService.listCategories();
+  async listCategories() {
+    const categories = await this.companiesService.listCategories();
 
     return {
       total: categories.length,
@@ -34,8 +34,8 @@ export class CompaniesController {
   }
 
   @Get("featured")
-  listFeaturedCompanies() {
-    const featuredCompanies = this.companiesService.listFeaturedCompanies();
+  async listFeaturedCompanies() {
+    const featuredCompanies = await this.companiesService.listFeaturedCompanies();
 
     return {
       total: featuredCompanies.length,
@@ -44,7 +44,7 @@ export class CompaniesController {
   }
 
   @Get(":id")
-  getCompanyById(@Param("id") id: string) {
-    return this.companiesService.getCompanyById(id);
+  async getCompanyById(@Param("id") id: string) {
+    return await this.companiesService.getCompanyById(id);
   }
 }

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { companyCategoryFilterSchema } from "@minerales/contracts";
-import { CompanyStatus } from "@minerales/types";
-import { seedCompanies } from "./data/seed-companies";
+import { CompanyCategory, CompanyPlan, CompanyStatus } from "@minerales/types";
+import { PrismaService } from "../../database/prisma.service";
 import type { CompanyModel } from "./models/company.model";
 
 type ListCompaniesFilters = {
@@ -11,50 +11,178 @@ type ListCompaniesFilters = {
 
 @Injectable()
 export class CompaniesService {
+  constructor(private readonly prisma: PrismaService) {}
+
   /**
    * Lists active companies filtered by text and category.
    */
-  listCompanies(filters: ListCompaniesFilters): CompanyModel[] {
+  async listCompanies(filters: ListCompaniesFilters): Promise<CompanyModel[]> {
     const category = companyCategoryFilterSchema.parse(filters.category ?? "all");
-    const search = (filters.search ?? "").trim().toLowerCase();
+    const search = (filters.search ?? "").trim();
 
-    return seedCompanies.filter((company) => {
-      const isActive = company.status === CompanyStatus.ACTIVE;
-      const categoryMatch = category === "all" || company.category === category;
-      const searchMatch =
-        search.length === 0 ||
-        company.name.toLowerCase().includes(search) ||
-        company.tagline.toLowerCase().includes(search) ||
-        company.city.toLowerCase().includes(search);
-
-      return isActive && categoryMatch && searchMatch;
+    const companies = await this.prisma.company.findMany({
+      where: {
+        status: "ACTIVE",
+        ...(search.length > 0
+          ? {
+              OR: [
+                { displayName: { contains: search, mode: "insensitive" } },
+                { legalName: { contains: search, mode: "insensitive" } },
+                { description: { contains: search, mode: "insensitive" } }
+              ]
+            }
+          : {}),
+        ...(category !== "all"
+          ? {
+              categories: {
+                some: {
+                  category: {
+                    key: category
+                  }
+                }
+              }
+            }
+          : {})
+      },
+      include: this.companyIncludes(),
+      orderBy: [{ verificationScore: "desc" }, { displayName: "asc" }]
     });
+
+    return companies.map((company: Awaited<typeof companies>[number]) =>
+      this.mapCompanyToContract(company)
+    );
   }
 
   /**
    * Returns unique categories from the current company list.
    */
-  listCategories(): string[] {
-    return Array.from(new Set(seedCompanies.map((company) => company.category)));
+  async listCategories(): Promise<string[]> {
+    const categories = await this.prisma.category.findMany({
+      where: { isActive: true },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      select: { key: true }
+    });
+
+    return categories.map((category: Awaited<typeof categories>[number]) => category.key);
   }
 
   /**
    * Returns highlighted companies for homepage sections.
    */
-  listFeaturedCompanies(limit = 4): CompanyModel[] {
-    return seedCompanies.slice(0, limit);
+  async listFeaturedCompanies(limit = 4): Promise<CompanyModel[]> {
+    const companies = await this.prisma.company.findMany({
+      where: { status: "ACTIVE" },
+      include: this.companyIncludes(),
+      orderBy: [{ verificationScore: "desc" }, { createdAt: "desc" }],
+      take: limit
+    });
+
+    return companies.map((company: Awaited<typeof companies>[number]) =>
+      this.mapCompanyToContract(company)
+    );
   }
 
   /**
    * Finds one company by identifier.
    * @throws NotFoundException when no company is found.
    */
-  getCompanyById(id: string): CompanyModel {
-    const company = seedCompanies.find((item) => item.id === id);
+  async getCompanyById(id: string): Promise<CompanyModel> {
+    const company = await this.prisma.company.findUnique({
+      where: { id },
+      include: this.companyIncludes()
+    });
+
     if (!company) {
       throw new NotFoundException("Company not found");
     }
 
-    return company;
+    return this.mapCompanyToContract(company);
+  }
+
+  private companyIncludes() {
+    return {
+      categories: {
+        include: {
+          category: true
+        }
+      },
+      addresses: {
+        include: {
+          city: {
+            include: {
+              region: true
+            }
+          }
+        }
+      },
+      contacts: true,
+      subscriptions: {
+        include: {
+          plan: true
+        }
+      }
+    };
+  }
+
+  private mapCompanyToContract(company: {
+    id: string;
+    displayName: string;
+    tagline: string | null;
+    description: string;
+    status: string;
+    categories: Array<{ isPrimary: boolean; category: { key: string } }>;
+    addresses: Array<{ isPrimary: boolean; city: { name: string; region: { name: string } } }>;
+    contacts: Array<{ isPrimary: boolean; phone: string | null; website: string | null }>;
+    subscriptions: Array<{ status: string; plan: { code: string } }>;
+  }): CompanyModel {
+    const primaryCategoryLink =
+      company.categories.find((link) => link.isPrimary) ?? company.categories[0];
+    const primaryAddress = company.addresses.find((address) => address.isPrimary) ?? company.addresses[0];
+    const primaryContact = company.contacts.find((contact) => contact.isPrimary) ?? company.contacts[0];
+    const activeSubscription = company.subscriptions.find((subscription) =>
+      ["TRIALING", "ACTIVE"].includes(subscription.status)
+    );
+
+    return {
+      id: company.id,
+      name: company.displayName,
+      tagline: company.tagline ?? "Mining supplier profile.",
+      description: company.description,
+      city: primaryAddress?.city.name ?? "N/A",
+      region: primaryAddress?.city.region.name ?? "N/A",
+      phone: primaryContact?.phone ?? "N/A",
+      website: primaryContact?.website ?? undefined,
+      category: this.toCompanyCategory(primaryCategoryLink?.category.key),
+      plan: this.toCompanyPlan(activeSubscription?.plan.code),
+      status: this.toCompanyStatus(company.status)
+    };
+  }
+
+  private toCompanyCategory(rawValue: string | undefined): CompanyCategory {
+    if (!rawValue) {
+      return CompanyCategory.CONSULTING;
+    }
+
+    const category = rawValue as CompanyCategory;
+    if (Object.values(CompanyCategory).includes(category)) {
+      return category;
+    }
+
+    return CompanyCategory.CONSULTING;
+  }
+
+  private toCompanyPlan(rawValue: string | undefined): CompanyPlan {
+    switch (rawValue) {
+      case "PREMIUM":
+        return CompanyPlan.PREMIUM;
+      case "STANDARD":
+        return CompanyPlan.STANDARD;
+      default:
+        return CompanyPlan.FREE;
+    }
+  }
+
+  private toCompanyStatus(rawValue: string): CompanyStatus {
+    return rawValue === "ACTIVE" ? CompanyStatus.ACTIVE : CompanyStatus.INACTIVE;
   }
 }
