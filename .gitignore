@@ -14,3 +14,13 @@ Thumbs.db
 
 # Common dependencies
 node_modules/
+
+# Monorepo outputs
+.turbo/
+.next/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Yarn state
+.yarn/install-state.gz

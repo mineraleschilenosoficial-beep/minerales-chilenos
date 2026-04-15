@@ -1,0 +1,13 @@
+{
+  "name": "@minerales/config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "eslint/base.mjs",
+  "scripts": {
+    "build": "echo \"No build required for config package\"",
+    "lint": "echo \"No lint required for config package\"",
+    "typecheck": "echo \"No typecheck required for config package\"",
+    "test": "vitest run --passWithNoTests"
+  }
+}
