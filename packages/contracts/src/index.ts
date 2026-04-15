@@ -2,6 +2,38 @@ import { z } from "zod";
 import { CompanyCategory, CompanyPlan, CompanyStatus } from "@minerales/types";
 
 /**
+ * Category filter allowed for company listing queries.
+ */
+export const companyCategoryFilterSchema = z
+  .union([z.literal("all"), z.nativeEnum(CompanyCategory)])
+  .default("all");
+
+/**
+ * Core company schema exposed by API contracts.
+ */
+export const companySchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(2).max(160),
+  tagline: z.string().min(2).max(240),
+  description: z.string().min(10).max(2000),
+  city: z.string().min(2).max(80),
+  region: z.string().min(2).max(80),
+  phone: z.string().min(6).max(40),
+  website: z.string().url().optional(),
+  category: z.nativeEnum(CompanyCategory),
+  plan: z.nativeEnum(CompanyPlan),
+  status: z.nativeEnum(CompanyStatus)
+});
+
+/**
+ * Listing response for the company directory endpoint.
+ */
+export const companyListResponseSchema = z.object({
+  total: z.number().int().min(0),
+  items: z.array(companySchema)
+});
+
+/**
  * Schema used by public forms and admin APIs to create supplier requests.
  */
 export const createCompanyRequestSchema = z.object({
@@ -42,3 +74,13 @@ export type CreateCompanyRequestInput = z.infer<typeof createCompanyRequestSchem
  * Type-safe payload for company profile updates.
  */
 export type UpdateCompanyInput = z.infer<typeof updateCompanySchema>;
+
+/**
+ * Type-safe company model used by frontend and backend.
+ */
+export type Company = z.infer<typeof companySchema>;
+
+/**
+ * Type-safe company listing response.
+ */
+export type CompanyListResponse = z.infer<typeof companyListResponseSchema>;
