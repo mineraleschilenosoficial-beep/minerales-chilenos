@@ -14,56 +14,292 @@ enum CompanyPlan {
 }
 
 enum CompanyStatus {
+  DRAFT
+  PENDING_REVIEW
   ACTIVE
-  INACTIVE
-}
-
-enum CompanyCategory {
-  LABORATORY
-  CONSULTING
-  EQUIPMENT
-  EXPLOSIVES
-  SAFETY
-  TRANSPORT
-  SOFTWARE
-  ENGINEERING
+  SUSPENDED
+  ARCHIVED
 }
 
 enum CompanyRequestStatus {
   PENDING
+  UNDER_REVIEW
   APPROVED
   REJECTED
 }
 
+enum CompanyMembershipRole {
+  OWNER
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  STAFF
+  COMPANY_USER
+}
+
+enum ContactType {
+  GENERAL
+  SALES
+  SUPPORT
+}
+
+enum AddressType {
+  HEADQUARTERS
+  BRANCH
+  BILLING
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+}
+
+enum AuditActorType {
+  USER
+  SYSTEM
+}
+
+model User {
+  id                String           @id @default(cuid())
+  email             String           @unique
+  fullName          String
+  passwordHash      String?
+  role              UserRole         @default(COMPANY_USER)
+  isActive          Boolean          @default(true)
+  lastLoginAt       DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  createdCompanies  Company[]        @relation("CompanyCreatedBy")
+  updatedCompanies  Company[]        @relation("CompanyUpdatedBy")
+  memberships       CompanyMember[]
+  submittedRequests CompanyRequest[] @relation("CompanyRequestRequestedBy")
+  reviewedRequests  CompanyRequest[] @relation("CompanyRequestReviewedBy")
+  auditLogs         AuditLog[]
+}
+
 model Company {
-  id          String         @id @default(cuid())
+  id                String                @id @default(cuid())
+  slug              String                @unique
+  legalName         String
+  displayName       String
+  taxId             String?               @unique
+  tagline           String?
+  description       String
+  status            CompanyStatus         @default(PENDING_REVIEW)
+  verificationScore Int                   @default(0)
+  publishedAt       DateTime?
+  createdById       String?
+  updatedById       String?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  createdBy         User?                 @relation("CompanyCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy         User?                 @relation("CompanyUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  categories        CompanyCategoryLink[]
+  addresses         CompanyAddress[]
+  contacts          CompanyContact[]
+  memberships       CompanyMember[]
+  subscriptions     CompanySubscription[]
+  requests          CompanyRequest[]
+
+  @@index([status])
+  @@index([displayName])
+}
+
+model CompanyMember {
+  id        String                @id @default(cuid())
+  companyId String
+  userId    String
+  role      CompanyMembershipRole @default(VIEWER)
+  title     String?
+  createdAt DateTime              @default(now())
+  company   Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, userId])
+  @@index([userId])
+}
+
+model Category {
+  id                String                   @id @default(cuid())
+  key               String                   @unique
+  name              String
+  description       String?
+  sortOrder         Int                      @default(0)
+  isActive          Boolean                  @default(true)
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  companyLinks      CompanyCategoryLink[]
+  requestCategories CompanyRequestCategory[]
+
+  @@index([isActive, sortOrder])
+}
+
+model CompanyCategoryLink {
+  companyId  String
+  categoryId String
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([companyId, categoryId])
+  @@index([categoryId])
+}
+
+model Region {
+  id          String   @id @default(cuid())
+  code        String   @unique
   name        String
-  tagline     String
-  description String
-  city        String
-  region      String
-  phone       String
-  website     String?
-  category    CompanyCategory
-  plan        CompanyPlan    @default(FREE)
-  status      CompanyStatus  @default(ACTIVE)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  countryCode String   @default("CL")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  cities      City[]
+
+  @@index([countryCode, isActive])
+}
+
+model City {
+  id        String           @id @default(cuid())
+  regionId  String
+  name      String
+  isActive  Boolean          @default(true)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  region    Region           @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  addresses CompanyAddress[]
+
+  @@unique([regionId, name])
+  @@index([isActive])
+}
+
+model CompanyAddress {
+  id           String      @id @default(cuid())
+  companyId    String
+  cityId       String
+  type         AddressType @default(HEADQUARTERS)
+  addressLine1 String
+  addressLine2 String?
+  postalCode   String?
+  countryCode  String      @default("CL")
+  isPrimary    Boolean     @default(false)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  company      Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  city         City        @relation(fields: [cityId], references: [id], onDelete: Restrict)
+
+  @@index([companyId, isPrimary])
+}
+
+model CompanyContact {
+  id        String      @id @default(cuid())
+  companyId String
+  type      ContactType @default(GENERAL)
+  name      String?
+  email     String?
+  phone     String?
+  website   String?
+  isPrimary Boolean     @default(false)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  company   Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, isPrimary])
+}
+
+model Plan {
+  id                   String                @id @default(cuid())
+  code                 CompanyPlan           @unique
+  name                 String
+  monthlyPriceCents    Int
+  currency             String                @default("CLP")
+  isPublic             Boolean               @default(true)
+  isDefault            Boolean               @default(false)
+  featureFlags         Json?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  subscriptions        CompanySubscription[]
+  requestedByCompanies CompanyRequest[]
+}
+
+model CompanySubscription {
+  id                     String             @id @default(cuid())
+  companyId              String
+  planId                 String
+  status                 SubscriptionStatus @default(TRIALING)
+  trialEndsAt            DateTime?
+  currentPeriodStartAt   DateTime?
+  currentPeriodEndAt     DateTime?
+  cancelAtPeriodEnd      Boolean            @default(false)
+  paymentProvider        String?
+  externalSubscriptionId String?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  company                Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  plan                   Plan               @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  @@index([companyId, status])
+  @@unique([paymentProvider, externalSubscriptionId])
 }
 
 model CompanyRequest {
-  id            String               @id @default(cuid())
-  name          String
-  tagline       String
-  description   String
-  city          String
-  region        String
-  phone         String
-  email         String
-  website       String?
-  category      CompanyCategory
-  requestedPlan CompanyPlan          @default(FREE)
-  status        CompanyRequestStatus @default(PENDING)
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
+  id                String                   @id @default(cuid())
+  companyId         String?
+  requestedByUserId String?
+  reviewedById      String?
+  companyName       String
+  tagline           String?
+  description       String
+  contactName       String?
+  contactEmail      String
+  contactPhone      String
+  website           String?
+  cityText          String
+  regionText        String
+  requestedPlanId   String
+  status            CompanyRequestStatus     @default(PENDING)
+  reviewNotes       String?
+  reviewedAt        DateTime?
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  company           Company?                 @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  requestedByUser   User?                    @relation("CompanyRequestRequestedBy", fields: [requestedByUserId], references: [id], onDelete: SetNull)
+  reviewedBy        User?                    @relation("CompanyRequestReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  requestedPlan     Plan                     @relation(fields: [requestedPlanId], references: [id], onDelete: Restrict)
+  categories        CompanyRequestCategory[]
+
+  @@index([status, createdAt])
+  @@index([requestedByUserId])
+}
+
+model CompanyRequestCategory {
+  requestId  String
+  categoryId String
+  request    CompanyRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  category   Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@id([requestId, categoryId])
+  @@index([categoryId])
+}
+
+model AuditLog {
+  id          String         @id @default(cuid())
+  actorType   AuditActorType @default(USER)
+  actorUserId String?
+  action      String
+  entityType  String
+  entityId    String
+  metadata    Json?
+  createdAt   DateTime       @default(now())
+  actorUser   User?          @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
 }
