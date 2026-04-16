@@ -189,6 +189,9 @@ type DirectoryTranslation = {
   formDescriptionLabel: string;
   formCityLabel: string;
   formRegionLabel: string;
+  formCountryLabel: string;
+  formRegionSelectPlaceholder: string;
+  formCommuneSelectPlaceholder: string;
   formPhoneLabel: string;
   formEmailLabel: string;
   formWebsiteLabel: string;
@@ -420,6 +423,9 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     formDescriptionLabel: "Description",
     formCityLabel: "City",
     formRegionLabel: "Region",
+    formCountryLabel: "Country",
+    formRegionSelectPlaceholder: "Select region",
+    formCommuneSelectPlaceholder: "Select commune",
     formPhoneLabel: "Phone",
     formEmailLabel: "Email",
     formWebsiteLabel: "Website (optional)",
@@ -662,6 +668,9 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     formDescriptionLabel: "Descripcion",
     formCityLabel: "Ciudad",
     formRegionLabel: "Region",
+    formCountryLabel: "Pais",
+    formRegionSelectPlaceholder: "Selecciona region",
+    formCommuneSelectPlaceholder: "Selecciona comuna",
     formPhoneLabel: "Telefono",
     formEmailLabel: "Correo",
     formWebsiteLabel: "Sitio web (opcional)",

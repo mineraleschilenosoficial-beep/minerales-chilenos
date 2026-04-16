@@ -17,6 +17,10 @@ import {
   companyRequestListResponseSchema,
   companySchema,
   createCompanyRequestSchema,
+  locationCommunesQuerySchema,
+  locationCommunesResponseSchema,
+  locationCountriesResponseSchema,
+  locationRegionsResponseSchema,
   reviewCompanyRequestResponseSchema,
   reviewCompanyRequestSchema,
   updateCompanySchema,
@@ -26,6 +30,9 @@ import {
   type CompanyListResponse,
   type CompanyMetrics,
   type CompanyRequestListResponse,
+  type LocationCommunesResponse,
+  type LocationCountriesResponse,
+  type LocationRegionsResponse,
   type AdminDashboardSummary,
   type AdminPlansSummary,
   type UserProfile,
@@ -480,6 +487,44 @@ export async function fetchAdminPlansSummary(): Promise<AdminPlansSummary> {
     "FETCH_ADMIN_PLANS_FAILED"
   );
   return adminPlansSummarySchema.parse(await response.json());
+}
+
+/**
+ * Retrieves active country catalog.
+ */
+export async function fetchLocationCountries(): Promise<LocationCountriesResponse> {
+  const response = await fetch(new URL("/locations/countries", API_BASE_URL));
+  if (!response.ok) {
+    throw new Error("FETCH_LOCATION_COUNTRIES_FAILED");
+  }
+  return locationCountriesResponseSchema.parse(await response.json());
+}
+
+/**
+ * Retrieves active region catalog for one country code.
+ */
+export async function fetchLocationRegions(countryCode = "CL"): Promise<LocationRegionsResponse> {
+  const url = new URL("/locations/regions", API_BASE_URL);
+  url.searchParams.set("countryCode", countryCode);
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error("FETCH_LOCATION_REGIONS_FAILED");
+  }
+  return locationRegionsResponseSchema.parse(await response.json());
+}
+
+/**
+ * Retrieves active commune catalog for one region code.
+ */
+export async function fetchLocationCommunes(regionCode: string): Promise<LocationCommunesResponse> {
+  const parsedQuery = locationCommunesQuerySchema.parse({ regionCode });
+  const url = new URL("/locations/communes", API_BASE_URL);
+  url.searchParams.set("regionCode", parsedQuery.regionCode);
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error("FETCH_LOCATION_COMMUNES_FAILED");
+  }
+  return locationCommunesResponseSchema.parse(await response.json());
 }
 
 /**

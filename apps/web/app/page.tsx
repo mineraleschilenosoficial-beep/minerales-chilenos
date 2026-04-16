@@ -2,7 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { createCompanyRequestSchema, type Company, type CompanyMetrics } from "@minerales/contracts";
+import {
+  createCompanyRequestSchema,
+  type Company,
+  type CompanyMetrics,
+  type LocationCommune,
+  type LocationCountry,
+  type LocationRegion
+} from "@minerales/contracts";
 import { CompanyCategory, CompanyPlan } from "@minerales/types";
 import {
   initialRequestFormState,
@@ -16,6 +23,9 @@ import {
   fetchCompanies,
   fetchCompanyMetrics,
   fetchCompanyById,
+  fetchLocationCommunes,
+  fetchLocationCountries,
+  fetchLocationRegions,
   submitCompanyRequest
 } from "@/modules/directory/services/directory-api.service";
 import styles from "./page.module.css";
@@ -34,6 +44,12 @@ export default function HomePage() {
   const [search, setSearch] = useState<string>("");
   const [category, setCategory] = useState<CompanyCategory | "all">("all");
   const [formState, setFormState] = useState<RequestFormState>(initialRequestFormState);
+  const [countries, setCountries] = useState<LocationCountry[]>([]);
+  const [regions, setRegions] = useState<LocationRegion[]>([]);
+  const [communes, setCommunes] = useState<LocationCommune[]>([]);
+  const [selectedCountryCode, setSelectedCountryCode] = useState<string>("CL");
+  const [selectedRegionCode, setSelectedRegionCode] = useState<string>("");
+  const [selectedCommuneId, setSelectedCommuneId] = useState<string>("");
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [feedbackMessage, setFeedbackMessage] = useState<string>("");
   const [feedbackIsError, setFeedbackIsError] = useState<boolean>(false);
@@ -103,6 +119,51 @@ export default function HomePage() {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const countryPayload = await fetchLocationCountries();
+        setCountries(countryPayload.items);
+        if (!countryPayload.items.some((item) => item.code === "CL")) {
+          const firstCountry = countryPayload.items.at(0);
+          if (firstCountry) {
+            setSelectedCountryCode(firstCountry.code);
+          }
+        }
+      } catch {
+        setCountries([]);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const regionsPayload = await fetchLocationRegions(selectedCountryCode);
+        setRegions(regionsPayload.items);
+      } catch {
+        setRegions([]);
+      }
+    })();
+  }, [selectedCountryCode]);
+
+  useEffect(() => {
+    if (!selectedRegionCode) {
+      setCommunes([]);
+      setSelectedCommuneId("");
+      return;
+    }
+
+    void (async () => {
+      try {
+        const communesPayload = await fetchLocationCommunes(selectedRegionCode);
+        setCommunes(communesPayload.items);
+      } catch {
+        setCommunes([]);
+      }
+    })();
+  }, [selectedRegionCode]);
 
   const categoriesCount = useMemo(() => {
     if (metrics) {
@@ -182,6 +243,8 @@ export default function HomePage() {
       setFeedbackMessage(t.submitSuccessFeedback);
       setFormState(initialRequestFormState);
       setFormErrors({});
+      setSelectedRegionCode("");
+      setSelectedCommuneId("");
     } catch {
       setFeedbackIsError(true);
       setFeedbackMessage(t.submitErrorFeedback);
@@ -415,33 +478,82 @@ export default function HomePage() {
             />
             {formErrors.description ? <p className={styles.fieldError}>{formErrors.description}</p> : null}
 
-            <label className={styles.formLabel} htmlFor="city">
-              {t.formCityLabel}
+            <label className={styles.formLabel} htmlFor="country">
+              {t.formCountryLabel}
             </label>
-            <input
-              id="city"
-              className={styles.input}
-              value={formState.city}
+            <select
+              id="country"
+              className={styles.select}
+              value={selectedCountryCode}
               onChange={(event) => {
-                setFormState((state) => ({ ...state, city: event.target.value }));
-                setFormErrors((current) => ({ ...current, city: undefined }));
+                const nextCountryCode = event.target.value;
+                setSelectedCountryCode(nextCountryCode);
+                setSelectedRegionCode("");
+                setSelectedCommuneId("");
+                setFormState((state) => ({ ...state, region: "", city: "" }));
+                setFormErrors((current) => ({ ...current, city: undefined, region: undefined }));
               }}
-            />
-            {formErrors.city ? <p className={styles.fieldError}>{formErrors.city}</p> : null}
+            >
+              {countries.map((country) => (
+                <option key={country.code} value={country.code}>
+                  {country.name}
+                </option>
+              ))}
+            </select>
 
             <label className={styles.formLabel} htmlFor="region">
               {t.formRegionLabel}
             </label>
-            <input
+            <select
               id="region"
-              className={styles.input}
-              value={formState.region}
+              className={styles.select}
+              value={selectedRegionCode}
               onChange={(event) => {
-                setFormState((state) => ({ ...state, region: event.target.value }));
-                setFormErrors((current) => ({ ...current, region: undefined }));
+                const nextRegionCode = event.target.value;
+                const nextRegion = regions.find((region) => region.code === nextRegionCode);
+                setSelectedRegionCode(nextRegionCode);
+                setSelectedCommuneId("");
+                setFormState((state) => ({
+                  ...state,
+                  region: nextRegion?.name ?? "",
+                  city: ""
+                }));
+                setFormErrors((current) => ({ ...current, city: undefined, region: undefined }));
               }}
-            />
+            >
+              <option value="">{t.formRegionSelectPlaceholder}</option>
+              {regions.map((region) => (
+                <option key={region.code} value={region.code}>
+                  {region.name}
+                </option>
+              ))}
+            </select>
             {formErrors.region ? <p className={styles.fieldError}>{formErrors.region}</p> : null}
+
+            <label className={styles.formLabel} htmlFor="commune">
+              {t.formCityLabel}
+            </label>
+            <select
+              id="commune"
+              className={styles.select}
+              value={selectedCommuneId}
+              onChange={(event) => {
+                const nextCommuneId = event.target.value;
+                const nextCommune = communes.find((commune) => commune.id === nextCommuneId);
+                setSelectedCommuneId(nextCommuneId);
+                setFormState((state) => ({ ...state, city: nextCommune?.name ?? "" }));
+                setFormErrors((current) => ({ ...current, city: undefined }));
+              }}
+              disabled={!selectedRegionCode}
+            >
+              <option value="">{t.formCommuneSelectPlaceholder}</option>
+              {communes.map((commune) => (
+                <option key={commune.id} value={commune.id}>
+                  {commune.name}
+                </option>
+              ))}
+            </select>
+            {formErrors.city ? <p className={styles.fieldError}>{formErrors.city}</p> : null}
 
             <label className={styles.formLabel} htmlFor="phone">
               {t.formPhoneLabel}

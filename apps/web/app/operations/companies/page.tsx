@@ -16,12 +16,20 @@ import {
 } from "@mantine/core";
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { adminCreateCompanySchema } from "@minerales/contracts";
+import {
+  adminCreateCompanySchema,
+  type LocationCommune,
+  type LocationCountry,
+  type LocationRegion
+} from "@minerales/contracts";
 import { CompanyCategory, CompanyPlan, CompanyStatus, UserRole } from "@minerales/types";
 import {
   createAdminCompany,
   deleteAdminCompany,
   fetchAdminCompanies,
+  fetchLocationCommunes,
+  fetchLocationCountries,
+  fetchLocationRegions,
   updateAdminCompany
 } from "@/modules/directory/services/directory-api.service";
 import { directoryTranslations } from "@/modules/i18n/directory-translations";
@@ -75,6 +83,12 @@ export default function OperationsCompaniesPage() {
     []
   );
   const [draft, setDraft] = useState<CompanyDraft>(INITIAL_DRAFT);
+  const [countries, setCountries] = useState<LocationCountry[]>([]);
+  const [regions, setRegions] = useState<LocationRegion[]>([]);
+  const [communes, setCommunes] = useState<LocationCommune[]>([]);
+  const [selectedCountryCode, setSelectedCountryCode] = useState<string>("CL");
+  const [selectedRegionCode, setSelectedRegionCode] = useState<string>("");
+  const [selectedCommuneId, setSelectedCommuneId] = useState<string>("");
   const [draftFieldErrors, setDraftFieldErrors] = useState<Partial<Record<CompanyDraftField, string>>>(
     {}
   );
@@ -252,6 +266,56 @@ export default function OperationsCompaniesPage() {
     setCurrentPage(1);
   }, [category, filtersHydrated, plan, search, status]);
 
+  useEffect(() => {
+    void (async () => {
+      try {
+        const countriesPayload = await fetchLocationCountries();
+        setCountries(countriesPayload.items);
+      } catch {
+        setCountries([]);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const regionsPayload = await fetchLocationRegions(selectedCountryCode);
+        setRegions(regionsPayload.items);
+      } catch {
+        setRegions([]);
+      }
+    })();
+  }, [selectedCountryCode]);
+
+  useEffect(() => {
+    if (!selectedRegionCode) {
+      setCommunes([]);
+      setSelectedCommuneId("");
+      return;
+    }
+    void (async () => {
+      try {
+        const communesPayload = await fetchLocationCommunes(selectedRegionCode);
+        setCommunes(communesPayload.items);
+      } catch {
+        setCommunes([]);
+      }
+    })();
+  }, [selectedRegionCode]);
+
+  useEffect(() => {
+    if (!editingCompanyId || selectedCommuneId) {
+      return;
+    }
+    const matchingCommune = communes.find(
+      (commune) => commune.name.toLowerCase() === draft.city.toLowerCase()
+    );
+    if (matchingCommune) {
+      setSelectedCommuneId(matchingCommune.id);
+    }
+  }, [communes, draft.city, editingCompanyId, selectedCommuneId]);
+
   const validateDraft = (): boolean => {
     const parsedDraft = adminCreateCompanySchema.safeParse({
       ...draft,
@@ -314,6 +378,8 @@ export default function OperationsCompaniesPage() {
         website: draft.website.trim() || undefined
       });
       setDraft(INITIAL_DRAFT);
+      setSelectedRegionCode("");
+      setSelectedCommuneId("");
       setDraftFieldErrors({});
       setSuccessFeedback(t.operationsCompaniesCreateSuccess);
       await loadCompanies();
@@ -347,6 +413,8 @@ export default function OperationsCompaniesPage() {
       setSuccessFeedback(t.operationsCompaniesUpdateSuccess);
       setEditingCompanyId(null);
       setDraft(INITIAL_DRAFT);
+      setSelectedRegionCode("");
+      setSelectedCommuneId("");
       setDraftFieldErrors({});
       await loadCompanies();
     } catch {
@@ -366,6 +434,9 @@ export default function OperationsCompaniesPage() {
   };
 
   const startEdit = (company: Awaited<ReturnType<typeof fetchAdminCompanies>>["items"][number]) => {
+    const matchingRegion = regions.find(
+      (regionItem) => regionItem.name.toLowerCase() === company.region.toLowerCase()
+    );
     setEditingCompanyId(company.id);
     setDraft({
       name: company.name,
@@ -379,6 +450,8 @@ export default function OperationsCompaniesPage() {
       plan: company.plan,
       status: company.status
     });
+    setSelectedRegionCode(matchingRegion?.code ?? "");
+    setSelectedCommuneId("");
     setDraftFieldErrors({});
   };
 
@@ -467,23 +540,74 @@ export default function OperationsCompaniesPage() {
                   />
                 </Group>
                 <Group grow align="end">
-                  <TextInput
-                    value={draft.city}
-                    onChange={(event) => {
-                      setDraft((current) => ({ ...current, city: event.target.value }));
-                      setDraftFieldErrors((current) => ({ ...current, city: undefined }));
+                  <Select
+                    value={selectedCountryCode}
+                    onChange={(value) => {
+                      if (!value) {
+                        return;
+                      }
+                      setSelectedCountryCode(value);
+                      setSelectedRegionCode("");
+                      setSelectedCommuneId("");
+                      setDraft((current) => ({ ...current, region: "", city: "" }));
+                      setDraftFieldErrors((current) => ({ ...current, city: undefined, region: undefined }));
                     }}
-                    label={t.formCityLabel}
-                    error={draftFieldErrors.city}
+                    data={countries.map((country) => ({
+                      value: country.code,
+                      label: country.name
+                    }))}
+                    label={t.formCountryLabel}
+                    allowDeselect={false}
                   />
-                  <TextInput
-                    value={draft.region}
-                    onChange={(event) => {
-                      setDraft((current) => ({ ...current, region: event.target.value }));
-                      setDraftFieldErrors((current) => ({ ...current, region: undefined }));
+                  <Select
+                    value={selectedRegionCode}
+                    onChange={(value) => {
+                      if (!value) {
+                        return;
+                      }
+                      const nextRegion = regions.find((regionItem) => regionItem.code === value);
+                      setSelectedRegionCode(value);
+                      setSelectedCommuneId("");
+                      setDraft((current) => ({
+                        ...current,
+                        region: nextRegion?.name ?? "",
+                        city: ""
+                      }));
+                      setDraftFieldErrors((current) => ({ ...current, city: undefined, region: undefined }));
                     }}
+                    data={[
+                      { value: "", label: t.formRegionSelectPlaceholder },
+                      ...regions.map((regionItem) => ({
+                        value: regionItem.code,
+                        label: regionItem.name
+                      }))
+                    ]}
                     label={t.formRegionLabel}
                     error={draftFieldErrors.region}
+                    allowDeselect={false}
+                  />
+                  <Select
+                    value={selectedCommuneId}
+                    onChange={(value) => {
+                      if (!value) {
+                        return;
+                      }
+                      const nextCommune = communes.find((commune) => commune.id === value);
+                      setSelectedCommuneId(value);
+                      setDraft((current) => ({ ...current, city: nextCommune?.name ?? "" }));
+                      setDraftFieldErrors((current) => ({ ...current, city: undefined }));
+                    }}
+                    data={[
+                      { value: "", label: t.formCommuneSelectPlaceholder },
+                      ...communes.map((commune) => ({
+                        value: commune.id,
+                        label: commune.name
+                      }))
+                    ]}
+                    label={t.formCityLabel}
+                    error={draftFieldErrors.city}
+                    disabled={!selectedRegionCode}
+                    allowDeselect={false}
                   />
                   <TextInput
                     value={draft.phone}
@@ -565,6 +689,8 @@ export default function OperationsCompaniesPage() {
                       onClick={() => {
                         setEditingCompanyId(null);
                         setDraft(INITIAL_DRAFT);
+                        setSelectedRegionCode("");
+                        setSelectedCommuneId("");
                         setDraftFieldErrors({});
                       }}
                     >
