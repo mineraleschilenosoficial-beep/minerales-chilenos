@@ -285,9 +285,9 @@ export default function OperationsUsersPage() {
 
                     return (
                       <tr key={user.id}>
-                        <td>{user.fullName}</td>
-                        <td>{user.email}</td>
-                        <td>
+                        <td data-label={t.operationsUsersTableName}>{user.fullName}</td>
+                        <td data-label={t.operationsUsersTableEmail}>{user.email}</td>
+                        <td data-label={t.operationsUsersTableRoles}>
                           {canManageUsers ? (
                             <div className={styles.roles}>
                               {ROLE_OPTIONS.map((role) => (
@@ -305,9 +305,11 @@ export default function OperationsUsersPage() {
                             user.roles.map((role) => roleLabels[role]).join(", ")
                           )}
                         </td>
-                        <td>{draft.isActive ? t.operationsUsersActiveYes : t.operationsUsersActiveNo}</td>
+                        <td data-label={t.operationsUsersTableActive}>
+                          {draft.isActive ? t.operationsUsersActiveYes : t.operationsUsersActiveNo}
+                        </td>
                         {canManageUsers ? (
-                          <td>
+                          <td data-label={t.operationsApplyAction}>
                             <div className={styles.roles}>
                               <button
                                 type="button"

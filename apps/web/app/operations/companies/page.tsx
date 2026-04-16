@@ -412,10 +412,10 @@ export default function OperationsCompaniesPage() {
               <tbody>
                 {companies.map((company) => (
                   <tr key={company.id}>
-                    <td>{company.name}</td>
-                    <td>{company.status}</td>
-                    <td>{company.plan}</td>
-                    <td>
+                    <td data-label={t.operationsUsersTableName}>{company.name}</td>
+                    <td data-label={t.operationsCompaniesStatusFilterLabel}>{company.status}</td>
+                    <td data-label={t.operationsCompaniesPlanFilterLabel}>{company.plan}</td>
+                    <td data-label={t.operationsApplyAction}>
                       <div className={styles.toolbar}>
                         <button
                           type="button"
