@@ -2,7 +2,7 @@
 
 import { Alert, Button, Container, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   fetchCurrentOperator,
@@ -18,12 +18,18 @@ import { useOperationsSession } from "@/modules/operations/use-operations-sessio
  */
 export default function OperationsLoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { locale, setLocale, handleAuthChange } = useOperationsSession();
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
   const t = directoryTranslations[locale];
+  const nextPathParam = searchParams.get("next");
+  const targetPath =
+    nextPathParam && nextPathParam.startsWith("/operations/") && nextPathParam !== "/operations/login"
+      ? nextPathParam
+      : "/operations/dashboard";
 
   useEffect(() => {
     if (!hasOperatorSession()) {
@@ -34,12 +40,12 @@ export default function OperationsLoginPage() {
       try {
         const me = await fetchCurrentOperator();
         handleAuthChange({ isAuthenticated: true, currentUser: me });
-        router.replace("/operations/dashboard");
+        router.replace(targetPath);
       } catch {
         // keep user in login page if token is invalid
       }
     })();
-  }, [handleAuthChange, router]);
+  }, [handleAuthChange, router, targetPath]);
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -48,7 +54,7 @@ export default function OperationsLoginPage() {
       await loginOperator(email, password);
       const me = await fetchCurrentOperator();
       handleAuthChange({ isAuthenticated: true, currentUser: me });
-      router.replace("/operations/dashboard");
+      router.replace(targetPath);
     } catch {
       setErrorMessage(t.operationsAuthLoginError);
     } finally {

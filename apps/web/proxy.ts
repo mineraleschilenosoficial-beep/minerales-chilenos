@@ -31,6 +31,7 @@ export function proxy(request: NextRequest) {
   }
 
   const loginUrl = new URL(OPERATIONS_LOGIN_PATH, request.url);
+  loginUrl.searchParams.set("next", pathname);
   return NextResponse.redirect(loginUrl);
 }
 
