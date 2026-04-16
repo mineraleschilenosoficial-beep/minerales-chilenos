@@ -152,6 +152,21 @@ model Category {
   @@index([isActive, sortOrder])
 }
 
+model Country {
+  id         String   @id @default(cuid())
+  code       String   @unique
+  name       String
+  dialCode   String?
+  emoji      String?
+  image      String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  regions    Region[]
+
+  @@index([isActive, name])
+}
+
 model CompanyCategoryLink {
   companyId  String
   categoryId String
@@ -166,21 +181,25 @@ model CompanyCategoryLink {
 
 model Region {
   id          String   @id @default(cuid())
+  countryId   String?
   code        String   @unique
   name        String
   countryCode String   @default("CL")
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  cities      City[]
+  country     Country? @relation(fields: [countryId], references: [id], onDelete: SetNull)
+  communes    Commune[]
 
+  @@index([countryId, isActive])
   @@index([countryCode, isActive])
 }
 
-model City {
+model Commune {
   id        String           @id @default(cuid())
   regionId  String
   name      String
+  identifier String?
   isActive  Boolean          @default(true)
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
@@ -189,12 +208,13 @@ model City {
 
   @@unique([regionId, name])
   @@index([isActive])
+  @@map("City")
 }
 
 model CompanyAddress {
   id           String      @id @default(cuid())
   companyId    String
-  cityId       String
+  communeId    String      @map("cityId")
   type         AddressType @default(HEADQUARTERS)
   addressLine1 String
   addressLine2 String?
@@ -204,7 +224,7 @@ model CompanyAddress {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   company      Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  city         City        @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  commune      Commune     @relation(fields: [communeId], references: [id], onDelete: Restrict)
 
   @@index([companyId, isPrimary])
 }

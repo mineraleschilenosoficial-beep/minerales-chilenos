@@ -1,7 +1,18 @@
 import { PrismaClient } from "@prisma/client";
 import { hash } from "bcryptjs";
+import { readFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const prisma = new PrismaClient();
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const countriesDataset = JSON.parse(
+  await readFile(resolve(__dirname, "../src/data/countries.json"), "utf-8")
+);
+const chileDataset = JSON.parse(
+  await readFile(resolve(__dirname, "../src/data/chile.json"), "utf-8")
+);
 
 const planSeeds = [
   {
@@ -53,23 +64,18 @@ const categorySeeds = [
   { key: "engineering", name: "Engineering", sortOrder: 80 }
 ];
 
-const regionSeeds = [
-  {
-    code: "CL-RM",
-    name: "Region Metropolitana de Santiago",
-    cities: ["Santiago", "Las Condes", "Providencia"]
-  },
-  {
-    code: "CL-AN",
-    name: "Region de Antofagasta",
-    cities: ["Antofagasta", "Calama", "Mejillones"]
-  },
-  {
-    code: "CL-AT",
-    name: "Region de Atacama",
-    cities: ["Copiapo", "Caldera", "Vallenar"]
-  }
-];
+const regionSeeds = chileDataset.regions.map((region) => ({
+  code: `CL-${region.abbreviation}`,
+  name:
+    region.name === "Metropolitana de Santiago"
+      ? "Region Metropolitana de Santiago"
+      : `Region de ${region.name}`,
+  countryCode: "CL",
+  communes: region.communes.map((commune) => ({
+    name: normalizeAscii(commune.name),
+    identifier: commune.identifier
+  }))
+}));
 
 const companySeeds = [
   // Laboratory
@@ -797,37 +803,71 @@ async function seedCategories() {
   }
 }
 
-async function seedRegionsAndCities() {
+async function seedCountries() {
+  for (const country of countriesDataset) {
+    await prisma.country.upsert({
+      where: { code: country.code },
+      update: {
+        name: country.name,
+        dialCode: country.dial_code ?? null,
+        emoji: country.emoji ?? null,
+        image: country.image ?? null,
+        isActive: true
+      },
+      create: {
+        code: country.code,
+        name: country.name,
+        dialCode: country.dial_code ?? null,
+        emoji: country.emoji ?? null,
+        image: country.image ?? null,
+        isActive: true
+      }
+    });
+  }
+}
+
+async function seedRegionsAndCommunes() {
+  const chileCountry = await prisma.country.findUnique({
+    where: { code: "CL" }
+  });
+  if (!chileCountry) {
+    throw new Error("Chile country is required before seeding regions and communes");
+  }
+
   for (const region of regionSeeds) {
     const createdRegion = await prisma.region.upsert({
       where: { code: region.code },
       update: {
+        countryId: chileCountry.id,
         name: region.name,
-        countryCode: "CL",
+        countryCode: region.countryCode,
         isActive: true
       },
       create: {
+        countryId: chileCountry.id,
         code: region.code,
         name: region.name,
-        countryCode: "CL",
+        countryCode: region.countryCode,
         isActive: true
       }
     });
 
-    for (const cityName of region.cities) {
-      await prisma.city.upsert({
+    for (const commune of region.communes) {
+      await prisma.commune.upsert({
         where: {
           regionId_name: {
             regionId: createdRegion.id,
-            name: cityName
+            name: commune.name
           }
         },
         update: {
+          identifier: commune.identifier,
           isActive: true
         },
         create: {
           regionId: createdRegion.id,
-          name: cityName,
+          name: commune.name,
+          identifier: commune.identifier,
           isActive: true
         }
       });
@@ -847,7 +887,7 @@ async function seedCompanies() {
       throw new Error(`Missing category, region, or plan reference for ${company.slug}`);
     }
 
-    const city = await prisma.city.findUnique({
+    const commune = await prisma.commune.findUnique({
       where: {
         regionId_name: {
           regionId: region.id,
@@ -856,8 +896,8 @@ async function seedCompanies() {
       }
     });
 
-    if (!city) {
-      throw new Error(`Missing city ${company.cityName} for ${company.slug}`);
+    if (!commune) {
+      throw new Error(`Missing commune ${company.cityName} for ${company.slug}`);
     }
 
     const persistedCompany = await prisma.company.upsert({
@@ -905,7 +945,7 @@ async function seedCompanies() {
         id: `${persistedCompany.id}_hq`
       },
       update: {
-        cityId: city.id,
+        communeId: commune.id,
         type: "HEADQUARTERS",
         addressLine1: "Mining District Office",
         countryCode: "CL",
@@ -914,7 +954,7 @@ async function seedCompanies() {
       create: {
         id: `${persistedCompany.id}_hq`,
         companyId: persistedCompany.id,
-        cityId: city.id,
+        communeId: commune.id,
         type: "HEADQUARTERS",
         addressLine1: "Mining District Office",
         countryCode: "CL",
@@ -972,9 +1012,10 @@ async function seedCompanies() {
 }
 
 async function main() {
+  await seedCountries();
   await seedPlans();
   await seedCategories();
-  await seedRegionsAndCities();
+  await seedRegionsAndCommunes();
   await seedCompanies();
   await seedAdminUser();
 }
@@ -1024,3 +1065,7 @@ main()
     await prisma.$disconnect();
     process.exit(1);
   });
+
+function normalizeAscii(value) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}

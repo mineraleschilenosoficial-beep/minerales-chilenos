@@ -324,8 +324,8 @@ export class CompanyRequestsService {
   }) {
     const companySlug = this.toSlug(request.companyName);
 
-    const [city, existingCompany] = await Promise.all([
-      this.prisma.city.findFirst({
+    const [commune, existingCompany] = await Promise.all([
+      this.prisma.commune.findFirst({
         where: {
           name: {
             equals: request.cityText,
@@ -338,9 +338,9 @@ export class CompanyRequestsService {
       })
     ]);
 
-    if (!city) {
+    if (!commune) {
       throw new BadRequestException(
-        `City '${request.cityText}' is not configured. Add it to catalog before approval.`
+        `Commune '${request.cityText}' is not configured. Add it to catalog before approval.`
       );
     }
 
@@ -395,7 +395,7 @@ export class CompanyRequestsService {
         id: `${persistedCompany.id}_hq`
       },
       update: {
-        cityId: city.id,
+        communeId: commune.id,
         addressLine1: "Main Office",
         type: "HEADQUARTERS",
         isPrimary: true
@@ -403,7 +403,7 @@ export class CompanyRequestsService {
       create: {
         id: `${persistedCompany.id}_hq`,
         companyId: persistedCompany.id,
-        cityId: city.id,
+        communeId: commune.id,
         addressLine1: "Main Office",
         type: "HEADQUARTERS",
         isPrimary: true

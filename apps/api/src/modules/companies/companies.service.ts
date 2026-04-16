@@ -192,7 +192,7 @@ export class CompaniesService {
     },
     actorUserId?: string
   ): Promise<CompanyModel> {
-    const city = await this.findCityByName(payload.region, payload.city);
+    const commune = await this.findCommuneByName(payload.region, payload.city);
     const category = await this.prisma.category.findUnique({
       where: { key: payload.category }
     });
@@ -200,8 +200,8 @@ export class CompaniesService {
       where: { code: this.toPrismaPlan(payload.plan) }
     });
 
-    if (!city || !category || !plan) {
-      throw new BadRequestException("Invalid city, category, or plan");
+    if (!commune || !category || !plan) {
+      throw new BadRequestException("Invalid commune, category, or plan");
     }
 
     const slug = await this.generateUniqueSlug(payload.name);
@@ -227,7 +227,7 @@ export class CompaniesService {
         addresses: {
           create: [
             {
-              cityId: city.id,
+              communeId: commune.id,
               addressLine1: "Main Office",
               type: "HEADQUARTERS",
               isPrimary: true
@@ -330,28 +330,28 @@ export class CompaniesService {
       const primaryAddress = existingCompany.addresses.find(
         (address: Awaited<typeof existingCompany.addresses>[number]) => address.isPrimary
       );
-      const currentRegion = primaryAddress?.city.region.name ?? payload.region;
-      const currentCity = payload.city ?? primaryAddress?.city.name;
+      const currentRegion = primaryAddress?.commune.region.name ?? payload.region;
+      const currentCity = payload.city ?? primaryAddress?.commune.name;
       if (!currentRegion || !currentCity) {
         throw new BadRequestException("City and region are required for address update");
       }
-      const city = await this.findCityByName(currentRegion, currentCity);
-      if (!city) {
-        throw new BadRequestException("Invalid city/region");
+      const commune = await this.findCommuneByName(currentRegion, currentCity);
+      if (!commune) {
+        throw new BadRequestException("Invalid commune/region");
       }
 
       if (primaryAddress) {
         await this.prisma.companyAddress.update({
           where: { id: primaryAddress.id },
           data: {
-            cityId: city.id
+            communeId: commune.id
           }
         });
       } else {
         await this.prisma.companyAddress.create({
           data: {
             companyId: id,
-            cityId: city.id,
+            communeId: commune.id,
             addressLine1: "Main Office",
             type: "HEADQUARTERS",
             isPrimary: true
@@ -554,7 +554,7 @@ export class CompaniesService {
       },
       addresses: {
         include: {
-          city: {
+          commune: {
             include: {
               region: true
             }
@@ -577,7 +577,7 @@ export class CompaniesService {
     description: string;
     status: string;
     categories: Array<{ isPrimary: boolean; category: { key: string } }>;
-    addresses: Array<{ isPrimary: boolean; city: { name: string; region: { name: string } } }>;
+    addresses: Array<{ isPrimary: boolean; commune: { name: string; region: { name: string } } }>;
     contacts: Array<{ isPrimary: boolean; phone: string | null; website: string | null }>;
     subscriptions: Array<{ status: string; plan: { code: string } }>;
   }): CompanyModel {
@@ -594,8 +594,8 @@ export class CompaniesService {
       name: company.displayName,
       tagline: company.tagline ?? "Mining supplier profile.",
       description: company.description,
-      city: primaryAddress?.city.name ?? "N/A",
-      region: primaryAddress?.city.region.name ?? "N/A",
+      city: primaryAddress?.commune.name ?? "N/A",
+      region: primaryAddress?.commune.region.name ?? "N/A",
       phone: primaryContact?.phone ?? "N/A",
       website: primaryContact?.website ?? undefined,
       category: this.toCompanyCategory(primaryCategoryLink?.category.key),
@@ -662,11 +662,11 @@ export class CompaniesService {
     }
   }
 
-  private async findCityByName(regionName: string, cityName: string) {
-    return await this.prisma.city.findFirst({
+  private async findCommuneByName(regionName: string, communeName: string) {
+    return await this.prisma.commune.findFirst({
       where: {
         name: {
-          equals: cityName,
+          equals: communeName,
           mode: "insensitive"
         },
         region: {
