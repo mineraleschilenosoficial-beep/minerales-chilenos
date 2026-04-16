@@ -156,6 +156,12 @@ export default function HomePage() {
               <div className={styles.brandTagline}>{t.brandTagline}</div>
             </div>
           </div>
+          <nav className={styles.nav}>
+            <a href="#directorio">{t.landingNavDirectory}</a>
+            <a href="#categorias">{t.landingNavCategories}</a>
+            <a href="#planes">{t.landingNavPlans}</a>
+            <a href="#contacto">{t.landingNavContact}</a>
+          </nav>
           <div>
             <Link href="/operations/login" className={styles.linkButton}>
               {t.adminAccessAction}
@@ -181,9 +187,23 @@ export default function HomePage() {
         </div>
       </header>
 
+      <div className={styles.launchBanner}>
+        <strong>{t.landingLaunchBannerTitle}</strong>
+        <span>{t.landingLaunchBannerSubtitle}</span>
+      </div>
+
       <section className={styles.hero}>
+        <div className={styles.heroBadge}>{t.landingHeroBadge}</div>
         <h1 className={styles.heroTitle}>{t.heroTitle}</h1>
         <p className={styles.heroSubtitle}>{t.heroSubtitle}</p>
+        <div className={styles.heroActions}>
+          <a href="#directorio" className={styles.button}>
+            {t.landingHeroPrimaryAction}
+          </a>
+          <a href="#planes" className={styles.outlineButton}>
+            {t.landingHeroSecondaryAction}
+          </a>
+        </div>
         <div className={styles.stats}>
           <div className={styles.statCard}>
             <div className={styles.statLabel}>{t.statsPublishedSuppliers}</div>
@@ -217,8 +237,9 @@ export default function HomePage() {
       </section>
 
       <section className={styles.content}>
-        <div className={styles.panel}>
+        <div className={styles.panel} id="directorio">
           <h2 className={styles.panelTitle}>{t.directoryTitle}</h2>
+          <div className={styles.searchTitle}>{t.landingSearchTitle}</div>
           <div className={styles.toolbar}>
             <input
               className={styles.input}
@@ -241,7 +262,7 @@ export default function HomePage() {
             </select>
           </div>
 
-          <div className={styles.cards}>
+          <div className={styles.cards} id="categorias">
             {loading ? (
               <div className={styles.card}>{t.loadingSuppliers}</div>
             ) : companies.length === 0 ? (
@@ -457,6 +478,87 @@ export default function HomePage() {
           </form>
         </aside>
       </section>
+
+      <section className={styles.pricingSection} id="planes">
+        <div className={styles.pricingInner}>
+          <h2 className={styles.pricingTitle}>{t.landingPricingTitle}</h2>
+          <p className={styles.pricingSubtitle}>{t.landingPricingSubtitle}</p>
+          <div className={styles.plansGrid}>
+            <article className={styles.planCard}>
+              <div className={styles.planName}>{t.landingPlanBasicName}</div>
+              <div className={styles.planPrice}>{t.landingPlanBasicPrice}</div>
+              <div className={styles.planPeriod}>{t.landingPlanBasicPeriod}</div>
+              <ul className={styles.planFeatures}>
+                {t.landingPlanBasicFeatures.map((feature) => (
+                  <li key={feature}>{feature}</li>
+                ))}
+              </ul>
+              <button
+                className={styles.button}
+                onClick={() =>
+                  document.getElementById("name")?.scrollIntoView({ behavior: "smooth", block: "start" })
+                }
+              >
+                {t.landingHeroSecondaryAction}
+              </button>
+            </article>
+            <article className={`${styles.planCard} ${styles.planFeatured}`}>
+              <div className={styles.planBadge}>{t.landingPlanPopularBadge}</div>
+              <div className={styles.planName}>{t.landingPlanStandardName}</div>
+              <div className={styles.planPrice}>{t.landingPlanStandardPrice}</div>
+              <div className={styles.planPeriod}>{t.landingPlanStandardPeriod}</div>
+              <ul className={styles.planFeatures}>
+                {t.landingPlanStandardFeatures.map((feature) => (
+                  <li key={feature}>{feature}</li>
+                ))}
+              </ul>
+              <button
+                className={styles.button}
+                onClick={() =>
+                  document.getElementById("name")?.scrollIntoView({ behavior: "smooth", block: "start" })
+                }
+              >
+                {t.submitAction}
+              </button>
+            </article>
+            <article className={styles.planCard}>
+              <div className={styles.planName}>{t.landingPlanPremiumName}</div>
+              <div className={styles.planPrice}>{t.landingPlanPremiumPrice}</div>
+              <div className={styles.planPeriod}>{t.landingPlanPremiumPeriod}</div>
+              <ul className={styles.planFeatures}>
+                {t.landingPlanPremiumFeatures.map((feature) => (
+                  <li key={feature}>{feature}</li>
+                ))}
+              </ul>
+              <button
+                className={styles.button}
+                onClick={() =>
+                  document.getElementById("name")?.scrollIntoView({ behavior: "smooth", block: "start" })
+                }
+              >
+                {t.submitAction}
+              </button>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.ctaSection} id="contacto">
+        <h2 className={styles.ctaTitle}>{t.landingCtaTitle}</h2>
+        <p className={styles.ctaSubtitle}>{t.landingCtaSubtitle}</p>
+        <button
+          className={styles.button}
+          onClick={() => document.getElementById("name")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+        >
+          {t.landingCtaAction}
+        </button>
+      </section>
+
+      <footer className={styles.footer}>
+        <div className={styles.footerLogo}>{t.brandName}</div>
+        <div className={styles.footerText}>{t.landingFooterCopyright}</div>
+        <div className={styles.footerText}>{t.landingFooterContact}</div>
+      </footer>
 
       {selectedCompany ? (
         <div className={styles.modalBackdrop} onClick={() => setSelectedCompany(null)}>

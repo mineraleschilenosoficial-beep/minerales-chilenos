@@ -21,6 +21,36 @@ type DirectoryTranslation = {
   themeDark: string;
   brandName: string;
   brandTagline: string;
+  landingNavDirectory: string;
+  landingNavCategories: string;
+  landingNavPlans: string;
+  landingNavContact: string;
+  landingLaunchBannerTitle: string;
+  landingLaunchBannerSubtitle: string;
+  landingHeroBadge: string;
+  landingHeroPrimaryAction: string;
+  landingHeroSecondaryAction: string;
+  landingSearchTitle: string;
+  landingPricingTitle: string;
+  landingPricingSubtitle: string;
+  landingPlanBasicName: string;
+  landingPlanStandardName: string;
+  landingPlanPremiumName: string;
+  landingPlanBasicPrice: string;
+  landingPlanStandardPrice: string;
+  landingPlanPremiumPrice: string;
+  landingPlanBasicPeriod: string;
+  landingPlanStandardPeriod: string;
+  landingPlanPremiumPeriod: string;
+  landingPlanPopularBadge: string;
+  landingPlanBasicFeatures: string[];
+  landingPlanStandardFeatures: string[];
+  landingPlanPremiumFeatures: string[];
+  landingCtaTitle: string;
+  landingCtaSubtitle: string;
+  landingCtaAction: string;
+  landingFooterCopyright: string;
+  landingFooterContact: string;
   heroTitle: string;
   heroSubtitle: string;
   statsPublishedSuppliers: string;
@@ -184,6 +214,60 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     themeDark: "Dark",
     brandName: "MineralesChilenos.cl",
     brandTagline: "B2B Mining Supplier Directory",
+    landingNavDirectory: "Directory",
+    landingNavCategories: "Categories",
+    landingNavPlans: "Plans",
+    landingNavContact: "Contact",
+    landingLaunchBannerTitle: "Launch Offer - 1 FREE month for all companies",
+    landingLaunchBannerSubtitle: "Publish your company today at no cost. Limited-time offer.",
+    landingHeroBadge: "Chile's B2B Mining Directory",
+    landingHeroPrimaryAction: "View Directory",
+    landingHeroSecondaryAction: "Publish for Free",
+    landingSearchTitle: "Find a supplier",
+    landingPricingTitle: "PUBLISH YOUR COMPANY",
+    landingPricingSubtitle: "Choose the plan that fits your company. First month is free on paid plans.",
+    landingPlanBasicName: "Basic",
+    landingPlanStandardName: "Standard",
+    landingPlanPremiumName: "Premium",
+    landingPlanBasicPrice: "$0",
+    landingPlanStandardPrice: "$19,990",
+    landingPlanPremiumPrice: "$49,990",
+    landingPlanBasicPeriod: "/ month - forever free",
+    landingPlanStandardPeriod: "/ month - first month free",
+    landingPlanPremiumPeriod: "/ month - first month free",
+    landingPlanPopularBadge: "Most Popular",
+    landingPlanBasicFeatures: [
+      "Company name",
+      "Category and city",
+      "Short description",
+      "No logo",
+      "No direct contact",
+      "No website",
+      "No search priority"
+    ],
+    landingPlanStandardFeatures: [
+      "Everything in Basic",
+      "Company logo",
+      "Full description",
+      "Phone and website",
+      "Contact form",
+      "Tags and specialties",
+      "No search priority"
+    ],
+    landingPlanPremiumFeatures: [
+      "Everything in Standard",
+      "Top search priority",
+      "Featured banner",
+      "Premium badge",
+      "Visit analytics",
+      "Priority contact",
+      "Dedicated support"
+    ],
+    landingCtaTitle: "IS YOUR COMPANY STILL MISSING?",
+    landingCtaSubtitle: "Register today and publish in under 24 hours.",
+    landingCtaAction: "Register My Company for Free",
+    landingFooterCopyright: "© 2025 MineralesChilenos · B2B Mining Directory in Chile",
+    landingFooterContact: "Contact: contacto@mineraleschilenos.cl",
     heroTitle: "Find trusted mining suppliers in Chile.",
     heroSubtitle:
       "Search companies by category, compare supplier profiles, and submit your company for publication in the directory.",
@@ -361,6 +445,60 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     themeDark: "Oscuro",
     brandName: "MineralesChilenos.cl",
     brandTagline: "Directorio B2B de Proveedores Mineros",
+    landingNavDirectory: "Directorio",
+    landingNavCategories: "Categorias",
+    landingNavPlans: "Planes",
+    landingNavContact: "Contacto",
+    landingLaunchBannerTitle: "Lanzamiento - 1 MES GRATIS para todas las empresas",
+    landingLaunchBannerSubtitle: "Publica tu empresa hoy sin costo. Oferta por tiempo limitado.",
+    landingHeroBadge: "El Directorio B2B Minero de Chile",
+    landingHeroPrimaryAction: "Ver Directorio",
+    landingHeroSecondaryAction: "Publicar Gratis",
+    landingSearchTitle: "Buscar proveedor",
+    landingPricingTitle: "PUBLICA TU EMPRESA",
+    landingPricingSubtitle: "Elige el plan que mas se adapte a tu empresa. Primer mes gratis en planes pagados.",
+    landingPlanBasicName: "Basico",
+    landingPlanStandardName: "Estandar",
+    landingPlanPremiumName: "Premium",
+    landingPlanBasicPrice: "$0",
+    landingPlanStandardPrice: "$19.990",
+    landingPlanPremiumPrice: "$49.990",
+    landingPlanBasicPeriod: "/ mes - siempre gratis",
+    landingPlanStandardPeriod: "/ mes - primer mes gratis",
+    landingPlanPremiumPeriod: "/ mes - primer mes gratis",
+    landingPlanPopularBadge: "Mas Popular",
+    landingPlanBasicFeatures: [
+      "Nombre de empresa",
+      "Categoria y ciudad",
+      "Descripcion corta",
+      "Sin logo",
+      "Sin contacto directo",
+      "Sin sitio web",
+      "Sin prioridad en busquedas"
+    ],
+    landingPlanStandardFeatures: [
+      "Todo lo basico",
+      "Logo de empresa",
+      "Descripcion completa",
+      "Telefono y sitio web",
+      "Formulario de contacto",
+      "Tags y especialidades",
+      "Sin prioridad en busquedas"
+    ],
+    landingPlanPremiumFeatures: [
+      "Todo lo estandar",
+      "Primero en busquedas",
+      "Banner destacado",
+      "Insignia premium",
+      "Estadisticas de visitas",
+      "Contacto prioritario",
+      "Soporte dedicado"
+    ],
+    landingCtaTitle: "TU EMPRESA AUN NO ESTA?",
+    landingCtaSubtitle: "Registrala hoy y publicala en menos de 24 horas.",
+    landingCtaAction: "Registrar mi Empresa Gratis",
+    landingFooterCopyright: "© 2025 MineralesChilenos · Directorio B2B Minero de Chile",
+    landingFooterContact: "Contacto: contacto@mineraleschilenos.cl",
     heroTitle: "Encuentra proveedores mineros confiables en Chile.",
     heroSubtitle:
       "Busca empresas por categoria, compara perfiles de proveedores y envia tu empresa para publicacion en el directorio.",
