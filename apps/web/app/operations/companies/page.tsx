@@ -16,6 +16,7 @@ import {
 } from "@mantine/core";
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { adminCreateCompanySchema } from "@minerales/contracts";
 import { CompanyCategory, CompanyPlan, CompanyStatus, UserRole } from "@minerales/types";
 import {
   createAdminCompany,
@@ -41,6 +42,7 @@ type CompanyDraft = {
   plan: CompanyPlan;
   status: CompanyStatus;
 };
+type CompanyDraftField = keyof CompanyDraft;
 
 const INITIAL_DRAFT: CompanyDraft = {
   name: "",
@@ -73,6 +75,9 @@ export default function OperationsCompaniesPage() {
     []
   );
   const [draft, setDraft] = useState<CompanyDraft>(INITIAL_DRAFT);
+  const [draftFieldErrors, setDraftFieldErrors] = useState<Partial<Record<CompanyDraftField, string>>>(
+    {}
+  );
   const [editingCompanyId, setEditingCompanyId] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [filtersHydrated, setFiltersHydrated] = useState<boolean>(false);
@@ -247,7 +252,61 @@ export default function OperationsCompaniesPage() {
     setCurrentPage(1);
   }, [category, filtersHydrated, plan, search, status]);
 
+  const validateDraft = (): boolean => {
+    const parsedDraft = adminCreateCompanySchema.safeParse({
+      ...draft,
+      website: draft.website.trim() || undefined
+    });
+    if (parsedDraft.success) {
+      setDraftFieldErrors({});
+      return true;
+    }
+
+    const nextDraftFieldErrors: Partial<Record<CompanyDraftField, string>> = {};
+    for (const issue of parsedDraft.error.issues) {
+      const pathKey = issue.path[0];
+      if (typeof pathKey !== "string") {
+        continue;
+      }
+      const fieldKey = pathKey as CompanyDraftField;
+      if (nextDraftFieldErrors[fieldKey]) {
+        continue;
+      }
+
+      if (issue.code === "invalid_type") {
+        nextDraftFieldErrors[fieldKey] = t.formErrorRequired;
+        continue;
+      }
+      if (issue.code === "too_small" && issue.minimum === 2) {
+        nextDraftFieldErrors[fieldKey] = t.formErrorMinChars2;
+        continue;
+      }
+      if (issue.code === "too_small" && issue.minimum === 6) {
+        nextDraftFieldErrors[fieldKey] = t.formErrorMinChars6;
+        continue;
+      }
+      if (issue.code === "too_small" && issue.minimum === 10) {
+        nextDraftFieldErrors[fieldKey] = t.formErrorMinChars10;
+        continue;
+      }
+      if (issue.code === "invalid_string" && issue.validation === "url") {
+        nextDraftFieldErrors[fieldKey] = t.formErrorInvalidWebsite;
+        continue;
+      }
+
+      nextDraftFieldErrors[fieldKey] = t.invalidFormFeedback;
+    }
+
+    setDraftFieldErrors(nextDraftFieldErrors);
+    setErrorFeedback(t.invalidFormFeedback);
+    return false;
+  };
+
   const handleCreate = async () => {
+    if (!validateDraft()) {
+      return;
+    }
+
     clearFeedback();
     try {
       await createAdminCompany({
@@ -255,6 +314,7 @@ export default function OperationsCompaniesPage() {
         website: draft.website.trim() || undefined
       });
       setDraft(INITIAL_DRAFT);
+      setDraftFieldErrors({});
       setSuccessFeedback(t.operationsCompaniesCreateSuccess);
       await loadCompanies();
     } catch {
@@ -264,6 +324,9 @@ export default function OperationsCompaniesPage() {
 
   const handleSave = async () => {
     if (!editingCompanyId) {
+      return;
+    }
+    if (!validateDraft()) {
       return;
     }
 
@@ -284,6 +347,7 @@ export default function OperationsCompaniesPage() {
       setSuccessFeedback(t.operationsCompaniesUpdateSuccess);
       setEditingCompanyId(null);
       setDraft(INITIAL_DRAFT);
+      setDraftFieldErrors({});
       await loadCompanies();
     } catch {
       setErrorFeedback(t.operationsErrorFeedback);
@@ -315,6 +379,7 @@ export default function OperationsCompaniesPage() {
       plan: company.plan,
       status: company.status
     });
+    setDraftFieldErrors({});
   };
 
   if (!isAuthenticated) {
@@ -384,47 +449,73 @@ export default function OperationsCompaniesPage() {
                 <Group grow align="end">
                   <TextInput
                     value={draft.name}
-                    onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
+                    onChange={(event) => {
+                      setDraft((current) => ({ ...current, name: event.target.value }));
+                      setDraftFieldErrors((current) => ({ ...current, name: undefined }));
+                    }}
                     label={t.formNameLabel}
+                    error={draftFieldErrors.name}
                   />
                   <TextInput
                     value={draft.tagline}
-                    onChange={(event) => setDraft((current) => ({ ...current, tagline: event.target.value }))}
+                    onChange={(event) => {
+                      setDraft((current) => ({ ...current, tagline: event.target.value }));
+                      setDraftFieldErrors((current) => ({ ...current, tagline: undefined }));
+                    }}
                     label={t.formTaglineLabel}
+                    error={draftFieldErrors.tagline}
                   />
                 </Group>
                 <Group grow align="end">
                   <TextInput
                     value={draft.city}
-                    onChange={(event) => setDraft((current) => ({ ...current, city: event.target.value }))}
+                    onChange={(event) => {
+                      setDraft((current) => ({ ...current, city: event.target.value }));
+                      setDraftFieldErrors((current) => ({ ...current, city: undefined }));
+                    }}
                     label={t.formCityLabel}
+                    error={draftFieldErrors.city}
                   />
                   <TextInput
                     value={draft.region}
-                    onChange={(event) => setDraft((current) => ({ ...current, region: event.target.value }))}
+                    onChange={(event) => {
+                      setDraft((current) => ({ ...current, region: event.target.value }));
+                      setDraftFieldErrors((current) => ({ ...current, region: undefined }));
+                    }}
                     label={t.formRegionLabel}
+                    error={draftFieldErrors.region}
                   />
                   <TextInput
                     value={draft.phone}
-                    onChange={(event) => setDraft((current) => ({ ...current, phone: event.target.value }))}
+                    onChange={(event) => {
+                      setDraft((current) => ({ ...current, phone: event.target.value }));
+                      setDraftFieldErrors((current) => ({ ...current, phone: undefined }));
+                    }}
                     label={t.formPhoneLabel}
+                    error={draftFieldErrors.phone}
                   />
                 </Group>
                 <Group grow align="end">
                   <TextInput
                     value={draft.website}
-                    onChange={(event) => setDraft((current) => ({ ...current, website: event.target.value }))}
+                    onChange={(event) => {
+                      setDraft((current) => ({ ...current, website: event.target.value }));
+                      setDraftFieldErrors((current) => ({ ...current, website: undefined }));
+                    }}
                     label={t.formWebsiteLabel}
+                    error={draftFieldErrors.website}
                   />
                   <Select
                     value={draft.category}
                     onChange={(value) => {
                       if (value && (Object.values(CompanyCategory) as string[]).includes(value)) {
                         setDraft((current) => ({ ...current, category: value as CompanyCategory }));
+                        setDraftFieldErrors((current) => ({ ...current, category: undefined }));
                       }
                     }}
                     data={draftCategoryOptions}
                     label={t.formCategoryLabel}
+                    error={draftFieldErrors.category}
                     allowDeselect={false}
                   />
                   <Select
@@ -432,10 +523,12 @@ export default function OperationsCompaniesPage() {
                     onChange={(value) => {
                       if (value === "free" || value === "standard" || value === "premium") {
                         setDraft((current) => ({ ...current, plan: value as CompanyPlan }));
+                        setDraftFieldErrors((current) => ({ ...current, plan: undefined }));
                       }
                     }}
                     data={draftPlanOptions}
                     label={t.operationsCompaniesPlanFilterLabel}
+                    error={draftFieldErrors.plan}
                     allowDeselect={false}
                   />
                   <Select
@@ -443,17 +536,23 @@ export default function OperationsCompaniesPage() {
                     onChange={(value) => {
                       if (value === "active" || value === "inactive") {
                         setDraft((current) => ({ ...current, status: value as CompanyStatus }));
+                        setDraftFieldErrors((current) => ({ ...current, status: undefined }));
                       }
                     }}
                     data={draftStatusOptions}
                     label={t.operationsCompaniesStatusFilterLabel}
+                    error={draftFieldErrors.status}
                     allowDeselect={false}
                   />
                 </Group>
                 <Textarea
                   value={draft.description}
-                  onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))}
+                  onChange={(event) => {
+                    setDraft((current) => ({ ...current, description: event.target.value }));
+                    setDraftFieldErrors((current) => ({ ...current, description: undefined }));
+                  }}
                   label={t.formDescriptionLabel}
+                  error={draftFieldErrors.description}
                   minRows={3}
                 />
                 <Group gap="xs">
@@ -466,6 +565,7 @@ export default function OperationsCompaniesPage() {
                       onClick={() => {
                         setEditingCompanyId(null);
                         setDraft(INITIAL_DRAFT);
+                        setDraftFieldErrors({});
                       }}
                     >
                       {t.operationsRejectCancelAction}
