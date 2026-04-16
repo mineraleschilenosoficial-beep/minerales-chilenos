@@ -115,6 +115,17 @@ export const companyRequestListQuerySchema = z.object({
 });
 
 /**
+ * Query schema for exporting company requests as CSV.
+ */
+export const companyRequestExportQuerySchema = z.object({
+  search: z.string().trim().max(120).optional(),
+  status: z
+    .union([z.literal("all"), companyRequestStatusSchema])
+    .default("all"),
+  createdAtOrder: z.enum(["newest", "oldest"]).default("newest")
+});
+
+/**
  * Company request schema returned by API.
  */
 export const companyRequestSchema = z.object({
@@ -208,6 +219,11 @@ export type CompanyRequestListResponse = z.infer<typeof companyRequestListRespon
  * Type-safe company request list query payload.
  */
 export type CompanyRequestListQuery = z.infer<typeof companyRequestListQuerySchema>;
+
+/**
+ * Type-safe company request export query payload.
+ */
+export type CompanyRequestExportQuery = z.infer<typeof companyRequestExportQuerySchema>;
 
 /**
  * Type-safe company model used by frontend and backend.

@@ -1,5 +1,6 @@
-import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Header, HttpCode, Param, Patch, Post, Query } from "@nestjs/common";
 import {
+  companyRequestExportQuerySchema,
   companyRequestListQuerySchema,
   companyRequestListResponseSchema,
   createCompanyRequestResponseSchema,
@@ -36,6 +37,22 @@ export class CompanyRequestsController {
 
     const response = await this.companyRequestsService.listRequests(parsedQuery);
     return companyRequestListResponseSchema.parse(response);
+  }
+
+  @Get("export.csv")
+  @Header("Content-Type", "text/csv; charset=utf-8")
+  async exportRequestsCsv(
+    @Query("status") status?: string,
+    @Query("search") search?: string,
+    @Query("createdAtOrder") createdAtOrder?: string
+  ) {
+    const parsedQuery = companyRequestExportQuerySchema.parse({
+      status: status ?? "all",
+      search,
+      createdAtOrder
+    });
+
+    return await this.companyRequestsService.exportRequestsCsv(parsedQuery);
   }
 
   @Patch(":id/review")

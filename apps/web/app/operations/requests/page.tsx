@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CompanyRequest, ReviewCompanyRequestInput } from "@minerales/contracts";
-import { fetchCompanyRequests, reviewCompanyRequest } from "@/modules/directory/services/directory-api.service";
+import {
+  downloadCompanyRequestsCsv,
+  fetchCompanyRequests,
+  reviewCompanyRequest
+} from "@/modules/directory/services/directory-api.service";
 import {
   directoryTranslations,
   type SupportedLocale
@@ -18,14 +22,6 @@ type RejectConfirmationState = {
   requestId: string;
   reviewNotes: string;
 };
-
-function escapeCsvValue(value: string): string {
-  if (/[",\n]/.test(value)) {
-    return `"${value.replace(/"/g, "\"\"")}"`;
-  }
-
-  return value;
-}
 
 function getEditableStatus(
   status: CompanyRequest["status"]
@@ -175,68 +171,11 @@ export default function OperationsRequestsPage() {
     setExporting(true);
     setFeedback(null);
     try {
-      const exportPageSize = 50;
-      let page = 1;
-      let totalPagesForExport = 1;
-      const allItems: CompanyRequest[] = [];
-
-      do {
-        const payload = await fetchCompanyRequests({
-          status: statusFilter,
-          createdAtOrder,
-          search: searchQuery,
-          page,
-          pageSize: exportPageSize
-        });
-        allItems.push(...payload.items);
-        totalPagesForExport = payload.totalPages;
-        page += 1;
-      } while (page <= totalPagesForExport);
-
-      const header = [
-        "id",
-        "name",
-        "email",
-        "phone",
-        "city",
-        "region",
-        "status",
-        "category",
-        "requestedPlan",
-        "createdAt",
-        "reviewNotes",
-        "companyId"
-      ];
-
-      const rows = allItems.map((request) => [
-        request.id,
-        request.name,
-        request.email,
-        request.phone,
-        request.city,
-        request.region,
-        request.status,
-        request.category,
-        request.requestedPlan,
-        request.createdAt,
-        request.reviewNotes ?? "",
-        request.companyId ?? ""
-      ]);
-
-      const csvContent = [header, ...rows]
-        .map((row) => row.map((cell) => escapeCsvValue(String(cell))).join(","))
-        .join("\n");
-
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      anchor.href = url;
-      anchor.download = `${t.operationsCsvFilePrefix}-${timestamp}.csv`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(url);
+      await downloadCompanyRequestsCsv({
+        status: statusFilter,
+        createdAtOrder,
+        search: searchQuery
+      });
 
       setFeedback({ isError: false, message: t.operationsExportSuccessFeedback });
     } catch {

@@ -1,8 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import {
+  companyRequestExportQuerySchema,
   companyRequestListQuerySchema,
   createCompanyRequestSchema,
   reviewCompanyRequestSchema,
+  type CompanyRequestExportQuery,
   type CompanyRequestListQuery,
   type ReviewCompanyRequestInput
 } from "@minerales/contracts";
@@ -66,13 +68,112 @@ export class CompanyRequestsService {
    */
   async listRequests(query: CompanyRequestListQuery) {
     const parsedQuery = companyRequestListQuerySchema.parse(query);
-    const normalizedSearch = (parsedQuery.search ?? "").trim();
+    const whereClause = this.buildRequestWhereClause(parsedQuery);
+    const orderBy = this.buildRequestOrderBy(parsedQuery.createdAtOrder);
 
-    const whereClause = {
-      ...(parsedQuery.status === "all"
+    const total = await this.prisma.companyRequest.count({
+      where: whereClause
+    });
+
+    const requests = await this.prisma.companyRequest.findMany({
+      where: whereClause,
+      include: {
+        categories: {
+          include: {
+            category: true
+          }
+        },
+        requestedPlan: true
+      },
+      orderBy,
+      skip: (parsedQuery.page - 1) * parsedQuery.pageSize,
+      take: parsedQuery.pageSize
+    });
+
+    const totalPages = total === 0 ? 0 : Math.ceil(total / parsedQuery.pageSize);
+
+    return {
+      total,
+      page: parsedQuery.page,
+      pageSize: parsedQuery.pageSize,
+      totalPages,
+      items: requests.map((request: Awaited<typeof requests>[number]) =>
+        this.mapRequest(request as Parameters<typeof this.mapRequest>[0])
+      )
+    };
+  }
+
+  /**
+   * Exports filtered requests as CSV content.
+   */
+  async exportRequestsCsv(query: CompanyRequestExportQuery): Promise<string> {
+    const parsedQuery = companyRequestExportQuerySchema.parse(query);
+    const whereClause = this.buildRequestWhereClause(parsedQuery);
+    const orderBy = this.buildRequestOrderBy(parsedQuery.createdAtOrder);
+
+    const requests = await this.prisma.companyRequest.findMany({
+      where: whereClause,
+      include: {
+        categories: {
+          include: {
+            category: true
+          }
+        },
+        requestedPlan: true
+      },
+      orderBy
+    });
+
+    const mappedRequests = requests.map((request: Awaited<typeof requests>[number]) =>
+      this.mapRequest(request as Parameters<typeof this.mapRequest>[0])
+    );
+
+    const header = [
+      "id",
+      "name",
+      "email",
+      "phone",
+      "city",
+      "region",
+      "status",
+      "category",
+      "requestedPlan",
+      "createdAt",
+      "reviewNotes",
+      "companyId"
+    ];
+
+    const rows: string[][] = mappedRequests.map((request: CompanyRequestModel) => [
+      request.id,
+      request.name,
+      request.email,
+      request.phone,
+      request.city,
+      request.region,
+      request.status,
+      request.category,
+      request.requestedPlan,
+      request.createdAt,
+      request.reviewNotes ?? "",
+      request.companyId ?? ""
+    ].map((value) => String(value)));
+
+    return [header, ...rows]
+      .map((row: string[]) => row.map((cell: string) => this.escapeCsvValue(cell)).join(","))
+      .join("\n");
+  }
+
+  private buildRequestWhereClause(query: {
+    status: CompanyRequestListQuery["status"];
+    search?: string;
+  }) {
+    const normalizedSearch = (query.search ?? "").trim();
+
+    return {
+      ...(query.status === "all"
         ? {}
         : {
-            status: this.toPrismaStatusFilter(parsedQuery.status)
+            status: this.toPrismaStatusFilter(query.status)
           }),
       ...(normalizedSearch.length === 0
         ? {}
@@ -99,39 +200,19 @@ export class CompanyRequestsService {
             ]
           })
     };
+  }
 
-    const [total, requests] = await Promise.all([
-      this.prisma.companyRequest.count({
-        where: whereClause
-      }),
-      this.prisma.companyRequest.findMany({
-        where: whereClause,
-        include: {
-          categories: {
-            include: {
-              category: true
-            }
-          },
-          requestedPlan: true
-        },
-        orderBy: [
-          { status: "asc" },
-          { createdAt: parsedQuery.createdAtOrder === "oldest" ? "asc" : "desc" }
-        ],
-        skip: (parsedQuery.page - 1) * parsedQuery.pageSize,
-        take: parsedQuery.pageSize
-      })
-    ]);
+  private buildRequestOrderBy(createdAtOrder: "newest" | "oldest") {
+    const createdAtSort = createdAtOrder === "oldest" ? ("asc" as const) : ("desc" as const);
+    return [{ status: "asc" as const }, { createdAt: createdAtSort }];
+  }
 
-    const totalPages = total === 0 ? 0 : Math.ceil(total / parsedQuery.pageSize);
+  private escapeCsvValue(value: string): string {
+    if (/[",\n]/.test(value)) {
+      return `"${value.replace(/"/g, "\"\"")}"`;
+    }
 
-    return {
-      total,
-      page: parsedQuery.page,
-      pageSize: parsedQuery.pageSize,
-      totalPages,
-      items: requests.map((request: Awaited<typeof requests>[number]) => this.mapRequest(request))
-    };
+    return value;
   }
 
   private toPrismaStatusFilter(

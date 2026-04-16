@@ -2,6 +2,7 @@ import {
   companyListQuerySchema,
   companyListResponseSchema,
   companyMetricsSchema,
+  companyRequestExportQuerySchema,
   companyRequestListQuerySchema,
   companyRequestListResponseSchema,
   companySchema,
@@ -23,6 +24,7 @@ const DIRECTORY_API_ERRORS = {
   FETCH_COMPANY_DETAILS_FAILED: "FETCH_COMPANY_DETAILS_FAILED",
   FETCH_COMPANY_METRICS_FAILED: "FETCH_COMPANY_METRICS_FAILED",
   FETCH_COMPANY_REQUESTS_FAILED: "FETCH_COMPANY_REQUESTS_FAILED",
+  EXPORT_COMPANY_REQUESTS_FAILED: "EXPORT_COMPANY_REQUESTS_FAILED",
   SUBMIT_COMPANY_REQUEST_FAILED: "SUBMIT_COMPANY_REQUEST_FAILED",
   REVIEW_COMPANY_REQUEST_FAILED: "REVIEW_COMPANY_REQUEST_FAILED"
 } as const;
@@ -146,6 +148,47 @@ export async function fetchCompanyRequests(params?: {
 
   const payload = await response.json();
   return companyRequestListResponseSchema.parse(payload);
+}
+
+/**
+ * Downloads company requests in CSV format using the same filtering rules as the list endpoint.
+ */
+export async function downloadCompanyRequestsCsv(params?: {
+  search?: string;
+  status?: "all" | "pending" | "under_review" | "approved" | "rejected";
+  createdAtOrder?: "newest" | "oldest";
+}): Promise<void> {
+  const parsedQuery = companyRequestExportQuerySchema.parse({
+    search: params?.search,
+    status: params?.status ?? "all",
+    createdAtOrder: params?.createdAtOrder ?? "newest"
+  });
+
+  const url = new URL("/company-requests/export.csv", API_BASE_URL);
+  if (parsedQuery.search && parsedQuery.search.length > 0) {
+    url.searchParams.set("search", parsedQuery.search);
+  }
+  if (parsedQuery.status !== "all") {
+    url.searchParams.set("status", parsedQuery.status);
+  }
+  url.searchParams.set("createdAtOrder", parsedQuery.createdAtOrder);
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(DIRECTORY_API_ERRORS.EXPORT_COMPANY_REQUESTS_FAILED);
+  }
+
+  const csvContent = await response.text();
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const blobUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  anchor.href = blobUrl;
+  anchor.download = `company-requests-${timestamp}.csv`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(blobUrl);
 }
 
 /**
