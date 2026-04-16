@@ -66,9 +66,7 @@ export default function OperationsDashboardPage() {
         <Title order={1}>{t.operationsDashboardTitle}</Title>
         <Text c="dimmed">{t.operationsDashboardSubtitle}</Text>
 
-        <OperationsShell locale={locale} setLocale={setLocale} onAuthChange={handleAuthChange}>
-          {() => null}
-        </OperationsShell>
+        <OperationsShell locale={locale} setLocale={setLocale} onAuthChange={handleAuthChange} />
         <OperationsFeedback feedback={feedback} />
         {isAuthenticated && !canViewDashboard ? <Text>{t.operationsNoAccess}</Text> : null}
 

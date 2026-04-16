@@ -201,9 +201,7 @@ export default function OperationsUsersPage() {
               setUserDrafts({});
             }
           }}
-        >
-          {() => null}
-        </OperationsShell>
+        />
 
         <OperationsFeedback feedback={feedback} />
 

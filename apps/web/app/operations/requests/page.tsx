@@ -323,9 +323,7 @@ export default function OperationsRequestsPage() {
           locale={locale}
           setLocale={setLocale}
           onAuthChange={handleAuthChange}
-        >
-          {() => null}
-        </OperationsShell>
+        />
 
         {isAuthenticated ? (
           <Group align="end" gap="sm" wrap="wrap">

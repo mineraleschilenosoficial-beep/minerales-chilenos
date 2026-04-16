@@ -295,9 +295,7 @@ export default function OperationsCompaniesPage() {
         <Title order={1}>{t.operationsCompaniesTitle}</Title>
         <Text c="dimmed">{t.operationsCompaniesSubtitle}</Text>
 
-        <OperationsShell locale={locale} setLocale={setLocale} onAuthChange={handleAuthChange}>
-          {() => null}
-        </OperationsShell>
+        <OperationsShell locale={locale} setLocale={setLocale} onAuthChange={handleAuthChange} />
         <OperationsFeedback feedback={feedback} />
 
         {isAuthenticated && canManage ? (

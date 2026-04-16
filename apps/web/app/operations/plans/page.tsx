@@ -42,9 +42,7 @@ export default function OperationsPlansPage() {
         <Title order={1}>{t.operationsPlansTitle}</Title>
         <Text c="dimmed">{t.operationsPlansSubtitle}</Text>
 
-        <OperationsShell locale={locale} setLocale={setLocale} onAuthChange={handleAuthChange}>
-          {() => null}
-        </OperationsShell>
+        <OperationsShell locale={locale} setLocale={setLocale} onAuthChange={handleAuthChange} />
         <OperationsFeedback feedback={feedback} />
         {isAuthenticated && !canViewPlans ? <Text>{t.operationsNoAccess}</Text> : null}
 

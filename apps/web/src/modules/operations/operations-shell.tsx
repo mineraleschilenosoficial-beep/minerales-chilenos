@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Button, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -14,17 +14,10 @@ import {
 } from "@/modules/directory/services/directory-api.service";
 import { directoryTranslations, type SupportedLocale } from "@/modules/i18n/directory-translations";
 
-type OperationsShellRenderProps = {
-  locale: SupportedLocale;
-  isAuthenticated: boolean;
-  currentUser: UserProfile | null;
-};
-
 type OperationsShellProps = {
   locale: SupportedLocale;
   setLocale: (nextLocale: SupportedLocale) => void;
   onAuthChange?: (authState: { isAuthenticated: boolean; currentUser: UserProfile | null }) => void;
-  children: (props: OperationsShellRenderProps) => ReactNode;
 };
 
 /**
@@ -32,10 +25,9 @@ type OperationsShellProps = {
  * @param locale Current locale value used for translations.
  * @param setLocale Locale setter callback.
  * @param onAuthChange Optional callback notified when auth state changes.
- * @param children Render function receiving locale and auth snapshot.
- * @returns Shell UI wrapper with children content.
+ * @returns Shared operations navigation and authentication shell.
  */
-export function OperationsShell({ locale, setLocale, onAuthChange, children }: OperationsShellProps) {
+export function OperationsShell({ locale, setLocale, onAuthChange }: OperationsShellProps) {
   const pathname = usePathname();
   const [authEmail, setAuthEmail] = useState<string>("");
   const [authPassword, setAuthPassword] = useState<string>("");
@@ -199,12 +191,6 @@ export function OperationsShell({ locale, setLocale, onAuthChange, children }: O
           </Stack>
         </Paper>
       ) : null}
-
-      {children({
-        locale,
-        isAuthenticated,
-        currentUser
-      })}
     </>
   );
 }
