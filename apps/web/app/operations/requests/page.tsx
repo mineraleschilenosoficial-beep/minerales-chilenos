@@ -24,6 +24,19 @@ function getEditableStatus(
   return status;
 }
 
+function getStatusBadgeClass(status: CompanyRequest["status"]): string {
+  switch (status) {
+    case "under_review":
+      return styles.statusUnderReview ?? "";
+    case "approved":
+      return styles.statusApproved ?? "";
+    case "rejected":
+      return styles.statusRejected ?? "";
+    default:
+      return styles.statusPending ?? "";
+  }
+}
+
 export default function OperationsRequestsPage() {
   const [locale, setLocale] = useState<SupportedLocale>("en");
   const [statusFilter, setStatusFilter] = useState<CompanyRequest["status"] | "all">("all");
@@ -190,8 +203,8 @@ export default function OperationsRequestsPage() {
                       <span>
                         {request.city}, {request.region}
                       </span>
-                      <span>
-                        {t.operationsStatusLabel}: {statusLabels[request.status]}
+                      <span className={`${styles.statusBadge} ${getStatusBadgeClass(request.status)}`}>
+                        {statusLabels[request.status]}
                       </span>
                     </div>
 

@@ -85,6 +85,34 @@
   gap: 4px;
 }
 
+.statusBadge {
+  width: fit-content;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  padding: 2px 8px;
+}
+
+.statusPending {
+  color: #8c6d1f;
+  border-color: rgba(181, 137, 33, 0.35);
+}
+
+.statusUnderReview {
+  color: #0b63b6;
+  border-color: rgba(11, 99, 182, 0.35);
+}
+
+.statusApproved {
+  color: var(--mc-color-success);
+  border-color: color-mix(in srgb, var(--mc-color-success) 40%, transparent);
+}
+
+.statusRejected {
+  color: var(--mc-color-danger);
+  border-color: color-mix(in srgb, var(--mc-color-danger) 40%, transparent);
+}
+
 .label {
   color: var(--mc-color-text-secondary);
   font-size: 12px;
