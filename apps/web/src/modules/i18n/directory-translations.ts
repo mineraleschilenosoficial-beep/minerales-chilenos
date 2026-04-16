@@ -47,6 +47,38 @@ type DirectoryTranslation = {
   operationsAuthLoginAction: string;
   operationsAuthLogoutAction: string;
   operationsAuthLoginError: string;
+  operationsNavDashboard: string;
+  operationsNavCompanies: string;
+  operationsNavRequests: string;
+  operationsNavUsers: string;
+  operationsNavPlans: string;
+  operationsDashboardTitle: string;
+  operationsDashboardSubtitle: string;
+  operationsDashboardActiveCompanies: string;
+  operationsDashboardPendingRequests: string;
+  operationsDashboardPremiumCompanies: string;
+  operationsDashboardStandardCompanies: string;
+  operationsDashboardRecentRequests: string;
+  operationsDashboardCategoryBreakdown: string;
+  operationsCompaniesTitle: string;
+  operationsCompaniesSubtitle: string;
+  operationsCompaniesCreateAction: string;
+  operationsCompaniesDeleteAction: string;
+  operationsCompaniesSaveAction: string;
+  operationsCompaniesStatusFilterLabel: string;
+  operationsCompaniesPlanFilterLabel: string;
+  operationsCompaniesSearchPlaceholder: string;
+  operationsCompaniesLoadError: string;
+  operationsCompaniesCreateSuccess: string;
+  operationsCompaniesUpdateSuccess: string;
+  operationsCompaniesDeleteSuccess: string;
+  operationsPlansTitle: string;
+  operationsPlansSubtitle: string;
+  operationsPlansPremium: string;
+  operationsPlansStandard: string;
+  operationsPlansFree: string;
+  operationsPlansTotal: string;
+  operationsPlansProjectedRevenue: string;
   operationsUsersTitle: string;
   operationsUsersSubtitle: string;
   operationsUsersNoAccess: string;
@@ -166,6 +198,38 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsAuthLoginAction: "Sign in",
     operationsAuthLogoutAction: "Sign out",
     operationsAuthLoginError: "Invalid credentials or inactive user.",
+    operationsNavDashboard: "Dashboard",
+    operationsNavCompanies: "Companies",
+    operationsNavRequests: "Requests",
+    operationsNavUsers: "Users",
+    operationsNavPlans: "Plans",
+    operationsDashboardTitle: "Admin Dashboard",
+    operationsDashboardSubtitle: "Operational overview for directory management.",
+    operationsDashboardActiveCompanies: "Active companies",
+    operationsDashboardPendingRequests: "Pending requests",
+    operationsDashboardPremiumCompanies: "Premium companies",
+    operationsDashboardStandardCompanies: "Standard companies",
+    operationsDashboardRecentRequests: "Recent requests",
+    operationsDashboardCategoryBreakdown: "Companies by category",
+    operationsCompaniesTitle: "Company Management",
+    operationsCompaniesSubtitle: "Create, edit and remove published companies.",
+    operationsCompaniesCreateAction: "Create company",
+    operationsCompaniesDeleteAction: "Delete",
+    operationsCompaniesSaveAction: "Save",
+    operationsCompaniesStatusFilterLabel: "Status",
+    operationsCompaniesPlanFilterLabel: "Plan",
+    operationsCompaniesSearchPlaceholder: "Search companies",
+    operationsCompaniesLoadError: "Unable to load companies.",
+    operationsCompaniesCreateSuccess: "Company created successfully.",
+    operationsCompaniesUpdateSuccess: "Company updated successfully.",
+    operationsCompaniesDeleteSuccess: "Company deleted successfully.",
+    operationsPlansTitle: "Plans and Revenue",
+    operationsPlansSubtitle: "Plan distribution and monthly projection.",
+    operationsPlansPremium: "Premium",
+    operationsPlansStandard: "Standard",
+    operationsPlansFree: "Free",
+    operationsPlansTotal: "Total companies",
+    operationsPlansProjectedRevenue: "Projected monthly revenue (CLP)",
     operationsUsersTitle: "User Administration",
     operationsUsersSubtitle: "Manage platform users and global roles.",
     operationsUsersNoAccess: "Your account does not have permission to manage users.",
@@ -297,6 +361,38 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsAuthLoginAction: "Ingresar",
     operationsAuthLogoutAction: "Salir",
     operationsAuthLoginError: "Credenciales invalidas o usuario inactivo.",
+    operationsNavDashboard: "Dashboard",
+    operationsNavCompanies: "Empresas",
+    operationsNavRequests: "Solicitudes",
+    operationsNavUsers: "Usuarios",
+    operationsNavPlans: "Planes",
+    operationsDashboardTitle: "Dashboard Admin",
+    operationsDashboardSubtitle: "Resumen operativo para gestionar el directorio.",
+    operationsDashboardActiveCompanies: "Empresas activas",
+    operationsDashboardPendingRequests: "Solicitudes pendientes",
+    operationsDashboardPremiumCompanies: "Empresas premium",
+    operationsDashboardStandardCompanies: "Empresas estandar",
+    operationsDashboardRecentRequests: "Solicitudes recientes",
+    operationsDashboardCategoryBreakdown: "Empresas por categoria",
+    operationsCompaniesTitle: "Gestion de Empresas",
+    operationsCompaniesSubtitle: "Crea, edita y elimina empresas publicadas.",
+    operationsCompaniesCreateAction: "Crear empresa",
+    operationsCompaniesDeleteAction: "Eliminar",
+    operationsCompaniesSaveAction: "Guardar",
+    operationsCompaniesStatusFilterLabel: "Estado",
+    operationsCompaniesPlanFilterLabel: "Plan",
+    operationsCompaniesSearchPlaceholder: "Buscar empresas",
+    operationsCompaniesLoadError: "No se pudo cargar empresas.",
+    operationsCompaniesCreateSuccess: "Empresa creada correctamente.",
+    operationsCompaniesUpdateSuccess: "Empresa actualizada correctamente.",
+    operationsCompaniesDeleteSuccess: "Empresa eliminada correctamente.",
+    operationsPlansTitle: "Planes e Ingresos",
+    operationsPlansSubtitle: "Distribucion por plan y proyeccion mensual.",
+    operationsPlansPremium: "Premium",
+    operationsPlansStandard: "Estandar",
+    operationsPlansFree: "Gratis",
+    operationsPlansTotal: "Total empresas",
+    operationsPlansProjectedRevenue: "Ingreso mensual proyectado (CLP)",
     operationsUsersTitle: "Administracion de Usuarios",
     operationsUsersSubtitle: "Gestiona usuarios de plataforma y roles globales.",
     operationsUsersNoAccess: "Tu cuenta no tiene permisos para gestionar usuarios.",

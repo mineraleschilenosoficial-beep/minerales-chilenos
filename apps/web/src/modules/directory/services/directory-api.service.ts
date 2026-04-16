@@ -1,4 +1,9 @@
 import {
+  adminCompanyListQuerySchema,
+  adminCompanyListResponseSchema,
+  adminCreateCompanySchema,
+  adminDashboardSummarySchema,
+  adminPlansSummarySchema,
   adminCreateUserSchema,
   adminUpdateUserActiveSchema,
   adminUpdateUserRolesSchema,
@@ -14,12 +19,15 @@ import {
   createCompanyRequestSchema,
   reviewCompanyRequestResponseSchema,
   reviewCompanyRequestSchema,
+  updateCompanySchema,
   userListResponseSchema,
   userProfileSchema,
   type Company,
   type CompanyListResponse,
   type CompanyMetrics,
   type CompanyRequestListResponse,
+  type AdminDashboardSummary,
+  type AdminPlansSummary,
   type UserProfile,
   type ReviewCompanyRequestInput
 } from "@minerales/contracts";
@@ -356,6 +364,128 @@ export async function updateAdminUserActive(userId: string, payload: unknown): P
   }
 
   return userProfileSchema.parse(await response.json());
+}
+
+/**
+ * Retrieves admin company list with search/status/plan filters.
+ */
+export async function fetchAdminCompanies(params?: {
+  search?: string;
+  status?: "all" | "active" | "inactive";
+  plan?: "all" | "free" | "standard" | "premium";
+  page?: number;
+  pageSize?: number;
+}): Promise<{
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  items: Company[];
+}> {
+  const parsedQuery = adminCompanyListQuerySchema.parse({
+    search: params?.search,
+    status: params?.status ?? "all",
+    plan: params?.plan ?? "all",
+    page: params?.page ?? 1,
+    pageSize: params?.pageSize ?? 20
+  });
+
+  const url = new URL("/companies/admin/companies", API_BASE_URL);
+  if (parsedQuery.search && parsedQuery.search.length > 0) {
+    url.searchParams.set("search", parsedQuery.search);
+  }
+  if (parsedQuery.status !== "all") {
+    url.searchParams.set("status", parsedQuery.status);
+  }
+  if (parsedQuery.plan !== "all") {
+    url.searchParams.set("plan", parsedQuery.plan);
+  }
+  url.searchParams.set("page", String(parsedQuery.page));
+  url.searchParams.set("pageSize", String(parsedQuery.pageSize));
+
+  const response = await fetch(url, { headers: getAuthHeaders() });
+  if (!response.ok) {
+    throw new Error("FETCH_ADMIN_COMPANIES_FAILED");
+  }
+
+  return adminCompanyListResponseSchema.parse(await response.json());
+}
+
+/**
+ * Creates one company from admin panel.
+ */
+export async function createAdminCompany(payload: unknown): Promise<Company> {
+  const parsedPayload = adminCreateCompanySchema.parse(payload);
+  const response = await fetch(new URL("/companies/admin/companies", API_BASE_URL), {
+    method: "POST",
+    headers: {
+      ...getAuthHeaders(),
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(parsedPayload)
+  });
+  if (!response.ok) {
+    throw new Error("CREATE_ADMIN_COMPANY_FAILED");
+  }
+  return companySchema.parse(await response.json());
+}
+
+/**
+ * Updates one company from admin panel.
+ */
+export async function updateAdminCompany(companyId: string, payload: unknown): Promise<Company> {
+  const parsedPayload = updateCompanySchema.parse(payload);
+  const response = await fetch(new URL(`/companies/admin/companies/${companyId}`, API_BASE_URL), {
+    method: "PATCH",
+    headers: {
+      ...getAuthHeaders(),
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(parsedPayload)
+  });
+  if (!response.ok) {
+    throw new Error("UPDATE_ADMIN_COMPANY_FAILED");
+  }
+  return companySchema.parse(await response.json());
+}
+
+/**
+ * Deletes one company from admin panel.
+ */
+export async function deleteAdminCompany(companyId: string): Promise<void> {
+  const response = await fetch(new URL(`/companies/admin/companies/${companyId}`, API_BASE_URL), {
+    method: "DELETE",
+    headers: getAuthHeaders()
+  });
+  if (!response.ok) {
+    throw new Error("DELETE_ADMIN_COMPANY_FAILED");
+  }
+}
+
+/**
+ * Retrieves dashboard counters and recent requests for admin panel.
+ */
+export async function fetchAdminDashboard(): Promise<AdminDashboardSummary> {
+  const response = await fetch(new URL("/companies/admin/dashboard", API_BASE_URL), {
+    headers: getAuthHeaders()
+  });
+  if (!response.ok) {
+    throw new Error("FETCH_ADMIN_DASHBOARD_FAILED");
+  }
+  return adminDashboardSummarySchema.parse(await response.json());
+}
+
+/**
+ * Retrieves plan/revenue summary for admin panel.
+ */
+export async function fetchAdminPlansSummary(): Promise<AdminPlansSummary> {
+  const response = await fetch(new URL("/companies/admin/plans/summary", API_BASE_URL), {
+    headers: getAuthHeaders()
+  });
+  if (!response.ok) {
+    throw new Error("FETCH_ADMIN_PLANS_FAILED");
+  }
+  return adminPlansSummarySchema.parse(await response.json());
 }
 
 /**

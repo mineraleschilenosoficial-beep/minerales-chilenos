@@ -1,0 +1,72 @@
+.page {
+  min-height: 100vh;
+  background: var(--mc-color-bg);
+  color: var(--mc-color-text-primary);
+  font-family: var(--mc-font-family);
+}
+
+.container {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 24px 20px 40px;
+}
+
+.title {
+  margin: 0;
+  font-size: 28px;
+}
+
+.subtitle {
+  margin: 6px 0 14px;
+  color: var(--mc-color-text-secondary);
+}
+
+.toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.input,
+.select {
+  background: var(--mc-color-surface-3);
+  border: 1px solid var(--mc-color-accent-weak);
+  color: var(--mc-color-text-primary);
+  padding: 8px 10px;
+  font: inherit;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--mc-color-surface-1);
+  border: 1px solid var(--mc-color-accent-weak);
+}
+
+.table th,
+.table td {
+  text-align: left;
+  border-bottom: 1px solid var(--mc-color-border-soft);
+  padding: 8px 6px;
+  font-size: 13px;
+}
+
+.button {
+  border: 1px solid var(--mc-color-accent);
+  background: var(--mc-color-accent);
+  color: var(--mc-color-accent-contrast);
+  padding: 7px 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.buttonSecondary {
+  border: 1px solid var(--mc-color-accent-border);
+  background: transparent;
+  color: var(--mc-color-accent);
+  padding: 7px 10px;
+  font-weight: 600;
+  cursor: pointer;
+}

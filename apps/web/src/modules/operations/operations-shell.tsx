@@ -93,16 +93,34 @@ export function OperationsShell({ locale, setLocale, onAuthChange, children }: O
           {t.localeSpanish}
         </button>
         <Link
+          href="/operations/dashboard"
+          className={`${styles.link} ${pathname === "/operations/dashboard" ? styles.linkActive : ""}`}
+        >
+          {t.operationsNavDashboard}
+        </Link>
+        <Link
+          href="/operations/companies"
+          className={`${styles.link} ${pathname === "/operations/companies" ? styles.linkActive : ""}`}
+        >
+          {t.operationsNavCompanies}
+        </Link>
+        <Link
           href="/operations/requests"
           className={`${styles.link} ${pathname === "/operations/requests" ? styles.linkActive : ""}`}
         >
-          {t.operationsTitle}
+          {t.operationsNavRequests}
         </Link>
         <Link
           href="/operations/users"
           className={`${styles.link} ${pathname === "/operations/users" ? styles.linkActive : ""}`}
         >
-          {t.operationsUsersTitle}
+          {t.operationsNavUsers}
+        </Link>
+        <Link
+          href="/operations/plans"
+          className={`${styles.link} ${pathname === "/operations/plans" ? styles.linkActive : ""}`}
+        >
+          {t.operationsNavPlans}
         </Link>
         {isAuthenticated ? (
           <button type="button" onClick={handleLogout}>
