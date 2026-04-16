@@ -2,6 +2,7 @@
 
 import { Container, Paper, SimpleGrid, Stack, Text, Title } from "@mantine/core";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { UserRole } from "@minerales/types";
 import { fetchAdminPlansSummary } from "@/modules/directory/services/directory-api.service";
 import { directoryTranslations, resolveFormattingLocale } from "@/modules/i18n/directory-translations";
@@ -11,6 +12,7 @@ import { useOperationFeedback } from "@/modules/operations/use-operation-feedbac
 import { useOperationsSession } from "@/modules/operations/use-operations-session";
 
 export default function OperationsPlansPage() {
+  const router = useRouter();
   const { locale, setLocale, isAuthenticated, currentUser, handleAuthChange } = useOperationsSession();
   const [summary, setSummary] = useState<Awaited<ReturnType<typeof fetchAdminPlansSummary>> | null>(null);
   const { feedback, setErrorFeedback, clearFeedback } = useOperationFeedback();
@@ -18,6 +20,12 @@ export default function OperationsPlansPage() {
 
   const canViewPlans =
     currentUser?.roles.includes(UserRole.SUPER_ADMIN) || currentUser?.roles.includes(UserRole.STAFF);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace("/operations/login");
+    }
+  }, [isAuthenticated, router]);
 
   useEffect(() => {
     if (!isAuthenticated || !canViewPlans) {
@@ -35,6 +43,10 @@ export default function OperationsPlansPage() {
       }
     })();
   }, [canViewPlans, clearFeedback, isAuthenticated, setErrorFeedback, t.operationsErrorFeedback]);
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <Container size="md" py="lg" className="ops-page">

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { UserProfile } from "@minerales/contracts";
 import type { SupportedLocale } from "@/modules/i18n/directory-translations";
+import { hasOperatorSession } from "@/modules/directory/services/directory-api.service";
 
 const OPERATIONS_LOCALE_STORAGE_KEY = "mc.operations.locale";
 
@@ -12,7 +13,9 @@ const OPERATIONS_LOCALE_STORAGE_KEY = "mc.operations.locale";
  */
 export function useOperationsSession() {
   const [locale, setLocale] = useState<SupportedLocale>("es");
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() =>
+    typeof window !== "undefined" ? hasOperatorSession() : false
+  );
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
 
   useEffect(() => {

@@ -14,6 +14,7 @@ import {
   Title
 } from "@mantine/core";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { UserProfile } from "@minerales/contracts";
 import { UserRole } from "@minerales/types";
 import {
@@ -38,6 +39,7 @@ type UserDraft = {
 const ROLE_OPTIONS: UserRole[] = [UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.COMPANY_USER];
 
 export default function OperationsUsersPage() {
+  const router = useRouter();
   const { locale, setLocale, isAuthenticated, currentUser, handleAuthChange } =
     useOperationsSession();
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -63,6 +65,12 @@ export default function OperationsUsersPage() {
   const canManageUsers = currentUser?.roles.includes(UserRole.SUPER_ADMIN) ?? false;
   const canViewUsers =
     canManageUsers || (currentUser?.roles.includes(UserRole.STAFF) ?? false);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace("/operations/login");
+    }
+  }, [isAuthenticated, router]);
 
   const loadUsers = async () => {
     setLoadingUsers(true);
@@ -185,6 +193,10 @@ export default function OperationsUsersPage() {
       setErrorFeedback(t.operationsErrorFeedback);
     }
   };
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <Container size="lg" py="lg" className="ops-page">

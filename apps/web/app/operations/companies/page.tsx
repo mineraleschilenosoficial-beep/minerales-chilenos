@@ -127,6 +127,12 @@ export default function OperationsCompaniesPage() {
   const canDelete = currentUser?.roles.includes(UserRole.SUPER_ADMIN) ?? false;
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace("/operations/login");
+    }
+  }, [isAuthenticated, router]);
+
+  useEffect(() => {
     const searchParam = searchParams.get("search");
     const statusParam = searchParams.get("status");
     const planParam = searchParams.get("plan");
@@ -310,6 +316,10 @@ export default function OperationsCompaniesPage() {
       status: company.status
     });
   };
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <Container size="lg" py="lg" className="ops-page">

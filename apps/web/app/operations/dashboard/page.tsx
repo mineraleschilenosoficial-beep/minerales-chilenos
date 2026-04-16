@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Badge,
   Button,
@@ -23,6 +24,7 @@ import { useOperationFeedback } from "@/modules/operations/use-operation-feedbac
 import { useOperationsSession } from "@/modules/operations/use-operations-session";
 
 export default function OperationsDashboardPage() {
+  const router = useRouter();
   const { locale, setLocale, isAuthenticated, currentUser, handleAuthChange } = useOperationsSession();
   const [loading, setLoading] = useState<boolean>(false);
   const [data, setData] = useState<Awaited<ReturnType<typeof fetchAdminDashboard>> | null>(null);
@@ -55,6 +57,12 @@ export default function OperationsDashboardPage() {
     currentUser?.roles.includes(UserRole.SUPER_ADMIN) || currentUser?.roles.includes(UserRole.STAFF);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace("/operations/login");
+    }
+  }, [isAuthenticated, router]);
+
+  useEffect(() => {
     if (!isAuthenticated || !canViewDashboard) {
       return;
     }
@@ -73,6 +81,10 @@ export default function OperationsDashboardPage() {
       }
     })();
   }, [canViewDashboard, clearFeedback, isAuthenticated, setErrorFeedback, t.operationsErrorFeedback]);
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <Container size="lg" py="lg" className="ops-page">

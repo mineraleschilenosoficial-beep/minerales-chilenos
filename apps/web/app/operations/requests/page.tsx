@@ -107,6 +107,12 @@ export default function OperationsRequestsPage() {
   );
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace("/operations/login");
+    }
+  }, [isAuthenticated, router]);
+
+  useEffect(() => {
     const statusParam = searchParams.get("status");
     const orderParam = searchParams.get("createdAtOrder");
     const searchParam = searchParams.get("search");
@@ -349,6 +355,10 @@ export default function OperationsRequestsPage() {
       setExporting(false);
     }
   };
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <Container size="lg" py="lg" className="ops-page">
