@@ -4,7 +4,7 @@ import { Container, Paper, SimpleGrid, Stack, Text, Title } from "@mantine/core"
 import { useEffect, useState } from "react";
 import { UserRole } from "@minerales/types";
 import { fetchAdminPlansSummary } from "@/modules/directory/services/directory-api.service";
-import { directoryTranslations } from "@/modules/i18n/directory-translations";
+import { directoryTranslations, resolveFormattingLocale } from "@/modules/i18n/directory-translations";
 import { OperationsFeedback } from "@/modules/operations/operations-feedback";
 import { OperationsShell } from "@/modules/operations/operations-shell";
 import { useOperationFeedback } from "@/modules/operations/use-operation-feedback";
@@ -77,7 +77,7 @@ export default function OperationsPlansPage() {
                 {t.operationsPlansProjectedRevenue}
               </Text>
               <Title order={2}>
-                {summary.projectedMonthlyRevenueClp.toLocaleString(locale === "es" ? "es-CL" : "en-US")}
+                {summary.projectedMonthlyRevenueClp.toLocaleString(resolveFormattingLocale(locale))}
               </Title>
             </Paper>
           </SimpleGrid>

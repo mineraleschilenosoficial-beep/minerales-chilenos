@@ -25,6 +25,7 @@ import {
 } from "@/modules/directory/services/directory-api.service";
 import {
   directoryTranslations,
+  resolveFormattingLocale
 } from "@/modules/i18n/directory-translations";
 import { OperationsFeedback } from "@/modules/operations/operations-feedback";
 import { useOperationFeedback } from "@/modules/operations/use-operation-feedback";
@@ -244,7 +245,7 @@ export default function OperationsRequestsPage() {
 
   const dateFormatter = useMemo(
     () =>
-      new Intl.DateTimeFormat(locale === "es" ? "es-CL" : "en-US", {
+      new Intl.DateTimeFormat(resolveFormattingLocale(locale), {
         dateStyle: "medium",
         timeStyle: "short"
       }),

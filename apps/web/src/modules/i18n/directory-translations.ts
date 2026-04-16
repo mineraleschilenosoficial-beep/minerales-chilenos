@@ -2,6 +2,15 @@ import { CompanyCategory, CompanyPlan } from "@minerales/types";
 
 export type SupportedLocale = "en" | "es";
 
+/**
+ * @description Resolves app locale to a BCP-47 region tag for formatting dates/numbers.
+ * @param locale App locale code.
+ * @returns Region-aware locale tag.
+ */
+export function resolveFormattingLocale(locale: SupportedLocale): string {
+  return locale === "es" ? "es-CL" : "en-US";
+}
+
 type DirectoryTranslation = {
   localeSwitcherLabel: string;
   localeEnglish: string;
