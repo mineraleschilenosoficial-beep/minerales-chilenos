@@ -134,9 +134,13 @@ export default function OperationsCompaniesPage() {
 
     if (searchParam) {
       setSearch(searchParam);
+    } else {
+      setSearch("");
     }
     if (statusParam === "all" || statusParam === "active" || statusParam === "inactive") {
       setStatus(statusParam);
+    } else {
+      setStatus("all");
     }
     if (
       planParam === "all" ||
@@ -145,15 +149,23 @@ export default function OperationsCompaniesPage() {
       planParam === "premium"
     ) {
       setPlan(planParam);
+    } else {
+      setPlan("all");
     }
     if (categoryParam && (Object.values(CompanyCategory) as string[]).includes(categoryParam)) {
       setCategory(categoryParam as CompanyCategory);
+    } else {
+      setCategory("all");
     }
     if (pageParam) {
       const parsedPage = Number.parseInt(pageParam, 10);
       if (!Number.isNaN(parsedPage) && parsedPage > 0) {
         setCurrentPage(parsedPage);
+      } else {
+        setCurrentPage(1);
       }
+    } else {
+      setCurrentPage(1);
     }
 
     setFiltersHydrated(true);

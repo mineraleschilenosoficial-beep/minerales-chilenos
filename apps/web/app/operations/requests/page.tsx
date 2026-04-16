@@ -121,21 +121,31 @@ export default function OperationsRequestsPage() {
       statusParam === "all"
     ) {
       setStatusFilter(statusParam);
+    } else {
+      setStatusFilter("all");
     }
 
     if (orderParam === "newest" || orderParam === "oldest") {
       setCreatedAtOrder(orderParam);
+    } else {
+      setCreatedAtOrder("newest");
     }
 
     if (searchParam) {
       setSearchQuery(searchParam);
+    } else {
+      setSearchQuery("");
     }
 
     if (pageParam) {
       const parsedPage = Number.parseInt(pageParam, 10);
       if (!Number.isNaN(parsedPage) && parsedPage > 0) {
         setCurrentPage(parsedPage);
+      } else {
+        setCurrentPage(1);
       }
+    } else {
+      setCurrentPage(1);
     }
 
     if (requestIdParam && requestIdParam.length > 0) {
