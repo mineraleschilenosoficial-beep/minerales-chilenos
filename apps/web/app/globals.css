@@ -144,6 +144,17 @@ h3 {
   line-height: 0.9;
 }
 
+.mantine-InputWrapper-error {
+  color: var(--mc-color-danger) !important;
+  font-size: 12px !important;
+  margin-top: 4px !important;
+}
+
+.mantine-InputWrapper-label {
+  color: var(--mc-color-text-secondary);
+  letter-spacing: 0.2px;
+}
+
 @media (max-width: 1024px) {
   .ops-page {
     max-width: 100%;

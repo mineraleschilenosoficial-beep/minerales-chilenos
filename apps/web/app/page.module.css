@@ -320,7 +320,7 @@
 }
 
 .fieldError {
-  margin: -2px 0 4px;
+  margin: 4px 0 4px;
   color: var(--mc-color-danger);
   font-size: 12px;
 }
