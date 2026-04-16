@@ -344,7 +344,7 @@ export default function OperationsRequestsPage() {
           onAuthChange={handleAuthChange}
         />
 
-        {isAuthenticated ? (
+        {isAuthenticated && canOperateRequests ? (
           <Group align="end" gap="sm" wrap="wrap">
             <Button onClick={() => void loadRequests()}>
               {t.operationsRefresh}
