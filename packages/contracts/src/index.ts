@@ -265,6 +265,84 @@ export const updateCompanySchema = z.object({
 });
 
 /**
+ * Schema used by admin panel to create a published company profile.
+ */
+export const adminCreateCompanySchema = z.object({
+  name: z.string().min(2).max(160),
+  tagline: z.string().min(2).max(240),
+  description: z.string().min(10).max(2000),
+  city: z.string().min(2).max(80),
+  region: z.string().min(2).max(80),
+  phone: z.string().min(6).max(40),
+  website: z.string().url().optional(),
+  category: z.nativeEnum(CompanyCategory),
+  plan: z.nativeEnum(CompanyPlan),
+  status: z.nativeEnum(CompanyStatus).default(CompanyStatus.ACTIVE)
+});
+
+/**
+ * Admin query schema for company management listing.
+ */
+export const adminCompanyListQuerySchema = z.object({
+  search: z.string().trim().max(120).optional(),
+  status: z.union([z.literal("all"), z.nativeEnum(CompanyStatus)]).default("all"),
+  plan: z.union([z.literal("all"), z.nativeEnum(CompanyPlan)]).default("all"),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20)
+});
+
+/**
+ * Admin response schema for company management listing.
+ */
+export const adminCompanyListResponseSchema = z.object({
+  total: z.number().int().min(0),
+  page: z.number().int().min(1),
+  pageSize: z.number().int().min(1),
+  totalPages: z.number().int().min(0),
+  items: z.array(companySchema)
+});
+
+/**
+ * Admin dashboard request preview schema.
+ */
+export const adminDashboardRequestPreviewSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(2).max(160),
+  status: companyRequestStatusSchema,
+  createdAt: z.string(),
+  email: z.string().email(),
+  phone: z.string().min(6).max(40)
+});
+
+/**
+ * Admin dashboard summary schema.
+ */
+export const adminDashboardSummarySchema = z.object({
+  activeCompanies: z.number().int().min(0),
+  pendingRequests: z.number().int().min(0),
+  premiumCompanies: z.number().int().min(0),
+  standardCompanies: z.number().int().min(0),
+  requestsRecent: z.array(adminDashboardRequestPreviewSchema),
+  byCategory: z.array(
+    z.object({
+      category: z.nativeEnum(CompanyCategory),
+      total: z.number().int().min(0)
+    })
+  )
+});
+
+/**
+ * Admin plans and revenue projection schema.
+ */
+export const adminPlansSummarySchema = z.object({
+  premiumCompanies: z.number().int().min(0),
+  standardCompanies: z.number().int().min(0),
+  freeCompanies: z.number().int().min(0),
+  totalCompanies: z.number().int().min(0),
+  projectedMonthlyRevenueClp: z.number().int().min(0)
+});
+
+/**
  * Type-safe payload for company request creation.
  */
 export type CreateCompanyRequestInput = z.infer<typeof createCompanyRequestSchema>;
@@ -273,6 +351,31 @@ export type CreateCompanyRequestInput = z.infer<typeof createCompanyRequestSchem
  * Type-safe payload for company profile updates.
  */
 export type UpdateCompanyInput = z.infer<typeof updateCompanySchema>;
+
+/**
+ * Type-safe payload for admin company creation.
+ */
+export type AdminCreateCompanyInput = z.infer<typeof adminCreateCompanySchema>;
+
+/**
+ * Type-safe payload for admin company list queries.
+ */
+export type AdminCompanyListQuery = z.infer<typeof adminCompanyListQuerySchema>;
+
+/**
+ * Type-safe response for admin company list endpoint.
+ */
+export type AdminCompanyListResponse = z.infer<typeof adminCompanyListResponseSchema>;
+
+/**
+ * Type-safe payload for admin dashboard summary.
+ */
+export type AdminDashboardSummary = z.infer<typeof adminDashboardSummarySchema>;
+
+/**
+ * Type-safe payload for admin plans summary.
+ */
+export type AdminPlansSummary = z.infer<typeof adminPlansSummarySchema>;
 
 /**
  * Type-safe payload for request review actions.

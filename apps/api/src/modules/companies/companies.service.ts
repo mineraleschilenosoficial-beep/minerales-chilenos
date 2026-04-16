@@ -1,5 +1,9 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { type CompanyListQuery } from "@minerales/contracts";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  type AdminCompanyListQuery,
+  type CompanyListQuery,
+  type UpdateCompanyInput
+} from "@minerales/contracts";
 import { CompanyCategory, CompanyPlan, CompanyStatus } from "@minerales/types";
 import { PrismaService } from "../../database/prisma.service";
 import type { CompanyModel } from "./models/company.model";
@@ -108,6 +112,393 @@ export class CompaniesService {
       totalCategories: categoryCounter.size,
       byPlan,
       byCategory
+    };
+  }
+
+  /**
+   * Lists companies for admin operations including inactive records.
+   */
+  async listAdminCompanies(query: AdminCompanyListQuery): Promise<{
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+    items: CompanyModel[];
+  }> {
+    const normalizedSearch = (query.search ?? "").trim();
+    const companies = await this.prisma.company.findMany({
+      where: {
+        ...(normalizedSearch.length > 0
+          ? {
+              OR: [
+                { displayName: { contains: normalizedSearch, mode: "insensitive" } },
+                { legalName: { contains: normalizedSearch, mode: "insensitive" } },
+                { description: { contains: normalizedSearch, mode: "insensitive" } }
+              ]
+            }
+          : {})
+      },
+      include: this.companyIncludes(),
+      orderBy: { updatedAt: "desc" }
+    });
+
+    let mappedCompanies = companies.map((company: Awaited<typeof companies>[number]) =>
+      this.mapCompanyToContract(company)
+    );
+
+    if (query.status !== "all") {
+      mappedCompanies = mappedCompanies.filter(
+        (company: CompanyModel) => company.status === query.status
+      );
+    }
+    if (query.plan !== "all") {
+      mappedCompanies = mappedCompanies.filter((company: CompanyModel) => company.plan === query.plan);
+    }
+
+    const total = mappedCompanies.length;
+    const totalPages = total === 0 ? 0 : Math.ceil(total / query.pageSize);
+    const startIndex = (query.page - 1) * query.pageSize;
+    const items = mappedCompanies.slice(startIndex, startIndex + query.pageSize);
+
+    return {
+      total,
+      page: query.page,
+      pageSize: query.pageSize,
+      totalPages,
+      items
+    };
+  }
+
+  /**
+   * Creates a company directly from admin operations.
+   */
+  async createAdminCompany(
+    payload: {
+      name: string;
+      tagline: string;
+      description: string;
+      city: string;
+      region: string;
+      phone: string;
+      website?: string;
+      category: CompanyCategory;
+      plan: CompanyPlan;
+      status: CompanyStatus;
+    },
+    actorUserId?: string
+  ): Promise<CompanyModel> {
+    const city = await this.findCityByName(payload.region, payload.city);
+    const category = await this.prisma.category.findUnique({
+      where: { key: payload.category }
+    });
+    const plan = await this.prisma.plan.findUnique({
+      where: { code: this.toPrismaPlan(payload.plan) }
+    });
+
+    if (!city || !category || !plan) {
+      throw new BadRequestException("Invalid city, category, or plan");
+    }
+
+    const slug = await this.generateUniqueSlug(payload.name);
+    const createdCompany = await this.prisma.company.create({
+      data: {
+        slug,
+        legalName: payload.name,
+        displayName: payload.name,
+        tagline: payload.tagline,
+        description: payload.description,
+        status: this.toPrismaCompanyStatus(payload.status),
+        publishedAt: payload.status === CompanyStatus.ACTIVE ? new Date() : null,
+        createdById: actorUserId,
+        updatedById: actorUserId,
+        categories: {
+          create: [
+            {
+              categoryId: category.id,
+              isPrimary: true
+            }
+          ]
+        },
+        addresses: {
+          create: [
+            {
+              cityId: city.id,
+              addressLine1: "Main Office",
+              type: "HEADQUARTERS",
+              isPrimary: true
+            }
+          ]
+        },
+        contacts: {
+          create: [
+            {
+              phone: payload.phone,
+              website: payload.website,
+              type: "GENERAL",
+              isPrimary: true
+            }
+          ]
+        },
+        subscriptions: {
+          create: [
+            {
+              planId: plan.id,
+              status: payload.status === CompanyStatus.ACTIVE ? "ACTIVE" : "TRIALING",
+              currentPeriodStartAt: payload.status === CompanyStatus.ACTIVE ? new Date() : null
+            }
+          ]
+        }
+      },
+      include: this.companyIncludes()
+    });
+
+    return this.mapCompanyToContract(createdCompany);
+  }
+
+  /**
+   * Updates an existing company from admin operations.
+   */
+  async updateAdminCompany(
+    id: string,
+    payload: UpdateCompanyInput,
+    actorUserId?: string
+  ): Promise<CompanyModel> {
+    const existingCompany = await this.prisma.company.findUnique({
+      where: { id },
+      include: this.companyIncludes()
+    });
+    if (!existingCompany) {
+      throw new NotFoundException("Company not found");
+    }
+
+    const updates: {
+      legalName?: string;
+      displayName?: string;
+      tagline?: string;
+      description?: string;
+      status?: "ACTIVE" | "SUSPENDED";
+      publishedAt?: Date | null;
+      updatedById?: string;
+    } = {
+      updatedById: actorUserId
+    };
+
+    if (payload.name) {
+      updates.legalName = payload.name;
+      updates.displayName = payload.name;
+    }
+    if (payload.tagline) {
+      updates.tagline = payload.tagline;
+    }
+    if (payload.description) {
+      updates.description = payload.description;
+    }
+    if (payload.status) {
+      updates.status = this.toPrismaCompanyStatus(payload.status);
+      updates.publishedAt = payload.status === CompanyStatus.ACTIVE ? new Date() : null;
+    }
+
+    await this.prisma.company.update({
+      where: { id },
+      data: updates
+    });
+
+    if (payload.category) {
+      const category = await this.prisma.category.findUnique({
+        where: { key: payload.category }
+      });
+      if (!category) {
+        throw new BadRequestException("Invalid category");
+      }
+
+      await this.prisma.companyCategoryLink.deleteMany({ where: { companyId: id } });
+      await this.prisma.companyCategoryLink.create({
+        data: {
+          companyId: id,
+          categoryId: category.id,
+          isPrimary: true
+        }
+      });
+    }
+
+    if (payload.city || payload.region) {
+      const primaryAddress = existingCompany.addresses.find(
+        (address: Awaited<typeof existingCompany.addresses>[number]) => address.isPrimary
+      );
+      const currentRegion = primaryAddress?.city.region.name ?? payload.region;
+      const currentCity = payload.city ?? primaryAddress?.city.name;
+      if (!currentRegion || !currentCity) {
+        throw new BadRequestException("City and region are required for address update");
+      }
+      const city = await this.findCityByName(currentRegion, currentCity);
+      if (!city) {
+        throw new BadRequestException("Invalid city/region");
+      }
+
+      if (primaryAddress) {
+        await this.prisma.companyAddress.update({
+          where: { id: primaryAddress.id },
+          data: {
+            cityId: city.id
+          }
+        });
+      } else {
+        await this.prisma.companyAddress.create({
+          data: {
+            companyId: id,
+            cityId: city.id,
+            addressLine1: "Main Office",
+            type: "HEADQUARTERS",
+            isPrimary: true
+          }
+        });
+      }
+    }
+
+    if (payload.phone || payload.website) {
+      const primaryContact = existingCompany.contacts.find(
+        (contact: Awaited<typeof existingCompany.contacts>[number]) => contact.isPrimary
+      );
+      if (primaryContact) {
+        await this.prisma.companyContact.update({
+          where: { id: primaryContact.id },
+          data: {
+            phone: payload.phone ?? primaryContact.phone,
+            website: payload.website ?? primaryContact.website
+          }
+        });
+      } else {
+        await this.prisma.companyContact.create({
+          data: {
+            companyId: id,
+            type: "GENERAL",
+            phone: payload.phone,
+            website: payload.website,
+            isPrimary: true
+          }
+        });
+      }
+    }
+
+    if (payload.plan) {
+      const plan = await this.prisma.plan.findUnique({
+        where: { code: this.toPrismaPlan(payload.plan) }
+      });
+      if (!plan) {
+        throw new BadRequestException("Invalid plan");
+      }
+
+      const latestSubscription = await this.prisma.companySubscription.findFirst({
+        where: { companyId: id },
+        orderBy: { createdAt: "desc" }
+      });
+
+      if (latestSubscription) {
+        await this.prisma.companySubscription.update({
+          where: { id: latestSubscription.id },
+          data: {
+            planId: plan.id
+          }
+        });
+      } else {
+        await this.prisma.companySubscription.create({
+          data: {
+            companyId: id,
+            planId: plan.id,
+            status: "ACTIVE",
+            currentPeriodStartAt: new Date()
+          }
+        });
+      }
+    }
+
+    const refreshedCompany = await this.prisma.company.findUnique({
+      where: { id },
+      include: this.companyIncludes()
+    });
+    if (!refreshedCompany) {
+      throw new NotFoundException("Company not found");
+    }
+
+    return this.mapCompanyToContract(refreshedCompany);
+  }
+
+  /**
+   * Deletes one company and dependent records.
+   */
+  async deleteAdminCompany(id: string): Promise<void> {
+    await this.prisma.company.delete({
+      where: { id }
+    });
+  }
+
+  /**
+   * Aggregates admin dashboard cards and recent requests.
+   */
+  async getAdminDashboardSummary(): Promise<{
+    activeCompanies: number;
+    pendingRequests: number;
+    premiumCompanies: number;
+    standardCompanies: number;
+    requestsRecent: Array<{
+      id: string;
+      name: string;
+      status: "pending" | "under_review" | "approved" | "rejected";
+      createdAt: string;
+      email: string;
+      phone: string;
+    }>;
+    byCategory: Array<{ category: CompanyCategory; total: number }>;
+  }> {
+    const [metrics, pendingRequests, recentRequests] = await Promise.all([
+      this.getDirectoryMetrics(),
+      this.prisma.companyRequest.count({
+        where: { status: "PENDING" }
+      }),
+      this.prisma.companyRequest.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 6
+      })
+    ]);
+
+    return {
+      activeCompanies: metrics.totalCompanies,
+      pendingRequests,
+      premiumCompanies: metrics.byPlan[CompanyPlan.PREMIUM],
+      standardCompanies: metrics.byPlan[CompanyPlan.STANDARD],
+      requestsRecent: recentRequests.map((request: Awaited<typeof recentRequests>[number]) => ({
+        id: request.id,
+        name: request.companyName,
+        status: this.toRequestStatusContract(request.status),
+        createdAt: request.createdAt.toISOString(),
+        email: request.contactEmail,
+        phone: request.contactPhone
+      })),
+      byCategory: metrics.byCategory
+    };
+  }
+
+  /**
+   * Returns plan-based counts and revenue projection.
+   */
+  async getAdminPlansSummary(): Promise<{
+    premiumCompanies: number;
+    standardCompanies: number;
+    freeCompanies: number;
+    totalCompanies: number;
+    projectedMonthlyRevenueClp: number;
+  }> {
+    const metrics = await this.getDirectoryMetrics();
+    const premiumCompanies = metrics.byPlan[CompanyPlan.PREMIUM];
+    const standardCompanies = metrics.byPlan[CompanyPlan.STANDARD];
+    const freeCompanies = metrics.byPlan[CompanyPlan.FREE];
+
+    return {
+      premiumCompanies,
+      standardCompanies,
+      freeCompanies,
+      totalCompanies: premiumCompanies + standardCompanies + freeCompanies,
+      projectedMonthlyRevenueClp: premiumCompanies * 49990 + standardCompanies * 19990
     };
   }
 
@@ -234,6 +625,87 @@ export class CompaniesService {
 
   private toCompanyStatus(rawValue: string): CompanyStatus {
     return rawValue === "ACTIVE" ? CompanyStatus.ACTIVE : CompanyStatus.INACTIVE;
+  }
+
+  private toPrismaCompanyStatus(status: CompanyStatus): "ACTIVE" | "SUSPENDED" {
+    return status === CompanyStatus.ACTIVE ? "ACTIVE" : "SUSPENDED";
+  }
+
+  private toPrismaPlan(plan: CompanyPlan): "FREE" | "STANDARD" | "PREMIUM" {
+    switch (plan) {
+      case CompanyPlan.PREMIUM:
+        return "PREMIUM";
+      case CompanyPlan.STANDARD:
+        return "STANDARD";
+      default:
+        return "FREE";
+    }
+  }
+
+  private toRequestStatusContract(
+    status: "PENDING" | "UNDER_REVIEW" | "APPROVED" | "REJECTED"
+  ): "pending" | "under_review" | "approved" | "rejected" {
+    switch (status) {
+      case "UNDER_REVIEW":
+        return "under_review";
+      case "APPROVED":
+        return "approved";
+      case "REJECTED":
+        return "rejected";
+      default:
+        return "pending";
+    }
+  }
+
+  private async findCityByName(regionName: string, cityName: string) {
+    return await this.prisma.city.findFirst({
+      where: {
+        name: {
+          equals: cityName,
+          mode: "insensitive"
+        },
+        region: {
+          name: {
+            equals: regionName,
+            mode: "insensitive"
+          }
+        }
+      }
+    });
+  }
+
+  private async generateUniqueSlug(name: string): Promise<string> {
+    const baseSlug = this.toSlug(name);
+    const existing = await this.prisma.company.findUnique({
+      where: { slug: baseSlug }
+    });
+    if (!existing) {
+      return baseSlug;
+    }
+
+    let suffix = 2;
+    while (suffix < 1000) {
+      const candidate = `${baseSlug}-${suffix}`;
+      const used = await this.prisma.company.findUnique({
+        where: { slug: candidate }
+      });
+      if (!used) {
+        return candidate;
+      }
+      suffix += 1;
+    }
+
+    throw new BadRequestException("Unable to generate unique company slug");
+  }
+
+  private toSlug(value: string): string {
+    return value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 64);
   }
 
   private sortByPlanPriority(companies: CompanyModel[]): CompanyModel[] {
