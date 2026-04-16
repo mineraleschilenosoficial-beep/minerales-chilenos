@@ -29,6 +29,23 @@ const DIRECTORY_API_ERRORS = {
   REVIEW_COMPANY_REQUEST_FAILED: "REVIEW_COMPANY_REQUEST_FAILED"
 } as const;
 
+function resolveCsvFilename(
+  contentDispositionHeader: string | null,
+  fallbackPrefix: string
+): string {
+  if (contentDispositionHeader) {
+    const match =
+      /filename\*=UTF-8''([^;]+)/i.exec(contentDispositionHeader) ??
+      /filename="?([^"]+)"?/i.exec(contentDispositionHeader);
+    if (match?.[1]) {
+      return decodeURIComponent(match[1]);
+    }
+  }
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  return `${fallbackPrefix}-${timestamp}.csv`;
+}
+
 /**
  * Fetches companies based on optional search and category filters.
  */
@@ -179,12 +196,13 @@ export async function downloadCompanyRequestsCsv(params?: {
   }
 
   const csvContent = await response.text();
+  const contentDisposition = response.headers.get("Content-Disposition");
+  const fileName = resolveCsvFilename(contentDisposition, "company-requests");
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const blobUrl = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   anchor.href = blobUrl;
-  anchor.download = `company-requests-${timestamp}.csv`;
+  anchor.download = fileName;
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();

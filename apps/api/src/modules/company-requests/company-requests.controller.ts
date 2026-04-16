@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Header, HttpCode, Param, Patch, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Header, HttpCode, Param, Patch, Post, Query, Res } from "@nestjs/common";
 import {
   companyRequestExportQuerySchema,
   companyRequestListQuerySchema,
@@ -42,6 +42,8 @@ export class CompanyRequestsController {
   @Get("export.csv")
   @Header("Content-Type", "text/csv; charset=utf-8")
   async exportRequestsCsv(
+    @Res({ passthrough: true })
+    response: { setHeader: (name: string, value: string) => void },
     @Query("status") status?: string,
     @Query("search") search?: string,
     @Query("createdAtOrder") createdAtOrder?: string
@@ -51,6 +53,12 @@ export class CompanyRequestsController {
       search,
       createdAtOrder
     });
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    response.setHeader(
+      "Content-Disposition",
+      `attachment; filename="company-requests-${timestamp}.csv"`
+    );
 
     return await this.companyRequestsService.exportRequestsCsv(parsedQuery);
   }
