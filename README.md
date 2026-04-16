@@ -12,6 +12,11 @@ Monorepo bootstrap for the Minerales Chilenos platform.
 - Task runner: Turbo
 - Package manager: Yarn
 
+## Frontend Standards
+
+- User-facing text is localized (currently `en` and `es`) via translation dictionaries.
+- Form validation reuses shared Zod schemas from `packages/contracts`.
+
 ## Workspace Layout
 
 ```txt

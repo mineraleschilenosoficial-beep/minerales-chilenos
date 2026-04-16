@@ -26,3 +26,6 @@ coverage/
 
 # Yarn state
 .yarn/install-state.gz
+
+# Local scratch artifacts
+code.txt
