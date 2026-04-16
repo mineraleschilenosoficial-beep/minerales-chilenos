@@ -37,7 +37,7 @@ const appTheme = createTheme({
  */
 export function AppProviders({ children }: AppProvidersProps) {
   return (
-    <MantineProvider theme={appTheme} defaultColorScheme="dark">
+    <MantineProvider theme={appTheme} defaultColorScheme="dark" forceColorScheme="dark">
       {children}
     </MantineProvider>
   );
