@@ -25,6 +25,11 @@ type DirectoryTranslation = {
   operationsTitle: string;
   operationsSubtitle: string;
   operationsRefresh: string;
+  operationsExportCsvAction: string;
+  operationsExportingCsvAction: string;
+  operationsExportSuccessFeedback: string;
+  operationsExportErrorFeedback: string;
+  operationsCsvFilePrefix: string;
   operationsFilterStatusLabel: string;
   operationsFilterStatusAll: string;
   operationsSortLabel: string;
@@ -108,6 +113,11 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsTitle: "Request Operations",
     operationsSubtitle: "Review and process supplier publication requests.",
     operationsRefresh: "Refresh",
+    operationsExportCsvAction: "Export CSV",
+    operationsExportingCsvAction: "Exporting...",
+    operationsExportSuccessFeedback: "CSV exported successfully.",
+    operationsExportErrorFeedback: "Unable to export CSV right now.",
+    operationsCsvFilePrefix: "company-requests",
     operationsFilterStatusLabel: "Filter status",
     operationsFilterStatusAll: "All statuses",
     operationsSortLabel: "Sort by date",
@@ -203,6 +213,11 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsTitle: "Operacion de Solicitudes",
     operationsSubtitle: "Revisa y procesa solicitudes de publicacion de proveedores.",
     operationsRefresh: "Actualizar",
+    operationsExportCsvAction: "Exportar CSV",
+    operationsExportingCsvAction: "Exportando...",
+    operationsExportSuccessFeedback: "CSV exportado correctamente.",
+    operationsExportErrorFeedback: "No se pudo exportar el CSV en este momento.",
+    operationsCsvFilePrefix: "solicitudes-empresas",
     operationsFilterStatusLabel: "Filtrar estado",
     operationsFilterStatusAll: "Todos los estados",
     operationsSortLabel: "Orden por fecha",

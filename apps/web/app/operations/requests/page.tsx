@@ -19,6 +19,14 @@ type RejectConfirmationState = {
   reviewNotes: string;
 };
 
+function escapeCsvValue(value: string): string {
+  if (/[",\n]/.test(value)) {
+    return `"${value.replace(/"/g, "\"\"")}"`;
+  }
+
+  return value;
+}
+
 function getEditableStatus(
   status: CompanyRequest["status"]
 ): ReviewCompanyRequestInput["status"] {
@@ -53,6 +61,7 @@ export default function OperationsRequestsPage() {
   const [requests, setRequests] = useState<CompanyRequest[]>([]);
   const [reviewDrafts, setReviewDrafts] = useState<Record<string, RequestReviewDraft>>({});
   const [loading, setLoading] = useState<boolean>(false);
+  const [exporting, setExporting] = useState<boolean>(false);
   const [applyingRequestId, setApplyingRequestId] = useState<string | null>(null);
   const [rejectConfirmation, setRejectConfirmation] = useState<RejectConfirmationState | null>(null);
   const [feedback, setFeedback] = useState<{ isError: boolean; message: string } | null>(null);
@@ -162,6 +171,81 @@ export default function OperationsRequestsPage() {
     setRejectConfirmation(null);
   };
 
+  const handleExportCsv = async () => {
+    setExporting(true);
+    setFeedback(null);
+    try {
+      const exportPageSize = 50;
+      let page = 1;
+      let totalPagesForExport = 1;
+      const allItems: CompanyRequest[] = [];
+
+      do {
+        const payload = await fetchCompanyRequests({
+          status: statusFilter,
+          createdAtOrder,
+          search: searchQuery,
+          page,
+          pageSize: exportPageSize
+        });
+        allItems.push(...payload.items);
+        totalPagesForExport = payload.totalPages;
+        page += 1;
+      } while (page <= totalPagesForExport);
+
+      const header = [
+        "id",
+        "name",
+        "email",
+        "phone",
+        "city",
+        "region",
+        "status",
+        "category",
+        "requestedPlan",
+        "createdAt",
+        "reviewNotes",
+        "companyId"
+      ];
+
+      const rows = allItems.map((request) => [
+        request.id,
+        request.name,
+        request.email,
+        request.phone,
+        request.city,
+        request.region,
+        request.status,
+        request.category,
+        request.requestedPlan,
+        request.createdAt,
+        request.reviewNotes ?? "",
+        request.companyId ?? ""
+      ]);
+
+      const csvContent = [header, ...rows]
+        .map((row) => row.map((cell) => escapeCsvValue(String(cell))).join(","))
+        .join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      anchor.href = url;
+      anchor.download = `${t.operationsCsvFilePrefix}-${timestamp}.csv`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      setFeedback({ isError: false, message: t.operationsExportSuccessFeedback });
+    } catch {
+      setFeedback({ isError: true, message: t.operationsExportErrorFeedback });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className={styles.page}>
       <div className={styles.container}>
@@ -189,6 +273,14 @@ export default function OperationsRequestsPage() {
             </button>
             <button type="button" className={styles.button} onClick={() => void loadRequests()}>
               {t.operationsRefresh}
+            </button>
+            <button
+              type="button"
+              className={styles.buttonSecondary}
+              disabled={exporting}
+              onClick={() => void handleExportCsv()}
+            >
+              {exporting ? t.operationsExportingCsvAction : t.operationsExportCsvAction}
             </button>
             <input
               type="text"
