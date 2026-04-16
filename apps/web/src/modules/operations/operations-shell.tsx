@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { Alert, Button, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { UserProfile } from "@minerales/contracts";
@@ -12,7 +13,6 @@ import {
   logoutOperator
 } from "@/modules/directory/services/directory-api.service";
 import { directoryTranslations, type SupportedLocale } from "@/modules/i18n/directory-translations";
-import styles from "./operations-shell.module.css";
 
 type OperationsShellRenderProps = {
   locale: SupportedLocale;
@@ -101,73 +101,98 @@ export function OperationsShell({ locale, setLocale, onAuthChange, children }: O
 
   return (
     <>
-      <div className={styles.nav}>
-        <button type="button" onClick={() => setLocale("en")} disabled={locale === "en"}>
+      <Group gap="xs" mb="sm" wrap="wrap">
+        <Button
+          size="xs"
+          variant={locale === "en" ? "filled" : "light"}
+          onClick={() => setLocale("en")}
+        >
           {t.localeEnglish}
-        </button>
-        <button type="button" onClick={() => setLocale("es")} disabled={locale === "es"}>
+        </Button>
+        <Button
+          size="xs"
+          variant={locale === "es" ? "filled" : "light"}
+          onClick={() => setLocale("es")}
+        >
           {t.localeSpanish}
-        </button>
-        <Link
+        </Button>
+        <Button
+          size="xs"
+          component={Link}
           href="/operations/dashboard"
-          className={`${styles.link} ${pathname === "/operations/dashboard" ? styles.linkActive : ""}`}
+          variant={pathname === "/operations/dashboard" ? "filled" : "light"}
         >
           {t.operationsNavDashboard}
-        </Link>
-        <Link
+        </Button>
+        <Button
+          size="xs"
+          component={Link}
           href="/operations/companies"
-          className={`${styles.link} ${pathname === "/operations/companies" ? styles.linkActive : ""}`}
+          variant={pathname === "/operations/companies" ? "filled" : "light"}
         >
           {t.operationsNavCompanies}
-        </Link>
-        <Link
+        </Button>
+        <Button
+          size="xs"
+          component={Link}
           href="/operations/requests"
-          className={`${styles.link} ${pathname === "/operations/requests" ? styles.linkActive : ""}`}
+          variant={pathname === "/operations/requests" ? "filled" : "light"}
         >
           {t.operationsNavRequests}
-        </Link>
-        <Link
+        </Button>
+        <Button
+          size="xs"
+          component={Link}
           href="/operations/users"
-          className={`${styles.link} ${pathname === "/operations/users" ? styles.linkActive : ""}`}
+          variant={pathname === "/operations/users" ? "filled" : "light"}
         >
           {t.operationsNavUsers}
-        </Link>
-        <Link
+        </Button>
+        <Button
+          size="xs"
+          component={Link}
           href="/operations/plans"
-          className={`${styles.link} ${pathname === "/operations/plans" ? styles.linkActive : ""}`}
+          variant={pathname === "/operations/plans" ? "filled" : "light"}
         >
           {t.operationsNavPlans}
-        </Link>
+        </Button>
         {isAuthenticated ? (
-          <button type="button" onClick={handleLogout}>
+          <Button size="xs" variant="default" onClick={handleLogout}>
             {t.operationsAuthLogoutAction}
-          </button>
+          </Button>
         ) : null}
-      </div>
+      </Group>
 
       {!isAuthenticated ? (
-        <div className={styles.authCard}>
-          <h3>{t.operationsAuthTitle}</h3>
-          <p>{t.operationsAuthSubtitle}</p>
-          <label htmlFor="ops-auth-email">{t.operationsAuthEmailLabel}</label>
-          <input
-            id="ops-auth-email"
-            type="email"
-            value={authEmail}
-            onChange={(event) => setAuthEmail(event.target.value)}
-          />
-          <label htmlFor="ops-auth-password">{t.operationsAuthPasswordLabel}</label>
-          <input
-            id="ops-auth-password"
-            type="password"
-            value={authPassword}
-            onChange={(event) => setAuthPassword(event.target.value)}
-          />
-          <button type="button" disabled={authLoading} onClick={() => void handleLogin()}>
-            {authLoading ? t.operationsApplyingAction : t.operationsAuthLoginAction}
-          </button>
-          {authErrorMessage.length > 0 ? <div>{authErrorMessage}</div> : null}
-        </div>
+        <Paper withBorder p="md" mb="md">
+          <Stack gap="sm">
+            <Title order={4}>{t.operationsAuthTitle}</Title>
+            <Text size="sm" c="dimmed">
+              {t.operationsAuthSubtitle}
+            </Text>
+            <TextInput
+              label={t.operationsAuthEmailLabel}
+              id="ops-auth-email"
+              type="email"
+              value={authEmail}
+              onChange={(event) => setAuthEmail(event.target.value)}
+            />
+            <PasswordInput
+              label={t.operationsAuthPasswordLabel}
+              id="ops-auth-password"
+              value={authPassword}
+              onChange={(event) => setAuthPassword(event.target.value)}
+            />
+            <Button loading={authLoading} onClick={() => void handleLogin()}>
+              {t.operationsAuthLoginAction}
+            </Button>
+            {authErrorMessage.length > 0 ? (
+              <Alert color="red" variant="light">
+                {authErrorMessage}
+              </Alert>
+            ) : null}
+          </Stack>
+        </Paper>
       ) : null}
 
       {children({
