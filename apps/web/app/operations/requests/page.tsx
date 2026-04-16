@@ -11,6 +11,7 @@ import {
 import {
   directoryTranslations,
 } from "@/modules/i18n/directory-translations";
+import { useOperationFeedback } from "@/modules/operations/use-operation-feedback";
 import { OperationsShell } from "@/modules/operations/operations-shell";
 import { useOperationsSession } from "@/modules/operations/use-operations-session";
 import styles from "./page.module.css";
@@ -67,7 +68,7 @@ export default function OperationsRequestsPage() {
   const [applyingRequestId, setApplyingRequestId] = useState<string | null>(null);
   const [rejectConfirmation, setRejectConfirmation] = useState<RejectConfirmationState | null>(null);
   const [filtersHydrated, setFiltersHydrated] = useState<boolean>(false);
-  const [feedback, setFeedback] = useState<{ isError: boolean; message: string } | null>(null);
+  const { feedback, clearFeedback, setErrorFeedback, setSuccessFeedback } = useOperationFeedback();
   const t = directoryTranslations[locale];
 
   const statusLabels = useMemo(
@@ -175,7 +176,7 @@ export default function OperationsRequestsPage() {
       setRequests([]);
       setTotalPages(0);
       setTotalResults(0);
-      setFeedback({ isError: true, message: t.operationsErrorFeedback });
+      setErrorFeedback(t.operationsErrorFeedback);
     } finally {
       setLoading(false);
     }
@@ -218,16 +219,16 @@ export default function OperationsRequestsPage() {
     }
 
     setApplyingRequestId(requestId);
-    setFeedback(null);
+    clearFeedback();
     try {
       await reviewCompanyRequest(requestId, {
         status,
         reviewNotes: reviewNotes.trim() || undefined
       });
-      setFeedback({ isError: false, message: t.operationsSuccessFeedback });
+      setSuccessFeedback(t.operationsSuccessFeedback);
       await loadRequests();
     } catch {
-      setFeedback({ isError: true, message: t.operationsErrorFeedback });
+      setErrorFeedback(t.operationsErrorFeedback);
     } finally {
       setApplyingRequestId(null);
     }
@@ -253,7 +254,7 @@ export default function OperationsRequestsPage() {
 
   const handleExportCsv = async () => {
     setExporting(true);
-    setFeedback(null);
+    clearFeedback();
     try {
       await downloadCompanyRequestsCsv({
         status: statusFilter,
@@ -261,9 +262,9 @@ export default function OperationsRequestsPage() {
         search: searchQuery
       });
 
-      setFeedback({ isError: false, message: t.operationsExportSuccessFeedback });
+      setSuccessFeedback(t.operationsExportSuccessFeedback);
     } catch {
-      setFeedback({ isError: true, message: t.operationsExportErrorFeedback });
+      setErrorFeedback(t.operationsExportErrorFeedback);
     } finally {
       setExporting(false);
     }

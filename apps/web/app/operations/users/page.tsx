@@ -12,6 +12,7 @@ import {
 import {
   directoryTranslations,
 } from "@/modules/i18n/directory-translations";
+import { useOperationFeedback } from "@/modules/operations/use-operation-feedback";
 import { OperationsShell } from "@/modules/operations/operations-shell";
 import { useOperationsSession } from "@/modules/operations/use-operations-session";
 import styles from "./page.module.css";
@@ -34,7 +35,7 @@ export default function OperationsUsersPage() {
   const [createEmail, setCreateEmail] = useState<string>("");
   const [createPassword, setCreatePassword] = useState<string>("");
   const [createRoles, setCreateRoles] = useState<UserRole[]>([UserRole.COMPANY_USER]);
-  const [feedback, setFeedback] = useState<{ isError: boolean; message: string } | null>(null);
+  const { feedback, clearFeedback, setErrorFeedback, setSuccessFeedback } = useOperationFeedback();
   const t = directoryTranslations[locale];
 
   const roleLabels = useMemo(
@@ -66,7 +67,7 @@ export default function OperationsUsersPage() {
         return nextDrafts;
       });
     } catch {
-      setFeedback({ isError: true, message: t.operationsUsersLoadError });
+      setErrorFeedback(t.operationsUsersLoadError);
     } finally {
       setLoadingUsers(false);
     }
@@ -115,7 +116,7 @@ export default function OperationsUsersPage() {
     }
 
     setCreatingUser(true);
-    setFeedback(null);
+    clearFeedback();
     try {
       await createAdminUser({
         fullName: createName,
@@ -127,10 +128,10 @@ export default function OperationsUsersPage() {
       setCreateEmail("");
       setCreatePassword("");
       setCreateRoles([UserRole.COMPANY_USER]);
-      setFeedback({ isError: false, message: t.operationsUsersCreateSuccess });
+      setSuccessFeedback(t.operationsUsersCreateSuccess);
       await loadUsers();
     } catch {
-      setFeedback({ isError: true, message: t.operationsErrorFeedback });
+      setErrorFeedback(t.operationsErrorFeedback);
     } finally {
       setCreatingUser(false);
     }
@@ -142,15 +143,15 @@ export default function OperationsUsersPage() {
       return;
     }
 
-    setFeedback(null);
+    clearFeedback();
     try {
       await updateAdminUserRoles(userId, {
         roles: draft.roles
       });
-      setFeedback({ isError: false, message: t.operationsUsersUpdateSuccess });
+      setSuccessFeedback(t.operationsUsersUpdateSuccess);
       await loadUsers();
     } catch {
-      setFeedback({ isError: true, message: t.operationsErrorFeedback });
+      setErrorFeedback(t.operationsErrorFeedback);
     }
   };
 
@@ -160,15 +161,15 @@ export default function OperationsUsersPage() {
       return;
     }
 
-    setFeedback(null);
+    clearFeedback();
     try {
       await updateAdminUserActive(userId, {
         isActive: !draft.isActive
       });
-      setFeedback({ isError: false, message: t.operationsUsersUpdateSuccess });
+      setSuccessFeedback(t.operationsUsersUpdateSuccess);
       await loadUsers();
     } catch {
-      setFeedback({ isError: true, message: t.operationsErrorFeedback });
+      setErrorFeedback(t.operationsErrorFeedback);
     }
   };
 
