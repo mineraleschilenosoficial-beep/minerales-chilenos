@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CompanyCategory, CompanyPlan, CompanyStatus, UserRole } from "@minerales/types";
 import {
@@ -52,11 +52,16 @@ export default function OperationsCompaniesPage() {
   const [status, setStatus] = useState<"all" | "active" | "inactive">("all");
   const [plan, setPlan] = useState<"all" | "free" | "standard" | "premium">("all");
   const [category, setCategory] = useState<"all" | CompanyCategory>("all");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(0);
+  const [totalResults, setTotalResults] = useState<number>(0);
+  const [pageSize] = useState<number>(20);
   const [companies, setCompanies] = useState<Awaited<ReturnType<typeof fetchAdminCompanies>>["items"]>([]);
   const [draft, setDraft] = useState<CompanyDraft>(INITIAL_DRAFT);
   const [editingCompanyId, setEditingCompanyId] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [filtersHydrated, setFiltersHydrated] = useState<boolean>(false);
+  const hasFilterResetInitialized = useRef<boolean>(false);
   const { feedback, clearFeedback, setErrorFeedback, setSuccessFeedback } = useOperationFeedback();
   const t = directoryTranslations[locale];
 
@@ -70,6 +75,7 @@ export default function OperationsCompaniesPage() {
     const statusParam = searchParams.get("status");
     const planParam = searchParams.get("plan");
     const categoryParam = searchParams.get("category");
+    const pageParam = searchParams.get("page");
 
     if (searchParam) {
       setSearch(searchParam);
@@ -90,6 +96,12 @@ export default function OperationsCompaniesPage() {
       (Object.values(CompanyCategory) as string[]).includes(categoryParam)
     ) {
       setCategory(categoryParam as CompanyCategory);
+    }
+    if (pageParam) {
+      const parsedPage = Number.parseInt(pageParam, 10);
+      if (!Number.isNaN(parsedPage) && parsedPage > 0) {
+        setCurrentPage(parsedPage);
+      }
     }
 
     setFiltersHydrated(true);
@@ -113,11 +125,14 @@ export default function OperationsCompaniesPage() {
     if (category !== "all") {
       nextParams.set("category", category);
     }
+    if (currentPage > 1) {
+      nextParams.set("page", String(currentPage));
+    }
 
     const nextQuery = nextParams.toString();
     const targetUrl = nextQuery.length > 0 ? `${pathname}?${nextQuery}` : pathname;
     router.replace(targetUrl, { scroll: false });
-  }, [category, filtersHydrated, pathname, plan, router, search, status]);
+  }, [category, currentPage, filtersHydrated, pathname, plan, router, search, status]);
 
   const loadCompanies = async () => {
     setLoading(true);
@@ -127,11 +142,16 @@ export default function OperationsCompaniesPage() {
         status,
         plan,
         category,
-        page: 1,
-        pageSize: 50
+        page: currentPage,
+        pageSize
       });
       setCompanies(response.items);
+      setTotalPages(response.totalPages);
+      setTotalResults(response.total);
     } catch {
+      setCompanies([]);
+      setTotalPages(0);
+      setTotalResults(0);
       setErrorFeedback(t.operationsCompaniesLoadError);
     } finally {
       setLoading(false);
@@ -143,7 +163,18 @@ export default function OperationsCompaniesPage() {
       return;
     }
     void loadCompanies();
-  }, [isAuthenticated, canManage, search, status, plan, category, filtersHydrated]);
+  }, [isAuthenticated, canManage, search, status, plan, category, currentPage, pageSize, filtersHydrated]);
+
+  useEffect(() => {
+    if (!filtersHydrated) {
+      return;
+    }
+    if (!hasFilterResetInitialized.current) {
+      hasFilterResetInitialized.current = true;
+      return;
+    }
+    setCurrentPage(1);
+  }, [category, filtersHydrated, plan, search, status]);
 
   const handleCreate = async () => {
     clearFeedback();
@@ -408,6 +439,30 @@ export default function OperationsCompaniesPage() {
                 ))}
               </tbody>
             </table>
+            <div className={styles.toolbar}>
+              <button
+                type="button"
+                className={styles.buttonSecondary}
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                disabled={loading || currentPage <= 1}
+              >
+                {t.operationsPaginationPrev}
+              </button>
+              <span>
+                {t.operationsPaginationPage} {totalPages === 0 ? 0 : currentPage}/{totalPages}
+              </span>
+              <span>
+                {t.operationsTotalResultsLabel}: {totalResults}
+              </span>
+              <button
+                type="button"
+                className={styles.buttonSecondary}
+                onClick={() => setCurrentPage((page) => Math.min(totalPages || 1, page + 1))}
+                disabled={loading || totalPages === 0 || currentPage >= totalPages}
+              >
+                {t.operationsPaginationNext}
+              </button>
+            </div>
           </>
         ) : null}
         {isAuthenticated && !canManage ? <div>{t.operationsUsersNoAccess}</div> : null}
