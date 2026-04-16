@@ -21,6 +21,7 @@ import {
 import styles from "./page.module.css";
 
 export default function HomePage() {
+  type RequestFieldErrorKey = keyof RequestFormState;
   const [locale, setLocale] = useState<SupportedLocale>("es");
   const [companies, setCompanies] = useState<Company[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -36,6 +37,7 @@ export default function HomePage() {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [feedbackMessage, setFeedbackMessage] = useState<string>("");
   const [feedbackIsError, setFeedbackIsError] = useState<boolean>(false);
+  const [formErrors, setFormErrors] = useState<Partial<Record<RequestFieldErrorKey, string>>>({});
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const t = directoryTranslations[locale];
 
@@ -125,11 +127,53 @@ export default function HomePage() {
     });
 
     if (!parsedPayload.success) {
+      const nextFormErrors: Partial<Record<RequestFieldErrorKey, string>> = {};
+      for (const issue of parsedPayload.error.issues) {
+        const pathKey = issue.path[0];
+        if (typeof pathKey !== "string") {
+          continue;
+        }
+
+        const fieldKey = pathKey as RequestFieldErrorKey;
+        if (nextFormErrors[fieldKey]) {
+          continue;
+        }
+
+        if (issue.code === "invalid_type") {
+          nextFormErrors[fieldKey] = t.formErrorRequired;
+          continue;
+        }
+        if (issue.code === "too_small" && issue.minimum === 2) {
+          nextFormErrors[fieldKey] = t.formErrorMinChars2;
+          continue;
+        }
+        if (issue.code === "too_small" && issue.minimum === 6) {
+          nextFormErrors[fieldKey] = t.formErrorMinChars6;
+          continue;
+        }
+        if (issue.code === "too_small" && issue.minimum === 10) {
+          nextFormErrors[fieldKey] = t.formErrorMinChars10;
+          continue;
+        }
+        if (issue.code === "invalid_string" && issue.validation === "email") {
+          nextFormErrors[fieldKey] = t.formErrorInvalidEmail;
+          continue;
+        }
+        if (issue.code === "invalid_string" && issue.validation === "url") {
+          nextFormErrors[fieldKey] = t.formErrorInvalidWebsite;
+          continue;
+        }
+
+        nextFormErrors[fieldKey] = t.invalidFormFeedback;
+      }
+
+      setFormErrors(nextFormErrors);
       setFeedbackIsError(true);
       setFeedbackMessage(t.invalidFormFeedback);
       return;
     }
 
+    setFormErrors({});
     setSubmitting(true);
     try {
       await submitCompanyRequest(formState);
@@ -137,6 +181,7 @@ export default function HomePage() {
       setFeedbackIsError(false);
       setFeedbackMessage(t.submitSuccessFeedback);
       setFormState(initialRequestFormState);
+      setFormErrors({});
     } catch {
       setFeedbackIsError(true);
       setFeedbackMessage(t.submitErrorFeedback);
@@ -334,8 +379,12 @@ export default function HomePage() {
               id="name"
               className={styles.input}
               value={formState.name}
-              onChange={(event) => setFormState((state) => ({ ...state, name: event.target.value }))}
+              onChange={(event) => {
+                setFormState((state) => ({ ...state, name: event.target.value }));
+                setFormErrors((current) => ({ ...current, name: undefined }));
+              }}
             />
+            {formErrors.name ? <p className={styles.fieldError}>{formErrors.name}</p> : null}
 
             <label className={styles.formLabel} htmlFor="tagline">
               {t.formTaglineLabel}
@@ -344,10 +393,12 @@ export default function HomePage() {
               id="tagline"
               className={styles.input}
               value={formState.tagline}
-              onChange={(event) =>
-                setFormState((state) => ({ ...state, tagline: event.target.value }))
-              }
+              onChange={(event) => {
+                setFormState((state) => ({ ...state, tagline: event.target.value }));
+                setFormErrors((current) => ({ ...current, tagline: undefined }));
+              }}
             />
+            {formErrors.tagline ? <p className={styles.fieldError}>{formErrors.tagline}</p> : null}
 
             <label className={styles.formLabel} htmlFor="description">
               {t.formDescriptionLabel}
@@ -356,11 +407,13 @@ export default function HomePage() {
               id="description"
               className={styles.textarea}
               value={formState.description}
-              onChange={(event) =>
-                setFormState((state) => ({ ...state, description: event.target.value }))
-              }
+              onChange={(event) => {
+                setFormState((state) => ({ ...state, description: event.target.value }));
+                setFormErrors((current) => ({ ...current, description: undefined }));
+              }}
               rows={4}
             />
+            {formErrors.description ? <p className={styles.fieldError}>{formErrors.description}</p> : null}
 
             <label className={styles.formLabel} htmlFor="city">
               {t.formCityLabel}
@@ -369,8 +422,12 @@ export default function HomePage() {
               id="city"
               className={styles.input}
               value={formState.city}
-              onChange={(event) => setFormState((state) => ({ ...state, city: event.target.value }))}
+              onChange={(event) => {
+                setFormState((state) => ({ ...state, city: event.target.value }));
+                setFormErrors((current) => ({ ...current, city: undefined }));
+              }}
             />
+            {formErrors.city ? <p className={styles.fieldError}>{formErrors.city}</p> : null}
 
             <label className={styles.formLabel} htmlFor="region">
               {t.formRegionLabel}
@@ -379,10 +436,12 @@ export default function HomePage() {
               id="region"
               className={styles.input}
               value={formState.region}
-              onChange={(event) =>
-                setFormState((state) => ({ ...state, region: event.target.value }))
-              }
+              onChange={(event) => {
+                setFormState((state) => ({ ...state, region: event.target.value }));
+                setFormErrors((current) => ({ ...current, region: undefined }));
+              }}
             />
+            {formErrors.region ? <p className={styles.fieldError}>{formErrors.region}</p> : null}
 
             <label className={styles.formLabel} htmlFor="phone">
               {t.formPhoneLabel}
@@ -391,10 +450,12 @@ export default function HomePage() {
               id="phone"
               className={styles.input}
               value={formState.phone}
-              onChange={(event) =>
-                setFormState((state) => ({ ...state, phone: event.target.value }))
-              }
+              onChange={(event) => {
+                setFormState((state) => ({ ...state, phone: event.target.value }));
+                setFormErrors((current) => ({ ...current, phone: undefined }));
+              }}
             />
+            {formErrors.phone ? <p className={styles.fieldError}>{formErrors.phone}</p> : null}
 
             <label className={styles.formLabel} htmlFor="email">
               {t.formEmailLabel}
@@ -404,10 +465,12 @@ export default function HomePage() {
               className={styles.input}
               type="email"
               value={formState.email}
-              onChange={(event) =>
-                setFormState((state) => ({ ...state, email: event.target.value }))
-              }
+              onChange={(event) => {
+                setFormState((state) => ({ ...state, email: event.target.value }));
+                setFormErrors((current) => ({ ...current, email: undefined }));
+              }}
             />
+            {formErrors.email ? <p className={styles.fieldError}>{formErrors.email}</p> : null}
 
             <label className={styles.formLabel} htmlFor="website">
               {t.formWebsiteLabel}
@@ -416,10 +479,12 @@ export default function HomePage() {
               id="website"
               className={styles.input}
               value={formState.website}
-              onChange={(event) =>
-                setFormState((state) => ({ ...state, website: event.target.value }))
-              }
+              onChange={(event) => {
+                setFormState((state) => ({ ...state, website: event.target.value }));
+                setFormErrors((current) => ({ ...current, website: undefined }));
+              }}
             />
+            {formErrors.website ? <p className={styles.fieldError}>{formErrors.website}</p> : null}
 
             <label className={styles.formLabel} htmlFor="category">
               {t.formCategoryLabel}

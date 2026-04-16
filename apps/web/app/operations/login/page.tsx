@@ -4,6 +4,7 @@ import { Alert, Button, Container, Group, Paper, PasswordInput, Stack, Text, Tex
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { authLoginSchema } from "@minerales/contracts";
 import {
   fetchCurrentOperator,
   hasOperatorSession,
@@ -24,6 +25,7 @@ export default function OperationsLoginPage() {
   const [password, setPassword] = useState<string>("");
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const t = directoryTranslations[locale];
   const nextPathParam = searchParams.get("next");
   const targetPath =
@@ -48,8 +50,36 @@ export default function OperationsLoginPage() {
   }, [handleAuthChange, router, targetPath]);
 
   const handleSubmit = async () => {
+    const parsedLogin = authLoginSchema.safeParse({ email, password });
+    if (!parsedLogin.success) {
+      const nextFieldErrors: { email?: string; password?: string } = {};
+      for (const issue of parsedLogin.error.issues) {
+        const pathKey = issue.path[0];
+        if (pathKey !== "email" && pathKey !== "password") {
+          continue;
+        }
+
+        if (issue.code === "invalid_string" && issue.validation === "email") {
+          nextFieldErrors.email = t.formErrorInvalidEmail;
+          continue;
+        }
+
+        if (issue.code === "too_small" && issue.minimum === 8) {
+          nextFieldErrors.password = t.formErrorMinChars8;
+          continue;
+        }
+
+        nextFieldErrors[pathKey] = t.formErrorRequired;
+      }
+
+      setFieldErrors(nextFieldErrors);
+      setErrorMessage("");
+      return;
+    }
+
     setSubmitting(true);
     setErrorMessage("");
+    setFieldErrors({});
     try {
       await loginOperator(email, password);
       const me = await fetchCurrentOperator();
@@ -88,14 +118,22 @@ export default function OperationsLoginPage() {
             <TextInput
               label={t.operationsAuthEmailLabel}
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              onChange={(event) => {
+                setEmail(event.target.value);
+                setFieldErrors((current) => ({ ...current, email: undefined }));
+              }}
               type="email"
+              error={fieldErrors.email}
               autoFocus
             />
             <PasswordInput
               label={t.operationsAuthPasswordLabel}
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                setFieldErrors((current) => ({ ...current, password: undefined }));
+              }}
+              error={fieldErrors.password}
             />
             <Button loading={submitting} onClick={() => void handleSubmit()}>
               {t.operationsAuthLoginAction}

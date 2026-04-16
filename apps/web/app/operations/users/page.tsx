@@ -15,7 +15,7 @@ import {
 } from "@mantine/core";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { UserProfile } from "@minerales/contracts";
+import { adminCreateUserSchema, type UserProfile } from "@minerales/contracts";
 import { UserRole } from "@minerales/types";
 import {
   createAdminUser,
@@ -50,6 +50,12 @@ export default function OperationsUsersPage() {
   const [createEmail, setCreateEmail] = useState<string>("");
   const [createPassword, setCreatePassword] = useState<string>("");
   const [createRoles, setCreateRoles] = useState<UserRole[]>([UserRole.COMPANY_USER]);
+  const [createFieldErrors, setCreateFieldErrors] = useState<{
+    fullName?: string;
+    email?: string;
+    password?: string;
+    roles?: string;
+  }>({});
   const { feedback, clearFeedback, setErrorFeedback, setSuccessFeedback } = useOperationFeedback();
   const t = directoryTranslations[locale];
 
@@ -132,6 +138,49 @@ export default function OperationsUsersPage() {
   };
 
   const handleCreateUser = async () => {
+    const parsedCreateUser = adminCreateUserSchema.safeParse({
+      fullName: createName,
+      email: createEmail,
+      password: createPassword,
+      roles: createRoles
+    });
+    if (!parsedCreateUser.success) {
+      const nextFieldErrors: {
+        fullName?: string;
+        email?: string;
+        password?: string;
+        roles?: string;
+      } = {};
+      for (const issue of parsedCreateUser.error.issues) {
+        const pathKey = issue.path[0];
+        if (pathKey !== "fullName" && pathKey !== "email" && pathKey !== "password" && pathKey !== "roles") {
+          continue;
+        }
+
+        if (pathKey === "email" && issue.code === "invalid_string" && issue.validation === "email") {
+          nextFieldErrors.email = t.formErrorInvalidEmail;
+          continue;
+        }
+        if (pathKey === "password" && issue.code === "too_small" && issue.minimum === 8) {
+          nextFieldErrors.password = t.formErrorMinChars8;
+          continue;
+        }
+        if (pathKey === "fullName" && issue.code === "too_small" && issue.minimum === 2) {
+          nextFieldErrors.fullName = t.formErrorMinChars2;
+          continue;
+        }
+        if (pathKey === "roles") {
+          nextFieldErrors.roles = t.formErrorSelectRole;
+          continue;
+        }
+
+        nextFieldErrors[pathKey] = t.formErrorRequired;
+      }
+      setCreateFieldErrors(nextFieldErrors);
+      return;
+    }
+
+    setCreateFieldErrors({});
     if (createRoles.length === 0) {
       return;
     }
@@ -234,21 +283,33 @@ export default function OperationsUsersPage() {
                 id="create-name"
                 label={t.operationsUsersNameLabel}
                 value={createName}
-                onChange={(event) => setCreateName(event.target.value)}
+                onChange={(event) => {
+                  setCreateName(event.target.value);
+                  setCreateFieldErrors((current) => ({ ...current, fullName: undefined }));
+                }}
+                error={createFieldErrors.fullName}
               />
               <TextInput
                 id="create-email"
                 type="email"
                 label={t.operationsUsersEmailLabel}
                 value={createEmail}
-                onChange={(event) => setCreateEmail(event.target.value)}
+                onChange={(event) => {
+                  setCreateEmail(event.target.value);
+                  setCreateFieldErrors((current) => ({ ...current, email: undefined }));
+                }}
+                error={createFieldErrors.email}
               />
               <TextInput
                 id="create-password"
                 type="password"
                 label={t.operationsUsersPasswordLabel}
                 value={createPassword}
-                onChange={(event) => setCreatePassword(event.target.value)}
+                onChange={(event) => {
+                  setCreatePassword(event.target.value);
+                  setCreateFieldErrors((current) => ({ ...current, password: undefined }));
+                }}
+                error={createFieldErrors.password}
               />
               <Text size="sm" c="dimmed">
                 {t.operationsUsersRolesLabel}
@@ -258,11 +319,19 @@ export default function OperationsUsersPage() {
                   <Checkbox
                     key={role}
                     checked={createRoles.includes(role)}
-                    onChange={() => toggleCreateRole(role)}
+                    onChange={() => {
+                      toggleCreateRole(role);
+                      setCreateFieldErrors((current) => ({ ...current, roles: undefined }));
+                    }}
                     label={roleLabels[role]}
                   />
                 ))}
               </Group>
+              {createFieldErrors.roles ? (
+                <Text size="xs" c="red">
+                  {createFieldErrors.roles}
+                </Text>
+              ) : null}
               <Button loading={creatingUser} onClick={() => void handleCreateUser()}>
                 {t.operationsUsersCreateAction}
               </Button>

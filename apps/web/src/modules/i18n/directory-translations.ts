@@ -199,6 +199,14 @@ type DirectoryTranslation = {
   closeAction: string;
   defaultCompanyTagline: string;
   invalidFormFeedback: string;
+  formErrorRequired: string;
+  formErrorInvalidEmail: string;
+  formErrorInvalidWebsite: string;
+  formErrorMinChars2: string;
+  formErrorMinChars6: string;
+  formErrorMinChars8: string;
+  formErrorMinChars10: string;
+  formErrorSelectRole: string;
   submitSuccessFeedback: string;
   submitErrorFeedback: string;
   categories: Record<CompanyCategory, string>;
@@ -421,6 +429,14 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     closeAction: "Close",
     defaultCompanyTagline: "Mining supplier profile.",
     invalidFormFeedback: "Please complete the form with valid values.",
+    formErrorRequired: "This field is required.",
+    formErrorInvalidEmail: "Please enter a valid email.",
+    formErrorInvalidWebsite: "Please enter a valid website URL.",
+    formErrorMinChars2: "Use at least 2 characters.",
+    formErrorMinChars6: "Use at least 6 characters.",
+    formErrorMinChars8: "Use at least 8 characters.",
+    formErrorMinChars10: "Use at least 10 characters.",
+    formErrorSelectRole: "Select at least one role.",
     submitSuccessFeedback: "Request submitted successfully. We will contact you soon.",
     submitErrorFeedback: "Unable to submit request right now. Please try again.",
     categories: {
@@ -654,6 +670,14 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     closeAction: "Cerrar",
     defaultCompanyTagline: "Perfil de proveedor minero.",
     invalidFormFeedback: "Completa el formulario con valores validos.",
+    formErrorRequired: "Este campo es obligatorio.",
+    formErrorInvalidEmail: "Ingresa un correo valido.",
+    formErrorInvalidWebsite: "Ingresa una URL valida.",
+    formErrorMinChars2: "Debe tener al menos 2 caracteres.",
+    formErrorMinChars6: "Debe tener al menos 6 caracteres.",
+    formErrorMinChars8: "Debe tener al menos 8 caracteres.",
+    formErrorMinChars10: "Debe tener al menos 10 caracteres.",
+    formErrorSelectRole: "Selecciona al menos un rol.",
     submitSuccessFeedback: "Solicitud enviada correctamente. Te contactaremos pronto.",
     submitErrorFeedback: "No se pudo enviar la solicitud. Intentalo nuevamente.",
     categories: {
