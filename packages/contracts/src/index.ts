@@ -287,6 +287,7 @@ export const adminCompanyListQuerySchema = z.object({
   search: z.string().trim().max(120).optional(),
   status: z.union([z.literal("all"), z.nativeEnum(CompanyStatus)]).default("all"),
   plan: z.union([z.literal("all"), z.nativeEnum(CompanyPlan)]).default("all"),
+  category: z.union([z.literal("all"), z.nativeEnum(CompanyCategory)]).default("all"),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20)
 });

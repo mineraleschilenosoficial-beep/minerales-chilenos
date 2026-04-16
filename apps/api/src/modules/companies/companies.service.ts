@@ -154,6 +154,11 @@ export class CompaniesService {
     if (query.plan !== "all") {
       mappedCompanies = mappedCompanies.filter((company: CompanyModel) => company.plan === query.plan);
     }
+    if (query.category !== "all") {
+      mappedCompanies = mappedCompanies.filter(
+        (company: CompanyModel) => company.category === query.category
+      );
+    }
 
     const total = mappedCompanies.length;
     const totalPages = total === 0 ? 0 : Math.ceil(total / query.pageSize);

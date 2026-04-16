@@ -31,6 +31,7 @@ import {
   type UserProfile,
   type ReviewCompanyRequestInput
 } from "@minerales/contracts";
+import { CompanyCategory } from "@minerales/types";
 import type { RequestFormState } from "../models/directory.types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
@@ -373,6 +374,7 @@ export async function fetchAdminCompanies(params?: {
   search?: string;
   status?: "all" | "active" | "inactive";
   plan?: "all" | "free" | "standard" | "premium";
+  category?: "all" | CompanyCategory;
   page?: number;
   pageSize?: number;
 }): Promise<{
@@ -386,6 +388,7 @@ export async function fetchAdminCompanies(params?: {
     search: params?.search,
     status: params?.status ?? "all",
     plan: params?.plan ?? "all",
+    category: params?.category ?? "all",
     page: params?.page ?? 1,
     pageSize: params?.pageSize ?? 20
   });
@@ -399,6 +402,9 @@ export async function fetchAdminCompanies(params?: {
   }
   if (parsedQuery.plan !== "all") {
     url.searchParams.set("plan", parsedQuery.plan);
+  }
+  if (parsedQuery.category !== "all") {
+    url.searchParams.set("category", parsedQuery.category);
   }
   url.searchParams.set("page", String(parsedQuery.page));
   url.searchParams.set("pageSize", String(parsedQuery.pageSize));

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { CompanyCategory, CompanyPlan, CompanyStatus, UserRole } from "@minerales/types";
 import {
   createAdminCompany,
@@ -42,11 +43,13 @@ const INITIAL_DRAFT: CompanyDraft = {
 };
 
 export default function OperationsCompaniesPage() {
+  const searchParams = useSearchParams();
   const { locale, setLocale, isAuthenticated, currentUser, handleAuthChange } =
     useOperationsSession();
   const [search, setSearch] = useState<string>("");
   const [status, setStatus] = useState<"all" | "active" | "inactive">("all");
   const [plan, setPlan] = useState<"all" | "free" | "standard" | "premium">("all");
+  const [category, setCategory] = useState<"all" | CompanyCategory>("all");
   const [companies, setCompanies] = useState<Awaited<ReturnType<typeof fetchAdminCompanies>>["items"]>([]);
   const [draft, setDraft] = useState<CompanyDraft>(INITIAL_DRAFT);
   const [editingCompanyId, setEditingCompanyId] = useState<string | null>(null);
@@ -59,6 +62,16 @@ export default function OperationsCompaniesPage() {
     currentUser?.roles.includes(UserRole.STAFF);
   const canDelete = currentUser?.roles.includes(UserRole.SUPER_ADMIN) ?? false;
 
+  useEffect(() => {
+    const categoryParam = searchParams.get("category");
+    if (
+      categoryParam &&
+      (Object.values(CompanyCategory) as string[]).includes(categoryParam)
+    ) {
+      setCategory(categoryParam as CompanyCategory);
+    }
+  }, [searchParams]);
+
   const loadCompanies = async () => {
     setLoading(true);
     try {
@@ -66,6 +79,7 @@ export default function OperationsCompaniesPage() {
         search,
         status,
         plan,
+        category,
         page: 1,
         pageSize: 50
       });
@@ -82,7 +96,7 @@ export default function OperationsCompaniesPage() {
       return;
     }
     void loadCompanies();
-  }, [isAuthenticated, canManage, search, status, plan]);
+  }, [isAuthenticated, canManage, search, status, plan, category]);
 
   const handleCreate = async () => {
     clearFeedback();
@@ -192,6 +206,18 @@ export default function OperationsCompaniesPage() {
                 <option value="free">{t.plans.free}</option>
                 <option value="standard">{t.plans.standard}</option>
                 <option value="premium">{t.plans.premium}</option>
+              </select>
+              <select
+                className={styles.select}
+                value={category}
+                onChange={(event) => setCategory(event.target.value as typeof category)}
+              >
+                <option value="all">all</option>
+                {Object.entries(t.categories).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
               </select>
             </div>
 

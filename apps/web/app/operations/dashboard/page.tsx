@@ -136,7 +136,14 @@ export default function OperationsDashboardPage() {
                 <tbody>
                   {data.byCategory.map((item) => (
                     <tr key={item.category}>
-                      <td>{t.categories[item.category]}</td>
+                      <td>
+                        <Link
+                          href={`/operations/companies?category=${item.category}`}
+                          className={styles.actionLink}
+                        >
+                          {t.categories[item.category]}
+                        </Link>
+                      </td>
                       <td>{item.total}</td>
                     </tr>
                   ))}
