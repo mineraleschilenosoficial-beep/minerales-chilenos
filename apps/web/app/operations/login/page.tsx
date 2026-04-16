@@ -57,7 +57,7 @@ export default function OperationsLoginPage() {
   };
 
   return (
-    <Container size={520} py="xl" className="ops-page">
+    <Container size={520} py={{ base: "md", sm: "xl" }} className="ops-page">
       <Stack gap="md">
         <Group justify="space-between">
           <Group gap="xs">
