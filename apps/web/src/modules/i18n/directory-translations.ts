@@ -16,6 +16,9 @@ type DirectoryTranslation = {
   statsTopCategory: string;
   statsNotAvailable: string;
   statsLoadingValue: string;
+  paginationPrev: string;
+  paginationNext: string;
+  paginationPageOf: string;
   directoryTitle: string;
   searchPlaceholder: string;
   allCategoriesOption: string;
@@ -60,6 +63,9 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     statsTopCategory: "Top Category",
     statsNotAvailable: "N/A",
     statsLoadingValue: "...",
+    paginationPrev: "Previous",
+    paginationNext: "Next",
+    paginationPageOf: "Page",
     directoryTitle: "Supplier Directory",
     searchPlaceholder: "Search by company, city, or tagline",
     allCategoriesOption: "All categories",
@@ -115,6 +121,9 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     statsTopCategory: "Categoria Principal",
     statsNotAvailable: "N/D",
     statsLoadingValue: "...",
+    paginationPrev: "Anterior",
+    paginationNext: "Siguiente",
+    paginationPageOf: "Pagina",
     directoryTitle: "Directorio de Proveedores",
     searchPlaceholder: "Buscar por empresa, ciudad o descripcion",
     allCategoriesOption: "Todas las categorias",

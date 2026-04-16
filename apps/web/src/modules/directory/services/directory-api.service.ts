@@ -1,9 +1,11 @@
 import {
+  companyListQuerySchema,
   companyListResponseSchema,
   companyMetricsSchema,
   companySchema,
   createCompanyRequestSchema,
   type Company,
+  type CompanyListResponse,
   type CompanyMetrics
 } from "@minerales/contracts";
 import type { RequestFormState } from "../models/directory.types";
@@ -23,15 +25,24 @@ const DIRECTORY_API_ERRORS = {
 export async function fetchCompanies(params: {
   search: string;
   category: string;
-}): Promise<Company[]> {
+  page: number;
+  pageSize: number;
+  sortBy: "priority" | "name" | "recent";
+  sortDirection: "asc" | "desc";
+}): Promise<CompanyListResponse> {
+  const parsedQuery = companyListQuerySchema.parse(params);
   const url = new URL("/companies", API_BASE_URL);
 
-  if (params.search.trim().length > 0) {
-    url.searchParams.set("search", params.search.trim());
+  if (parsedQuery.search && parsedQuery.search.length > 0) {
+    url.searchParams.set("search", parsedQuery.search);
   }
-  if (params.category !== "all") {
-    url.searchParams.set("category", params.category);
+  if (parsedQuery.category !== "all") {
+    url.searchParams.set("category", parsedQuery.category);
   }
+  url.searchParams.set("page", String(parsedQuery.page));
+  url.searchParams.set("pageSize", String(parsedQuery.pageSize));
+  url.searchParams.set("sortBy", parsedQuery.sortBy);
+  url.searchParams.set("sortDirection", parsedQuery.sortDirection);
 
   const response = await fetch(url.toString());
   if (!response.ok) {
@@ -39,8 +50,7 @@ export async function fetchCompanies(params: {
   }
 
   const payload = await response.json();
-  const parsedPayload = companyListResponseSchema.parse(payload);
-  return parsedPayload.items;
+  return companyListResponseSchema.parse(payload);
 }
 
 /**

@@ -9,6 +9,18 @@ export const companyCategoryFilterSchema = z
   .default("all");
 
 /**
+ * Query schema for company listing endpoint.
+ */
+export const companyListQuerySchema = z.object({
+  search: z.string().trim().max(120).optional(),
+  category: companyCategoryFilterSchema,
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(50).default(12),
+  sortBy: z.enum(["priority", "name", "recent"]).default("priority"),
+  sortDirection: z.enum(["asc", "desc"]).default("desc")
+});
+
+/**
  * Core company schema exposed by API contracts.
  */
 export const companySchema = z.object({
@@ -30,6 +42,9 @@ export const companySchema = z.object({
  */
 export const companyListResponseSchema = z.object({
   total: z.number().int().min(0),
+  page: z.number().int().min(1),
+  pageSize: z.number().int().min(1),
+  totalPages: z.number().int().min(0),
   items: z.array(companySchema)
 });
 
@@ -116,6 +131,11 @@ export type Company = z.infer<typeof companySchema>;
  * Type-safe company listing response.
  */
 export type CompanyListResponse = z.infer<typeof companyListResponseSchema>;
+
+/**
+ * Type-safe company list query payload.
+ */
+export type CompanyListQuery = z.infer<typeof companyListQuerySchema>;
 
 /**
  * Type-safe company metrics payload.

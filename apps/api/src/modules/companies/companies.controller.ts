@@ -1,10 +1,14 @@
 import { Controller, Get, Param, Query } from "@nestjs/common";
-import { companyListResponseSchema } from "@minerales/contracts";
+import { companyListQuerySchema, companyListResponseSchema } from "@minerales/contracts";
 import { CompaniesService } from "./companies.service";
 
 type CompanyQuery = {
   search?: string;
   category?: string;
+  page?: string;
+  pageSize?: string;
+  sortBy?: string;
+  sortDirection?: string;
 };
 
 @Controller("companies")
@@ -13,12 +17,16 @@ export class CompaniesController {
 
   @Get()
   async listCompanies(@Query() query: CompanyQuery) {
-    const filteredCompanies = await this.companiesService.listCompanies(query);
+    const parsedQuery = companyListQuerySchema.parse({
+      search: query.search,
+      category: query.category ?? "all",
+      page: query.page,
+      pageSize: query.pageSize,
+      sortBy: query.sortBy,
+      sortDirection: query.sortDirection
+    });
 
-    const response = {
-      total: filteredCompanies.length,
-      items: filteredCompanies
-    };
+    const response = await this.companiesService.listCompanies(parsedQuery);
 
     return companyListResponseSchema.parse(response);
   }

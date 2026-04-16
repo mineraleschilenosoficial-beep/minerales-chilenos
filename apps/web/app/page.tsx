@@ -22,6 +22,10 @@ import styles from "./page.module.css";
 export default function HomePage() {
   const [locale, setLocale] = useState<SupportedLocale>("en");
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize] = useState<number>(6);
+  const [totalPages, setTotalPages] = useState<number>(0);
+  const [totalCompaniesFromQuery, setTotalCompaniesFromQuery] = useState<number>(0);
   const [metrics, setMetrics] = useState<CompanyMetrics | null>(null);
   const [loadingMetrics, setLoadingMetrics] = useState<boolean>(true);
   const [loading, setLoading] = useState<boolean>(true);
@@ -41,11 +45,19 @@ export default function HomePage() {
       try {
         const items = await fetchCompanies({
           search,
-          category
+          category,
+          page: currentPage,
+          pageSize,
+          sortBy: "priority",
+          sortDirection: "desc"
         });
-        setCompanies(items);
+        setCompanies(items.items);
+        setTotalPages(items.totalPages);
+        setTotalCompaniesFromQuery(items.total);
       } catch {
         setCompanies([]);
+        setTotalPages(0);
+        setTotalCompaniesFromQuery(0);
       } finally {
         setLoading(false);
       }
@@ -55,6 +67,10 @@ export default function HomePage() {
       controller.abort();
       clearTimeout(timeout);
     };
+  }, [search, category, currentPage, pageSize]);
+
+  useEffect(() => {
+    setCurrentPage(1);
   }, [search, category]);
 
   useEffect(() => {
@@ -93,7 +109,7 @@ export default function HomePage() {
     return new Set(companies.map((company) => company.category)).size;
   }, [companies, metrics]);
 
-  const publishedSuppliersCount = metrics?.totalCompanies ?? companies.length;
+  const publishedSuppliersCount = metrics?.totalCompanies ?? totalCompaniesFromQuery;
   const premiumSuppliersCount = metrics?.byPlan[CompanyPlan.PREMIUM] ?? 0;
   const topCategory = metrics?.byCategory[0]?.category;
 
@@ -254,6 +270,27 @@ export default function HomePage() {
                 </article>
               ))
             )}
+          </div>
+          <div className={styles.toolbar}>
+            <button
+              type="button"
+              className={styles.linkButton}
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              disabled={currentPage <= 1 || loading}
+            >
+              {t.paginationPrev}
+            </button>
+            <div className={styles.formLabel}>
+              {t.paginationPageOf} {totalPages === 0 ? 0 : currentPage}/{totalPages}
+            </div>
+            <button
+              type="button"
+              className={styles.linkButton}
+              onClick={() => setCurrentPage((page) => Math.min(totalPages || 1, page + 1))}
+              disabled={loading || totalPages === 0 || currentPage >= totalPages}
+            >
+              {t.paginationNext}
+            </button>
           </div>
         </div>
 

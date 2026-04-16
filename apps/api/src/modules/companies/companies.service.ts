@@ -1,13 +1,8 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { companyCategoryFilterSchema } from "@minerales/contracts";
+import { type CompanyListQuery } from "@minerales/contracts";
 import { CompanyCategory, CompanyPlan, CompanyStatus } from "@minerales/types";
 import { PrismaService } from "../../database/prisma.service";
 import type { CompanyModel } from "./models/company.model";
-
-type ListCompaniesFilters = {
-  search?: string;
-  category?: string;
-};
 
 type CompanyMetrics = {
   totalCompanies: number;
@@ -23,43 +18,28 @@ export class CompaniesService {
   /**
    * Lists active companies filtered by text and category.
    */
-  async listCompanies(filters: ListCompaniesFilters): Promise<CompanyModel[]> {
-    const category = companyCategoryFilterSchema.parse(filters.category ?? "all");
-    const search = (filters.search ?? "").trim();
+  async listCompanies(query: CompanyListQuery): Promise<{
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+    items: CompanyModel[];
+  }> {
+    const mappedCompanies = await this.fetchFilteredCompanies(query.search, query.category);
+    const sortedCompanies = this.sortCompanies(mappedCompanies, query.sortBy, query.sortDirection);
 
-    const companies = await this.prisma.company.findMany({
-      where: {
-        status: "ACTIVE",
-        ...(search.length > 0
-          ? {
-              OR: [
-                { displayName: { contains: search, mode: "insensitive" } },
-                { legalName: { contains: search, mode: "insensitive" } },
-                { description: { contains: search, mode: "insensitive" } }
-              ]
-            }
-          : {}),
-        ...(category !== "all"
-          ? {
-              categories: {
-                some: {
-                  category: {
-                    key: category
-                  }
-                }
-              }
-            }
-          : {})
-      },
-      include: this.companyIncludes(),
-      orderBy: [{ verificationScore: "desc" }, { displayName: "asc" }]
-    });
+    const total = sortedCompanies.length;
+    const totalPages = total === 0 ? 0 : Math.ceil(total / query.pageSize);
+    const startIndex = (query.page - 1) * query.pageSize;
+    const items = sortedCompanies.slice(startIndex, startIndex + query.pageSize);
 
-    const mappedCompanies = companies.map((company: Awaited<typeof companies>[number]) =>
-      this.mapCompanyToContract(company)
-    );
-
-    return this.sortByPlanPriority(mappedCompanies);
+    return {
+      total,
+      page: query.page,
+      pageSize: query.pageSize,
+      totalPages,
+      items
+    };
   }
 
   /**
@@ -79,18 +59,8 @@ export class CompaniesService {
    * Returns highlighted companies for homepage sections.
    */
   async listFeaturedCompanies(limit = 4): Promise<CompanyModel[]> {
-    const companies = await this.prisma.company.findMany({
-      where: { status: "ACTIVE" },
-      include: this.companyIncludes(),
-      orderBy: [{ verificationScore: "desc" }, { createdAt: "desc" }],
-      take: limit
-    });
-
-    const mappedCompanies = companies.map((company: Awaited<typeof companies>[number]) =>
-      this.mapCompanyToContract(company)
-    );
-
-    return this.sortByPlanPriority(mappedCompanies).slice(0, limit);
+    const mappedCompanies = await this.fetchFilteredCompanies("", "all");
+    return this.sortCompanies(mappedCompanies, "priority", "desc").slice(0, limit);
   }
 
   /**
@@ -114,10 +84,7 @@ export class CompaniesService {
    * Returns aggregate metrics for directory monitoring and dashboards.
    */
   async getDirectoryMetrics(): Promise<CompanyMetrics> {
-    const companies = await this.listCompanies({
-      search: "",
-      category: "all"
-    });
+    const companies = await this.fetchFilteredCompanies("", "all");
 
     const byPlan: Record<CompanyPlan, number> = {
       [CompanyPlan.FREE]: 0,
@@ -142,6 +109,44 @@ export class CompaniesService {
       byPlan,
       byCategory
     };
+  }
+
+  private async fetchFilteredCompanies(
+    search: string | undefined,
+    category: CompanyListQuery["category"]
+  ): Promise<CompanyModel[]> {
+    const normalizedSearch = (search ?? "").trim();
+
+    const companies = await this.prisma.company.findMany({
+      where: {
+        status: "ACTIVE",
+        ...(normalizedSearch.length > 0
+          ? {
+              OR: [
+                { displayName: { contains: normalizedSearch, mode: "insensitive" } },
+                { legalName: { contains: normalizedSearch, mode: "insensitive" } },
+                { description: { contains: normalizedSearch, mode: "insensitive" } }
+              ]
+            }
+          : {}),
+        ...(category !== "all"
+          ? {
+              categories: {
+                some: {
+                  category: {
+                    key: category
+                  }
+                }
+              }
+            }
+          : {})
+      },
+      include: this.companyIncludes()
+    });
+
+    return companies.map((company: Awaited<typeof companies>[number]) =>
+      this.mapCompanyToContract(company)
+    );
   }
 
   private companyIncludes() {
@@ -241,6 +246,32 @@ export class CompaniesService {
 
       return leftCompany.name.localeCompare(rightCompany.name);
     });
+  }
+
+  private sortCompanies(
+    companies: CompanyModel[],
+    sortBy: CompanyListQuery["sortBy"],
+    sortDirection: CompanyListQuery["sortDirection"]
+  ): CompanyModel[] {
+    const directionFactor = sortDirection === "asc" ? 1 : -1;
+    const sorted = [...companies];
+
+    if (sortBy === "name") {
+      sorted.sort((leftCompany, rightCompany) =>
+        leftCompany.name.localeCompare(rightCompany.name) * directionFactor
+      );
+      return sorted;
+    }
+
+    if (sortBy === "recent") {
+      sorted.sort((leftCompany, rightCompany) =>
+        leftCompany.id.localeCompare(rightCompany.id) * -directionFactor
+      );
+      return sorted;
+    }
+
+    const prioritized = this.sortByPlanPriority(sorted);
+    return sortDirection === "asc" ? prioritized.reverse() : prioritized;
   }
 
   private getPlanPriorityScore(plan: CompanyPlan): number {
