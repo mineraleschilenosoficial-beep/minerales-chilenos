@@ -1,5 +1,19 @@
 "use client";
 
+import {
+  Badge,
+  Button,
+  Container,
+  Group,
+  Modal,
+  Paper,
+  Select,
+  Stack,
+  Text,
+  TextInput,
+  Textarea,
+  Title
+} from "@mantine/core";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { CompanyRequest, ReviewCompanyRequestInput } from "@minerales/contracts";
@@ -16,7 +30,6 @@ import { OperationsFeedback } from "@/modules/operations/operations-feedback";
 import { useOperationFeedback } from "@/modules/operations/use-operation-feedback";
 import { OperationsShell } from "@/modules/operations/operations-shell";
 import { useOperationsSession } from "@/modules/operations/use-operations-session";
-import styles from "./page.module.css";
 
 type RequestReviewDraft = {
   status: ReviewCompanyRequestInput["status"];
@@ -38,16 +51,16 @@ function getEditableStatus(
   return status;
 }
 
-function getStatusBadgeClass(status: CompanyRequest["status"]): string {
+function getStatusBadgeColor(status: CompanyRequest["status"]): string {
   switch (status) {
     case "under_review":
-      return styles.statusUnderReview ?? "";
+      return "blue";
     case "approved":
-      return styles.statusApproved ?? "";
+      return "green";
     case "rejected":
-      return styles.statusRejected ?? "";
+      return "red";
     default:
-      return styles.statusPending ?? "";
+      return "yellow";
   }
 }
 
@@ -75,6 +88,11 @@ export default function OperationsRequestsPage() {
   const t = directoryTranslations[locale];
   const canOperateRequests =
     currentUser?.roles.includes(UserRole.SUPER_ADMIN) || currentUser?.roles.includes(UserRole.STAFF);
+  const reviewStatusOptions = [
+    { value: "under_review", label: t.operationsStatusOptionUnderReview },
+    { value: "approved", label: t.operationsStatusOptionApproved },
+    { value: "rejected", label: t.operationsStatusOptionRejected }
+  ];
 
   const statusLabels = useMemo(
     () => ({
@@ -296,15 +314,10 @@ export default function OperationsRequestsPage() {
   };
 
   return (
-    <div className={styles.page}>
-      <div className={styles.container}>
-        <div className={styles.header}>
-          <div>
-            <h1 className={styles.title}>{t.operationsTitle}</h1>
-            <p className={styles.subtitle}>{t.operationsSubtitle}</p>
-          </div>
-          <div />
-        </div>
+    <Container size="lg" py="lg">
+      <Stack gap="sm">
+        <Title order={1}>{t.operationsTitle}</Title>
+        <Text c="dimmed">{t.operationsSubtitle}</Text>
 
         <OperationsShell
           locale={locale}
@@ -315,64 +328,68 @@ export default function OperationsRequestsPage() {
         </OperationsShell>
 
         {isAuthenticated ? (
-          <div className={styles.toolbar}>
-            <button type="button" className={styles.button} onClick={() => void loadRequests()}>
+          <Group align="end" gap="sm" wrap="wrap">
+            <Button onClick={() => void loadRequests()}>
               {t.operationsRefresh}
-            </button>
-            <button
-              type="button"
-              className={styles.buttonSecondary}
-              disabled={exporting}
-              onClick={() => void handleExportCsv()}
-            >
+            </Button>
+            <Button variant="default" loading={exporting} onClick={() => void handleExportCsv()}>
               {exporting ? t.operationsExportingCsvAction : t.operationsExportCsvAction}
-            </button>
-            <input
-              type="text"
-              className={`${styles.select} ${styles.toolbarInput}`}
+            </Button>
+            <TextInput
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder={t.operationsSearchPlaceholder}
+              w={{ base: "100%", sm: 280 }}
             />
-            <label className={styles.label} htmlFor="status-filter">
-              {t.operationsFilterStatusLabel}
-            </label>
-            <select
-              id="status-filter"
-              className={`${styles.select} ${styles.toolbarSelect}`}
+            <Select
               value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(event.target.value as CompanyRequest["status"] | "all")
-              }
-            >
-              <option value="all">{t.operationsFilterStatusAll}</option>
-              <option value="pending">{t.operationsStatusPending}</option>
-              <option value="under_review">{t.operationsStatusUnderReview}</option>
-              <option value="approved">{t.operationsStatusApproved}</option>
-              <option value="rejected">{t.operationsStatusRejected}</option>
-            </select>
-            <label className={styles.label} htmlFor="sort-order">
-              {t.operationsSortLabel}
-            </label>
-            <select
-              id="sort-order"
-              className={`${styles.select} ${styles.toolbarSelect}`}
+              onChange={(value) => {
+                if (
+                  value === "all" ||
+                  value === "pending" ||
+                  value === "under_review" ||
+                  value === "approved" ||
+                  value === "rejected"
+                ) {
+                  setStatusFilter(value);
+                }
+              }}
+              data={[
+                { value: "all", label: t.operationsFilterStatusAll },
+                { value: "pending", label: t.operationsStatusPending },
+                { value: "under_review", label: t.operationsStatusUnderReview },
+                { value: "approved", label: t.operationsStatusApproved },
+                { value: "rejected", label: t.operationsStatusRejected }
+              ]}
+              label={t.operationsFilterStatusLabel}
+              w={{ base: "100%", sm: 220 }}
+              allowDeselect={false}
+            />
+            <Select
               value={createdAtOrder}
-              onChange={(event) => setCreatedAtOrder(event.target.value as "newest" | "oldest")}
-            >
-              <option value="newest">{t.operationsSortNewest}</option>
-              <option value="oldest">{t.operationsSortOldest}</option>
-            </select>
-          </div>
+              onChange={(value) => {
+                if (value === "newest" || value === "oldest") {
+                  setCreatedAtOrder(value);
+                }
+              }}
+              data={[
+                { value: "newest", label: t.operationsSortNewest },
+                { value: "oldest", label: t.operationsSortOldest }
+              ]}
+              label={t.operationsSortLabel}
+              w={{ base: "100%", sm: 180 }}
+              allowDeselect={false}
+            />
+          </Group>
         ) : null}
 
         <OperationsFeedback feedback={feedback} />
-        {isAuthenticated && !canOperateRequests ? <div>{t.operationsNoAccess}</div> : null}
+        {isAuthenticated && !canOperateRequests ? <Text>{t.operationsNoAccess}</Text> : null}
 
-        {isAuthenticated && canOperateRequests ? <div className={styles.requests}>
-          {loading ? <div className={styles.requestCard}>{t.statsLoadingValue}</div> : null}
+        {isAuthenticated && canOperateRequests ? <Stack gap="sm">
+          {loading ? <Paper withBorder p="md">{t.statsLoadingValue}</Paper> : null}
           {!loading && requests.length === 0 ? (
-            <div className={styles.requestCard}>{t.operationsEmptyState}</div>
+            <Paper withBorder p="md">{t.operationsEmptyState}</Paper>
           ) : null}
           {!loading
             ? requests.map((request) => {
@@ -383,54 +400,57 @@ export default function OperationsRequestsPage() {
                 const isApplying = applyingRequestId === request.id;
 
                 return (
-                  <article
+                  <Paper
+                    withBorder
                     key={request.id}
-                    className={`${styles.requestCard} ${request.id === highlightedRequestId ? styles.requestCardHighlighted : ""}`}
+                    p="md"
+                    style={
+                      request.id === highlightedRequestId
+                        ? { borderColor: "var(--mantine-color-yellow-6)" }
+                        : undefined
+                    }
                   >
-                    <h2 className={styles.requestTitle}>{request.name}</h2>
-                    <div className={styles.requestMeta}>
-                      <span>{request.email}</span>
-                      <span>{request.phone}</span>
-                      <span>
+                    <Stack gap="sm">
+                      <Title order={3}>{request.name}</Title>
+                      <Stack gap={4}>
+                        <Text size="sm" c="dimmed">
+                          {request.email}
+                        </Text>
+                        <Text size="sm" c="dimmed">
+                          {request.phone}
+                        </Text>
+                        <Text size="sm" c="dimmed">
                         {request.city}, {request.region}
-                      </span>
-                      <span className={`${styles.statusBadge} ${getStatusBadgeClass(request.status)}`}>
-                        {statusLabels[request.status]}
-                      </span>
-                      <span>
+                        </Text>
+                        <Badge variant="light" color={getStatusBadgeColor(request.status)} w="fit-content">
+                          {statusLabels[request.status]}
+                        </Badge>
+                        <Text size="sm" c="dimmed">
                         {t.operationsCreatedAtLabel}: {dateFormatter.format(new Date(request.createdAt))}
-                      </span>
-                    </div>
+                        </Text>
+                      </Stack>
 
-                    <label className={styles.label} htmlFor={`status-${request.id}`}>
-                      {t.operationsStatusLabel}
-                    </label>
-                    <select
-                      id={`status-${request.id}`}
-                      className={styles.select}
-                      value={draft.status}
-                      onChange={(event) =>
-                        setReviewDrafts((currentDrafts) => ({
-                          ...currentDrafts,
-                          [request.id]: {
-                            ...draft,
-                            status: event.target.value as ReviewCompanyRequestInput["status"]
-                          }
-                        }))
-                      }
-                    >
-                      <option value="under_review">{t.operationsStatusOptionUnderReview}</option>
-                      <option value="approved">{t.operationsStatusOptionApproved}</option>
-                      <option value="rejected">{t.operationsStatusOptionRejected}</option>
-                    </select>
+                      <Select
+                        value={draft.status}
+                        onChange={(value) =>
+                          setReviewDrafts((currentDrafts) => ({
+                            ...currentDrafts,
+                            [request.id]: {
+                              ...draft,
+                              status:
+                                value === "under_review" || value === "approved" || value === "rejected"
+                                  ? value
+                                  : draft.status
+                            }
+                          }))
+                        }
+                        data={reviewStatusOptions}
+                        label={t.operationsStatusLabel}
+                        allowDeselect={false}
+                      />
 
-                    <label className={styles.label} htmlFor={`notes-${request.id}`}>
-                      {t.operationsNotesLabel}
-                    </label>
-                    <textarea
-                      id={`notes-${request.id}`}
-                      className={styles.textarea}
-                      rows={3}
+                      <Textarea
+                        rows={3}
                       value={draft.reviewNotes}
                       onChange={(event) =>
                         setReviewDrafts((currentDrafts) => ({
@@ -441,36 +461,39 @@ export default function OperationsRequestsPage() {
                           }
                         }))
                       }
+                      label={t.operationsNotesLabel}
                     />
-                    <div className={styles.notesBox}>
-                      <span className={styles.label}>{t.operationsLatestReviewNotesLabel}</span>
-                      <p className={styles.notesText}>
+                      <Stack gap={4}>
+                        <Text size="xs" c="dimmed">
+                          {t.operationsLatestReviewNotesLabel}
+                        </Text>
+                        <Text size="sm" c="dimmed">
                         {request.reviewNotes && request.reviewNotes.trim().length > 0
                           ? request.reviewNotes
                           : t.operationsNoReviewNotes}
-                      </p>
-                    </div>
+                        </Text>
+                      </Stack>
 
-                    <div className={styles.quickActions}>
-                      <button
-                        type="button"
-                        className={styles.buttonSecondary}
+                    <Group gap="xs" wrap="wrap">
+                      <Button
+                        variant="default"
+                        size="xs"
                         disabled={isApplying}
                         onClick={() => void executeReview(request.id, "under_review", draft.reviewNotes)}
                       >
                         {t.operationsStatusOptionUnderReview}
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.buttonSecondary}
+                      </Button>
+                      <Button
+                        variant="default"
+                        size="xs"
                         disabled={isApplying}
                         onClick={() => void executeReview(request.id, "approved", draft.reviewNotes)}
                       >
                         {t.operationsStatusOptionApproved}
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.buttonSecondary}
+                      </Button>
+                      <Button
+                        variant="default"
+                        size="xs"
                         disabled={isApplying}
                         onClick={() =>
                           setRejectConfirmation({
@@ -480,67 +503,63 @@ export default function OperationsRequestsPage() {
                         }
                       >
                         {t.operationsStatusOptionRejected}
-                      </button>
-                    </div>
+                      </Button>
+                    </Group>
 
-                    <button
-                      type="button"
-                      className={styles.button}
-                      disabled={isApplying}
-                      onClick={() => void handleApplyReview(request.id)}
-                    >
-                      {isApplying ? t.operationsApplyingAction : t.operationsApplyAction}
-                    </button>
-                  </article>
+                      <Button
+                        disabled={isApplying}
+                        onClick={() => void handleApplyReview(request.id)}
+                      >
+                        {isApplying ? t.operationsApplyingAction : t.operationsApplyAction}
+                      </Button>
+                    </Stack>
+                  </Paper>
                 );
               })
             : null}
-        </div> : null}
-        {isAuthenticated && canOperateRequests ? <div className={styles.toolbar}>
-          <button
-            type="button"
-            className={styles.buttonSecondary}
+        </Stack> : null}
+        {isAuthenticated && canOperateRequests ? <Group gap="sm" wrap="wrap">
+          <Button
+            variant="default"
             onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
             disabled={loading || currentPage <= 1}
           >
             {t.operationsPaginationPrev}
-          </button>
-          <span className={styles.label}>
+          </Button>
+          <Text size="sm" c="dimmed">
             {t.operationsPaginationPage} {totalPages === 0 ? 0 : currentPage}/{totalPages}
-          </span>
-          <span className={styles.label}>
+          </Text>
+          <Text size="sm" c="dimmed">
             {t.operationsTotalResultsLabel}: {totalResults}
-          </span>
-          <button
-            type="button"
-            className={styles.buttonSecondary}
+          </Text>
+          <Button
+            variant="default"
             onClick={() => setCurrentPage((page) => Math.min(totalPages || 1, page + 1))}
             disabled={loading || totalPages === 0 || currentPage >= totalPages}
           >
             {t.operationsPaginationNext}
-          </button>
-        </div> : null}
-      </div>
-      {rejectConfirmation ? (
-        <div className={styles.modalBackdrop} onClick={() => setRejectConfirmation(null)}>
-          <div className={styles.modal} onClick={(event) => event.stopPropagation()}>
-            <h3 className={styles.modalTitle}>{t.operationsRejectConfirmTitle}</h3>
-            <p className={styles.modalMessage}>{t.operationsRejectConfirmMessage}</p>
-            <div className={styles.quickActions}>
-              <button
-                type="button"
-                className={styles.buttonSecondary}
-                onClick={() => setRejectConfirmation(null)}
-              >
+          </Button>
+        </Group> : null}
+      </Stack>
+      <Modal
+        opened={Boolean(rejectConfirmation)}
+        onClose={() => setRejectConfirmation(null)}
+        title={t.operationsRejectConfirmTitle}
+      >
+        <Stack gap="sm">
+          <Text size="sm" c="dimmed">
+            {t.operationsRejectConfirmMessage}
+          </Text>
+          <Group gap="xs" justify="flex-end">
+            <Button variant="default" onClick={() => setRejectConfirmation(null)}>
                 {t.operationsRejectCancelAction}
-              </button>
-              <button type="button" className={styles.button} onClick={() => void handleConfirmReject()}>
+            </Button>
+            <Button color="red" onClick={() => void handleConfirmReject()}>
                 {t.operationsRejectConfirmAction}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </div>
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+    </Container>
   );
 }
