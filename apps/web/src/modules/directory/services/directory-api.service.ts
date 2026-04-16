@@ -47,6 +47,7 @@ const DIRECTORY_API_ERRORS = {
 } as const;
 
 const AUTH_TOKEN_STORAGE_KEY = "mc.auth.token";
+const AUTH_SESSION_COOKIE_KEY = "mc.auth.session";
 export const AUTH_SESSION_INVALID_EVENT = "mc:auth-session-invalid";
 const AUTH_ERRORS = {
   SESSION_INVALID: "SESSION_INVALID"
@@ -272,6 +273,7 @@ export async function loginOperator(email: string, password: string): Promise<Us
   const parsedResponse = authResponseSchema.parse(await response.json());
   if (typeof window !== "undefined") {
     window.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, parsedResponse.accessToken);
+    writeOperatorSessionCookie(true);
   }
   return parsedResponse.user;
 }
@@ -486,6 +488,7 @@ export async function fetchAdminPlansSummary(): Promise<AdminPlansSummary> {
 export function logoutOperator(): void {
   if (typeof window !== "undefined") {
     window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+    writeOperatorSessionCookie(false);
   }
 }
 
@@ -494,6 +497,13 @@ export function logoutOperator(): void {
  */
 export function hasOperatorSession(): boolean {
   return readOperatorToken().length > 0;
+}
+
+/**
+ * Synchronizes browser session cookie with current local token state for route guards.
+ */
+export function syncOperatorSessionCookie(): void {
+  writeOperatorSessionCookie(hasOperatorSession());
 }
 
 function readOperatorToken(): string {
@@ -544,4 +554,13 @@ function emitSessionInvalidEvent(): void {
   }
 
   window.dispatchEvent(new CustomEvent(AUTH_SESSION_INVALID_EVENT));
+}
+
+function writeOperatorSessionCookie(isActive: boolean): void {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  const maxAge = isActive ? 60 * 60 * 24 * 7 : 0;
+  document.cookie = `${AUTH_SESSION_COOKIE_KEY}=${isActive ? "1" : ""}; Path=/; Max-Age=${maxAge}; SameSite=Lax`;
 }

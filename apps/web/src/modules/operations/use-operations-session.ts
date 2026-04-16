@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import type { UserProfile } from "@minerales/contracts";
 import type { SupportedLocale } from "@/modules/i18n/directory-translations";
-import { hasOperatorSession } from "@/modules/directory/services/directory-api.service";
+import {
+  hasOperatorSession,
+  syncOperatorSessionCookie
+} from "@/modules/directory/services/directory-api.service";
 
 const OPERATIONS_LOCALE_STORAGE_KEY = "mc.operations.locale";
 
@@ -23,6 +26,7 @@ export function useOperationsSession() {
     if (storedLocale === "en" || storedLocale === "es") {
       setLocale(storedLocale);
     }
+    syncOperatorSessionCookie();
   }, []);
 
   useEffect(() => {
