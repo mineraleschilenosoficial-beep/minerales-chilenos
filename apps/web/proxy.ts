@@ -12,11 +12,20 @@ const AUTH_SESSION_COOKIE_KEY = "mc.auth.session";
  */
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  if (!pathname.startsWith(OPERATIONS_PREFIX) || pathname === OPERATIONS_LOGIN_PATH) {
+  if (!pathname.startsWith(OPERATIONS_PREFIX)) {
     return NextResponse.next();
   }
 
   const hasSessionCookie = request.cookies.get(AUTH_SESSION_COOKIE_KEY)?.value === "1";
+  if (pathname === OPERATIONS_LOGIN_PATH) {
+    if (!hasSessionCookie) {
+      return NextResponse.next();
+    }
+
+    const dashboardUrl = new URL("/operations/dashboard", request.url);
+    return NextResponse.redirect(dashboardUrl);
+  }
+
   if (hasSessionCookie) {
     return NextResponse.next();
   }
