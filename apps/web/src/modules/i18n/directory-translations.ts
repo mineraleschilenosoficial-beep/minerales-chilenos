@@ -39,6 +39,7 @@ type DirectoryTranslation = {
   operationsPaginationPage: string;
   operationsPaginationPrev: string;
   operationsPaginationNext: string;
+  operationsTotalResultsLabel: string;
   operationsEmptyState: string;
   operationsStatusLabel: string;
   operationsNotesLabel: string;
@@ -127,6 +128,7 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsPaginationPage: "Page",
     operationsPaginationPrev: "Previous",
     operationsPaginationNext: "Next",
+    operationsTotalResultsLabel: "Total results",
     operationsEmptyState: "No requests available.",
     operationsStatusLabel: "Current status",
     operationsNotesLabel: "Review notes",
@@ -227,6 +229,7 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsPaginationPage: "Pagina",
     operationsPaginationPrev: "Anterior",
     operationsPaginationNext: "Siguiente",
+    operationsTotalResultsLabel: "Total resultados",
     operationsEmptyState: "No hay solicitudes disponibles.",
     operationsStatusLabel: "Estado actual",
     operationsNotesLabel: "Notas de revision",

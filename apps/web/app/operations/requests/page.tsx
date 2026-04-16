@@ -53,6 +53,7 @@ export default function OperationsRequestsPage() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(0);
+  const [totalResults, setTotalResults] = useState<number>(0);
   const [pageSize] = useState<number>(8);
   const [requests, setRequests] = useState<CompanyRequest[]>([]);
   const [reviewDrafts, setReviewDrafts] = useState<Record<string, RequestReviewDraft>>({});
@@ -85,6 +86,7 @@ export default function OperationsRequestsPage() {
       });
       setRequests(payload.items);
       setTotalPages(payload.totalPages);
+      setTotalResults(payload.total);
       setReviewDrafts((currentDrafts) => {
         const nextDrafts: Record<string, RequestReviewDraft> = {};
         for (const request of payload.items) {
@@ -100,6 +102,7 @@ export default function OperationsRequestsPage() {
     } catch {
       setRequests([]);
       setTotalPages(0);
+      setTotalResults(0);
       setFeedback({ isError: true, message: t.operationsErrorFeedback });
     } finally {
       setLoading(false);
@@ -401,6 +404,9 @@ export default function OperationsRequestsPage() {
           </button>
           <span className={styles.label}>
             {t.operationsPaginationPage} {totalPages === 0 ? 0 : currentPage}/{totalPages}
+          </span>
+          <span className={styles.label}>
+            {t.operationsTotalResultsLabel}: {totalResults}
           </span>
           <button
             type="button"
