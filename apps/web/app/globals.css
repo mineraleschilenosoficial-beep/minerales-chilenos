@@ -127,3 +127,53 @@ h3 {
   color: var(--mc-color-accent);
   line-height: 0.9;
 }
+
+@media (max-width: 1024px) {
+  .ops-page {
+    max-width: 100%;
+  }
+
+  .ops-toolbar {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .ops-panel {
+    padding: 12px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .ops-heading {
+    font-size: clamp(30px, 8vw, 40px);
+  }
+
+  .ops-subtitle {
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .ops-toolbar > * {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .ops-table th {
+    font-size: 10px;
+  }
+
+  .ops-table td {
+    font-size: 12px;
+  }
+
+  .ops-kpi-value {
+    font-size: 30px !important;
+  }
+
+  .ops-floating {
+    left: 12px;
+    right: 12px !important;
+    bottom: 12px !important;
+    max-width: none !important;
+  }
+}
