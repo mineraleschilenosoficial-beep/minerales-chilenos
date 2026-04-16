@@ -5,7 +5,6 @@ import {
   Button,
   Container,
   Group,
-  Modal,
   Paper,
   Select,
   Stack,
@@ -577,25 +576,34 @@ export default function OperationsRequestsPage() {
           </Button>
         </Group> : null}
       </Stack>
-      <Modal
-        opened={Boolean(rejectConfirmation)}
-        onClose={() => setRejectConfirmation(null)}
-        title={t.operationsRejectConfirmTitle}
-      >
-        <Stack gap="sm">
-          <Text size="sm" c="dimmed">
-            {t.operationsRejectConfirmMessage}
-          </Text>
-          <Group gap="xs" justify="flex-end">
-            <Button variant="default" onClick={() => setRejectConfirmation(null)}>
+      {rejectConfirmation ? (
+        <Paper
+          withBorder
+          p="md"
+          style={{
+            position: "fixed",
+            right: 16,
+            bottom: 16,
+            zIndex: 1000,
+            maxWidth: 420
+          }}
+        >
+          <Stack gap="sm">
+            <Title order={4}>{t.operationsRejectConfirmTitle}</Title>
+            <Text size="sm" c="dimmed">
+              {t.operationsRejectConfirmMessage}
+            </Text>
+            <Group gap="xs" justify="flex-end">
+              <Button variant="default" onClick={() => setRejectConfirmation(null)}>
                 {t.operationsRejectCancelAction}
-            </Button>
-            <Button color="red" onClick={() => void handleConfirmReject()}>
+              </Button>
+              <Button color="red" onClick={() => void handleConfirmReject()}>
                 {t.operationsRejectConfirmAction}
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
+              </Button>
+            </Group>
+          </Stack>
+        </Paper>
+      ) : null}
     </Container>
   );
 }
