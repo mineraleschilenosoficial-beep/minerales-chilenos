@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { UserProfile } from "@minerales/contracts";
 import type { SupportedLocale } from "@/modules/i18n/directory-translations";
 
@@ -26,13 +26,13 @@ export function useOperationsSession() {
     window.localStorage.setItem(OPERATIONS_LOCALE_STORAGE_KEY, locale);
   }, [locale]);
 
-  const handleAuthChange = (authState: {
-    isAuthenticated: boolean;
-    currentUser: UserProfile | null;
-  }) => {
-    setIsAuthenticated(authState.isAuthenticated);
-    setCurrentUser(authState.currentUser);
-  };
+  const handleAuthChange = useCallback(
+    (authState: { isAuthenticated: boolean; currentUser: UserProfile | null }) => {
+      setIsAuthenticated(authState.isAuthenticated);
+      setCurrentUser(authState.currentUser);
+    },
+    []
+  );
 
   return {
     locale,
