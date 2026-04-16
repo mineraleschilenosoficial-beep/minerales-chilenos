@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { UserRole } from "@minerales/types";
 import { fetchAdminDashboard } from "@/modules/directory/services/directory-api.service";
 import { directoryTranslations } from "@/modules/i18n/directory-translations";
 import { OperationsFeedback } from "@/modules/operations/operations-feedback";
@@ -10,14 +11,17 @@ import { useOperationsSession } from "@/modules/operations/use-operations-sessio
 import styles from "./page.module.css";
 
 export default function OperationsDashboardPage() {
-  const { locale, setLocale, isAuthenticated, handleAuthChange } = useOperationsSession();
+  const { locale, setLocale, isAuthenticated, currentUser, handleAuthChange } = useOperationsSession();
   const [loading, setLoading] = useState<boolean>(false);
   const [data, setData] = useState<Awaited<ReturnType<typeof fetchAdminDashboard>> | null>(null);
   const { feedback, clearFeedback, setErrorFeedback } = useOperationFeedback();
   const t = directoryTranslations[locale];
 
+  const canViewDashboard =
+    currentUser?.roles.includes(UserRole.SUPER_ADMIN) || currentUser?.roles.includes(UserRole.STAFF);
+
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !canViewDashboard) {
       return;
     }
 
@@ -34,7 +38,7 @@ export default function OperationsDashboardPage() {
         setLoading(false);
       }
     })();
-  }, [clearFeedback, isAuthenticated, setErrorFeedback, t.operationsErrorFeedback]);
+  }, [canViewDashboard, clearFeedback, isAuthenticated, setErrorFeedback, t.operationsErrorFeedback]);
 
   return (
     <div className={styles.page}>
@@ -46,8 +50,9 @@ export default function OperationsDashboardPage() {
           {() => null}
         </OperationsShell>
         <OperationsFeedback feedback={feedback} />
+        {isAuthenticated && !canViewDashboard ? <div>{t.operationsNoAccess}</div> : null}
 
-        {isAuthenticated && data ? (
+        {isAuthenticated && canViewDashboard && data ? (
           <>
             <div className={styles.grid}>
               <div className={styles.card}>
@@ -112,7 +117,7 @@ export default function OperationsDashboardPage() {
           </>
         ) : null}
 
-        {isAuthenticated && loading ? <div>{t.statsLoadingValue}</div> : null}
+        {isAuthenticated && canViewDashboard && loading ? <div>{t.statsLoadingValue}</div> : null}
       </div>
     </div>
   );

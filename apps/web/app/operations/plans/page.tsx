@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { UserRole } from "@minerales/types";
 import { fetchAdminPlansSummary } from "@/modules/directory/services/directory-api.service";
 import { directoryTranslations } from "@/modules/i18n/directory-translations";
 import { OperationsFeedback } from "@/modules/operations/operations-feedback";
@@ -10,13 +11,16 @@ import { useOperationsSession } from "@/modules/operations/use-operations-sessio
 import styles from "./page.module.css";
 
 export default function OperationsPlansPage() {
-  const { locale, setLocale, isAuthenticated, handleAuthChange } = useOperationsSession();
+  const { locale, setLocale, isAuthenticated, currentUser, handleAuthChange } = useOperationsSession();
   const [summary, setSummary] = useState<Awaited<ReturnType<typeof fetchAdminPlansSummary>> | null>(null);
   const { feedback, setErrorFeedback, clearFeedback } = useOperationFeedback();
   const t = directoryTranslations[locale];
 
+  const canViewPlans =
+    currentUser?.roles.includes(UserRole.SUPER_ADMIN) || currentUser?.roles.includes(UserRole.STAFF);
+
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !canViewPlans) {
       return;
     }
 
@@ -30,7 +34,7 @@ export default function OperationsPlansPage() {
         setErrorFeedback(t.operationsErrorFeedback);
       }
     })();
-  }, [clearFeedback, isAuthenticated, setErrorFeedback, t.operationsErrorFeedback]);
+  }, [canViewPlans, clearFeedback, isAuthenticated, setErrorFeedback, t.operationsErrorFeedback]);
 
   return (
     <div className={styles.page}>
@@ -42,8 +46,9 @@ export default function OperationsPlansPage() {
           {() => null}
         </OperationsShell>
         <OperationsFeedback feedback={feedback} />
+        {isAuthenticated && !canViewPlans ? <div>{t.operationsNoAccess}</div> : null}
 
-        {isAuthenticated && summary ? (
+        {isAuthenticated && canViewPlans && summary ? (
           <div className={styles.grid}>
             <div className={styles.card}>
               <div className={styles.label}>{t.operationsPlansPremium}</div>

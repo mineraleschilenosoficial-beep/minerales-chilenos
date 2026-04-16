@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { CompanyRequest, ReviewCompanyRequestInput } from "@minerales/contracts";
+import { UserRole } from "@minerales/types";
 import {
   downloadCompanyRequestsCsv,
   fetchCompanyRequests,
@@ -54,7 +55,7 @@ export default function OperationsRequestsPage() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { locale, setLocale, isAuthenticated, handleAuthChange } = useOperationsSession();
+  const { locale, setLocale, isAuthenticated, currentUser, handleAuthChange } = useOperationsSession();
   const [statusFilter, setStatusFilter] = useState<CompanyRequest["status"] | "all">("all");
   const [createdAtOrder, setCreatedAtOrder] = useState<"newest" | "oldest">("newest");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -71,6 +72,8 @@ export default function OperationsRequestsPage() {
   const [filtersHydrated, setFiltersHydrated] = useState<boolean>(false);
   const { feedback, clearFeedback, setErrorFeedback, setSuccessFeedback } = useOperationFeedback();
   const t = directoryTranslations[locale];
+  const canOperateRequests =
+    currentUser?.roles.includes(UserRole.SUPER_ADMIN) || currentUser?.roles.includes(UserRole.STAFF);
 
   const statusLabels = useMemo(
     () => ({
@@ -141,7 +144,7 @@ export default function OperationsRequestsPage() {
   }, [createdAtOrder, currentPage, filtersHydrated, pathname, router, searchQuery, statusFilter]);
 
   const loadRequests = useCallback(async () => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !canOperateRequests) {
       return;
     }
 
@@ -188,6 +191,7 @@ export default function OperationsRequestsPage() {
     pageSize,
     searchQuery,
     statusFilter,
+    canOperateRequests,
     t.operationsErrorFeedback
   ]);
 
@@ -343,8 +347,9 @@ export default function OperationsRequestsPage() {
         ) : null}
 
         <OperationsFeedback feedback={feedback} />
+        {isAuthenticated && !canOperateRequests ? <div>{t.operationsNoAccess}</div> : null}
 
-        {isAuthenticated ? <div className={styles.requests}>
+        {isAuthenticated && canOperateRequests ? <div className={styles.requests}>
           {loading ? <div className={styles.requestCard}>{t.statsLoadingValue}</div> : null}
           {!loading && requests.length === 0 ? (
             <div className={styles.requestCard}>{t.operationsEmptyState}</div>
@@ -468,7 +473,7 @@ export default function OperationsRequestsPage() {
               })
             : null}
         </div> : null}
-        {isAuthenticated ? <div className={styles.toolbar}>
+        {isAuthenticated && canOperateRequests ? <div className={styles.toolbar}>
           <button
             type="button"
             className={styles.buttonSecondary}
