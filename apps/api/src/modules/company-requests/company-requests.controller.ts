@@ -22,12 +22,14 @@ export class CompanyRequestsController {
   async listRequests(
     @Query("status") status?: string,
     @Query("search") search?: string,
+    @Query("createdAtOrder") createdAtOrder?: string,
     @Query("page") page?: string,
     @Query("pageSize") pageSize?: string
   ) {
     const parsedQuery = companyRequestListQuerySchema.parse({
       status: status ?? "all",
       search,
+      createdAtOrder,
       page,
       pageSize
     });

@@ -117,12 +117,14 @@ export async function submitCompanyRequest(formState: RequestFormState): Promise
 export async function fetchCompanyRequests(params?: {
   search?: string;
   status?: "all" | "pending" | "under_review" | "approved" | "rejected";
+  createdAtOrder?: "newest" | "oldest";
   page?: number;
   pageSize?: number;
 }): Promise<CompanyRequestListResponse> {
   const parsedQuery = companyRequestListQuerySchema.parse({
     search: params?.search,
     status: params?.status ?? "all",
+    createdAtOrder: params?.createdAtOrder ?? "newest",
     page: params?.page ?? 1,
     pageSize: params?.pageSize ?? 10
   });
@@ -133,6 +135,7 @@ export async function fetchCompanyRequests(params?: {
   if (parsedQuery.status !== "all") {
     url.searchParams.set("status", parsedQuery.status);
   }
+  url.searchParams.set("createdAtOrder", parsedQuery.createdAtOrder);
   url.searchParams.set("page", String(parsedQuery.page));
   url.searchParams.set("pageSize", String(parsedQuery.pageSize));
 

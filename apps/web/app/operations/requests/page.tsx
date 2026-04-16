@@ -45,6 +45,7 @@ function getStatusBadgeClass(status: CompanyRequest["status"]): string {
 export default function OperationsRequestsPage() {
   const [locale, setLocale] = useState<SupportedLocale>("en");
   const [statusFilter, setStatusFilter] = useState<CompanyRequest["status"] | "all">("all");
+  const [createdAtOrder, setCreatedAtOrder] = useState<"newest" | "oldest">("newest");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(0);
@@ -72,6 +73,7 @@ export default function OperationsRequestsPage() {
     try {
       const payload = await fetchCompanyRequests({
         status: statusFilter,
+        createdAtOrder,
         search: searchQuery,
         page: currentPage,
         pageSize
@@ -97,7 +99,7 @@ export default function OperationsRequestsPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize, searchQuery, statusFilter, t.operationsErrorFeedback]);
+  }, [createdAtOrder, currentPage, pageSize, searchQuery, statusFilter, t.operationsErrorFeedback]);
 
   useEffect(() => {
     void loadRequests();
@@ -105,7 +107,16 @@ export default function OperationsRequestsPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, statusFilter]);
+  }, [searchQuery, statusFilter, createdAtOrder]);
+
+  const dateFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat(locale === "es" ? "es-CL" : "en-US", {
+        dateStyle: "medium",
+        timeStyle: "short"
+      }),
+    [locale]
+  );
 
   const executeReview = async (
     requestId: string,
@@ -203,6 +214,18 @@ export default function OperationsRequestsPage() {
               <option value="approved">{t.operationsStatusApproved}</option>
               <option value="rejected">{t.operationsStatusRejected}</option>
             </select>
+            <label className={styles.label} htmlFor="sort-order">
+              {t.operationsSortLabel}
+            </label>
+            <select
+              id="sort-order"
+              className={`${styles.select} ${styles.toolbarSelect}`}
+              value={createdAtOrder}
+              onChange={(event) => setCreatedAtOrder(event.target.value as "newest" | "oldest")}
+            >
+              <option value="newest">{t.operationsSortNewest}</option>
+              <option value="oldest">{t.operationsSortOldest}</option>
+            </select>
           </div>
         </div>
 
@@ -236,6 +259,9 @@ export default function OperationsRequestsPage() {
                       </span>
                       <span className={`${styles.statusBadge} ${getStatusBadgeClass(request.status)}`}>
                         {statusLabels[request.status]}
+                      </span>
+                      <span>
+                        {t.operationsCreatedAtLabel}: {dateFormatter.format(new Date(request.createdAt))}
                       </span>
                     </div>
 
@@ -279,6 +305,14 @@ export default function OperationsRequestsPage() {
                         }))
                       }
                     />
+                    <div className={styles.notesBox}>
+                      <span className={styles.label}>{t.operationsLatestReviewNotesLabel}</span>
+                      <p className={styles.notesText}>
+                        {request.reviewNotes && request.reviewNotes.trim().length > 0
+                          ? request.reviewNotes
+                          : t.operationsNoReviewNotes}
+                      </p>
+                    </div>
 
                     <div className={styles.quickActions}>
                       <button

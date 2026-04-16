@@ -27,6 +27,9 @@ type DirectoryTranslation = {
   operationsRefresh: string;
   operationsFilterStatusLabel: string;
   operationsFilterStatusAll: string;
+  operationsSortLabel: string;
+  operationsSortNewest: string;
+  operationsSortOldest: string;
   operationsSearchPlaceholder: string;
   operationsPaginationPage: string;
   operationsPaginationPrev: string;
@@ -45,6 +48,9 @@ type DirectoryTranslation = {
   operationsStatusOptionUnderReview: string;
   operationsStatusOptionApproved: string;
   operationsStatusOptionRejected: string;
+  operationsCreatedAtLabel: string;
+  operationsLatestReviewNotesLabel: string;
+  operationsNoReviewNotes: string;
   operationsRejectConfirmTitle: string;
   operationsRejectConfirmMessage: string;
   operationsRejectConfirmAction: string;
@@ -104,6 +110,9 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsRefresh: "Refresh",
     operationsFilterStatusLabel: "Filter status",
     operationsFilterStatusAll: "All statuses",
+    operationsSortLabel: "Sort by date",
+    operationsSortNewest: "Newest first",
+    operationsSortOldest: "Oldest first",
     operationsSearchPlaceholder: "Search by company, email, or phone",
     operationsPaginationPage: "Page",
     operationsPaginationPrev: "Previous",
@@ -122,6 +131,9 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsStatusOptionUnderReview: "Mark as under review",
     operationsStatusOptionApproved: "Approve and publish",
     operationsStatusOptionRejected: "Reject",
+    operationsCreatedAtLabel: "Created at",
+    operationsLatestReviewNotesLabel: "Latest review notes",
+    operationsNoReviewNotes: "No review notes yet.",
     operationsRejectConfirmTitle: "Confirm rejection",
     operationsRejectConfirmMessage:
       "This request will be marked as rejected. You can include notes for traceability.",
@@ -193,6 +205,9 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsRefresh: "Actualizar",
     operationsFilterStatusLabel: "Filtrar estado",
     operationsFilterStatusAll: "Todos los estados",
+    operationsSortLabel: "Orden por fecha",
+    operationsSortNewest: "Mas nuevas primero",
+    operationsSortOldest: "Mas antiguas primero",
     operationsSearchPlaceholder: "Buscar por empresa, correo o telefono",
     operationsPaginationPage: "Pagina",
     operationsPaginationPrev: "Anterior",
@@ -211,6 +226,9 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsStatusOptionUnderReview: "Marcar en revision",
     operationsStatusOptionApproved: "Aprobar y publicar",
     operationsStatusOptionRejected: "Rechazar",
+    operationsCreatedAtLabel: "Creada el",
+    operationsLatestReviewNotesLabel: "Ultimas notas de revision",
+    operationsNoReviewNotes: "Sin notas de revision.",
     operationsRejectConfirmTitle: "Confirmar rechazo",
     operationsRejectConfirmMessage:
       "Esta solicitud quedara marcada como rechazada. Puedes incluir notas para trazabilidad.",

@@ -114,7 +114,10 @@ export class CompanyRequestsService {
           },
           requestedPlan: true
         },
-        orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+        orderBy: [
+          { status: "asc" },
+          { createdAt: parsedQuery.createdAtOrder === "oldest" ? "asc" : "desc" }
+        ],
         skip: (parsedQuery.page - 1) * parsedQuery.pageSize,
         take: parsedQuery.pageSize
       })
