@@ -86,6 +86,7 @@ export default function OperationsRequestsPage() {
   const [rejectConfirmation, setRejectConfirmation] = useState<RejectConfirmationState | null>(null);
   const [filtersHydrated, setFiltersHydrated] = useState<boolean>(false);
   const hasFilterResetInitialized = useRef<boolean>(false);
+  const loadSequenceRef = useRef<number>(0);
   const { feedback, clearFeedback, setErrorFeedback, setSuccessFeedback } = useOperationFeedback();
   const t = directoryTranslations[locale];
   const canOperateRequests =
@@ -202,6 +203,8 @@ export default function OperationsRequestsPage() {
       return;
     }
 
+    const currentSequence = loadSequenceRef.current + 1;
+    loadSequenceRef.current = currentSequence;
     setLoading(true);
     try {
       const payload = await fetchCompanyRequests({
@@ -211,6 +214,9 @@ export default function OperationsRequestsPage() {
         page: currentPage,
         pageSize
       });
+      if (currentSequence !== loadSequenceRef.current) {
+        return;
+      }
       setRequests(payload.items);
       setTotalPages(payload.totalPages);
       setTotalResults(payload.total);
@@ -227,12 +233,17 @@ export default function OperationsRequestsPage() {
         return nextDrafts;
       });
     } catch {
+      if (currentSequence !== loadSequenceRef.current) {
+        return;
+      }
       setRequests([]);
       setTotalPages(0);
       setTotalResults(0);
       setErrorFeedback(t.operationsErrorFeedback);
     } finally {
-      setLoading(false);
+      if (currentSequence === loadSequenceRef.current) {
+        setLoading(false);
+      }
     }
   }, [
     createdAtOrder,
