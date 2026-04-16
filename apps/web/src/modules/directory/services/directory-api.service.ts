@@ -1,4 +1,7 @@
 import {
+  adminCreateUserSchema,
+  adminUpdateUserActiveSchema,
+  adminUpdateUserRolesSchema,
   authLoginSchema,
   authResponseSchema,
   companyListQuerySchema,
@@ -11,6 +14,8 @@ import {
   createCompanyRequestSchema,
   reviewCompanyRequestResponseSchema,
   reviewCompanyRequestSchema,
+  userListResponseSchema,
+  userProfileSchema,
   type Company,
   type CompanyListResponse,
   type CompanyMetrics,
@@ -263,6 +268,94 @@ export async function loginOperator(email: string, password: string): Promise<Us
     window.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, parsedResponse.accessToken);
   }
   return parsedResponse.user;
+}
+
+/**
+ * Fetches current operator profile from active JWT session.
+ */
+export async function fetchCurrentOperator(): Promise<UserProfile> {
+  const response = await fetch(new URL("/auth/me", API_BASE_URL), {
+    headers: getAuthHeaders()
+  });
+  if (!response.ok) {
+    throw new Error("SESSION_INVALID");
+  }
+
+  return userProfileSchema.parse(await response.json());
+}
+
+/**
+ * Retrieves admin user list.
+ */
+export async function fetchAdminUsers(): Promise<{ total: number; items: UserProfile[] }> {
+  const response = await fetch(new URL("/admin/users", API_BASE_URL), {
+    headers: getAuthHeaders()
+  });
+  if (!response.ok) {
+    throw new Error("FETCH_ADMIN_USERS_FAILED");
+  }
+
+  return userListResponseSchema.parse(await response.json());
+}
+
+/**
+ * Creates a new platform user.
+ */
+export async function createAdminUser(payload: unknown): Promise<UserProfile> {
+  const parsedPayload = adminCreateUserSchema.parse(payload);
+  const response = await fetch(new URL("/admin/users", API_BASE_URL), {
+    method: "POST",
+    headers: {
+      ...getAuthHeaders(),
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(parsedPayload)
+  });
+  if (!response.ok) {
+    throw new Error("CREATE_ADMIN_USER_FAILED");
+  }
+
+  return userProfileSchema.parse(await response.json());
+}
+
+/**
+ * Updates assigned roles for a platform user.
+ */
+export async function updateAdminUserRoles(userId: string, payload: unknown): Promise<UserProfile> {
+  const parsedPayload = adminUpdateUserRolesSchema.parse(payload);
+  const response = await fetch(new URL(`/admin/users/${userId}/roles`, API_BASE_URL), {
+    method: "PATCH",
+    headers: {
+      ...getAuthHeaders(),
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(parsedPayload)
+  });
+  if (!response.ok) {
+    throw new Error("UPDATE_ADMIN_USER_ROLES_FAILED");
+  }
+
+  return userProfileSchema.parse(await response.json());
+}
+
+/**
+ * Toggles active status for a platform user.
+ */
+export async function updateAdminUserActive(userId: string, payload: unknown): Promise<UserProfile> {
+  const parsedPayload = adminUpdateUserActiveSchema.parse(payload);
+  const response = await fetch(new URL(`/admin/users/${userId}/active`, API_BASE_URL), {
+    method: "PATCH",
+    headers: {
+      ...getAuthHeaders(),
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(parsedPayload)
+  });
+  if (!response.ok) {
+    throw new Error("UPDATE_ADMIN_USER_ACTIVE_FAILED");
+  }
+
+  return userProfileSchema.parse(await response.json());
 }
 
 /**

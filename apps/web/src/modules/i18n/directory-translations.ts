@@ -47,6 +47,29 @@ type DirectoryTranslation = {
   operationsAuthLoginAction: string;
   operationsAuthLogoutAction: string;
   operationsAuthLoginError: string;
+  operationsUsersTitle: string;
+  operationsUsersSubtitle: string;
+  operationsUsersNoAccess: string;
+  operationsUsersLoadError: string;
+  operationsUsersCreateTitle: string;
+  operationsUsersNameLabel: string;
+  operationsUsersEmailLabel: string;
+  operationsUsersPasswordLabel: string;
+  operationsUsersRolesLabel: string;
+  operationsUsersCreateAction: string;
+  operationsUsersCreateSuccess: string;
+  operationsUsersUpdateSuccess: string;
+  operationsUsersTableName: string;
+  operationsUsersTableEmail: string;
+  operationsUsersTableRoles: string;
+  operationsUsersTableActive: string;
+  operationsUsersSaveRolesAction: string;
+  operationsUsersToggleActiveAction: string;
+  operationsUsersActiveYes: string;
+  operationsUsersActiveNo: string;
+  operationsUsersRoleSuperAdmin: string;
+  operationsUsersRoleStaff: string;
+  operationsUsersRoleCompanyUser: string;
   operationsEmptyState: string;
   operationsStatusLabel: string;
   operationsNotesLabel: string;
@@ -143,6 +166,29 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsAuthLoginAction: "Sign in",
     operationsAuthLogoutAction: "Sign out",
     operationsAuthLoginError: "Invalid credentials or inactive user.",
+    operationsUsersTitle: "User Administration",
+    operationsUsersSubtitle: "Manage platform users and global roles.",
+    operationsUsersNoAccess: "Your account does not have permission to manage users.",
+    operationsUsersLoadError: "Unable to load user administration data.",
+    operationsUsersCreateTitle: "Create user",
+    operationsUsersNameLabel: "Full name",
+    operationsUsersEmailLabel: "Email",
+    operationsUsersPasswordLabel: "Temporary password",
+    operationsUsersRolesLabel: "Roles",
+    operationsUsersCreateAction: "Create user",
+    operationsUsersCreateSuccess: "User created successfully.",
+    operationsUsersUpdateSuccess: "User updated successfully.",
+    operationsUsersTableName: "Name",
+    operationsUsersTableEmail: "Email",
+    operationsUsersTableRoles: "Roles",
+    operationsUsersTableActive: "Active",
+    operationsUsersSaveRolesAction: "Save roles",
+    operationsUsersToggleActiveAction: "Toggle active",
+    operationsUsersActiveYes: "Yes",
+    operationsUsersActiveNo: "No",
+    operationsUsersRoleSuperAdmin: "Super admin",
+    operationsUsersRoleStaff: "Staff",
+    operationsUsersRoleCompanyUser: "Company user",
     operationsEmptyState: "No requests available.",
     operationsStatusLabel: "Current status",
     operationsNotesLabel: "Review notes",
@@ -251,6 +297,29 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsAuthLoginAction: "Ingresar",
     operationsAuthLogoutAction: "Salir",
     operationsAuthLoginError: "Credenciales invalidas o usuario inactivo.",
+    operationsUsersTitle: "Administracion de Usuarios",
+    operationsUsersSubtitle: "Gestiona usuarios de plataforma y roles globales.",
+    operationsUsersNoAccess: "Tu cuenta no tiene permisos para gestionar usuarios.",
+    operationsUsersLoadError: "No se pudo cargar la administracion de usuarios.",
+    operationsUsersCreateTitle: "Crear usuario",
+    operationsUsersNameLabel: "Nombre completo",
+    operationsUsersEmailLabel: "Correo",
+    operationsUsersPasswordLabel: "Contrasena temporal",
+    operationsUsersRolesLabel: "Roles",
+    operationsUsersCreateAction: "Crear usuario",
+    operationsUsersCreateSuccess: "Usuario creado correctamente.",
+    operationsUsersUpdateSuccess: "Usuario actualizado correctamente.",
+    operationsUsersTableName: "Nombre",
+    operationsUsersTableEmail: "Correo",
+    operationsUsersTableRoles: "Roles",
+    operationsUsersTableActive: "Activo",
+    operationsUsersSaveRolesAction: "Guardar roles",
+    operationsUsersToggleActiveAction: "Cambiar activo",
+    operationsUsersActiveYes: "Si",
+    operationsUsersActiveNo: "No",
+    operationsUsersRoleSuperAdmin: "Super admin",
+    operationsUsersRoleStaff: "Staff",
+    operationsUsersRoleCompanyUser: "Usuario empresa",
     operationsEmptyState: "No hay solicitudes disponibles.",
     operationsStatusLabel: "Estado actual",
     operationsNotesLabel: "Notas de revision",
