@@ -19,6 +19,23 @@ type DirectoryTranslation = {
   paginationPrev: string;
   paginationNext: string;
   paginationPageOf: string;
+  operationsTitle: string;
+  operationsSubtitle: string;
+  operationsRefresh: string;
+  operationsEmptyState: string;
+  operationsStatusLabel: string;
+  operationsNotesLabel: string;
+  operationsApplyAction: string;
+  operationsApplyingAction: string;
+  operationsSuccessFeedback: string;
+  operationsErrorFeedback: string;
+  operationsStatusPending: string;
+  operationsStatusUnderReview: string;
+  operationsStatusApproved: string;
+  operationsStatusRejected: string;
+  operationsStatusOptionUnderReview: string;
+  operationsStatusOptionApproved: string;
+  operationsStatusOptionRejected: string;
   directoryTitle: string;
   searchPlaceholder: string;
   allCategoriesOption: string;
@@ -66,6 +83,23 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     paginationPrev: "Previous",
     paginationNext: "Next",
     paginationPageOf: "Page",
+    operationsTitle: "Request Operations",
+    operationsSubtitle: "Review and process supplier publication requests.",
+    operationsRefresh: "Refresh",
+    operationsEmptyState: "No requests available.",
+    operationsStatusLabel: "Current status",
+    operationsNotesLabel: "Review notes",
+    operationsApplyAction: "Apply review",
+    operationsApplyingAction: "Applying...",
+    operationsSuccessFeedback: "Review applied successfully.",
+    operationsErrorFeedback: "Unable to apply review. Please try again.",
+    operationsStatusPending: "Pending",
+    operationsStatusUnderReview: "Under review",
+    operationsStatusApproved: "Approved",
+    operationsStatusRejected: "Rejected",
+    operationsStatusOptionUnderReview: "Mark as under review",
+    operationsStatusOptionApproved: "Approve and publish",
+    operationsStatusOptionRejected: "Reject",
     directoryTitle: "Supplier Directory",
     searchPlaceholder: "Search by company, city, or tagline",
     allCategoriesOption: "All categories",
@@ -124,6 +158,23 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     paginationPrev: "Anterior",
     paginationNext: "Siguiente",
     paginationPageOf: "Pagina",
+    operationsTitle: "Operacion de Solicitudes",
+    operationsSubtitle: "Revisa y procesa solicitudes de publicacion de proveedores.",
+    operationsRefresh: "Actualizar",
+    operationsEmptyState: "No hay solicitudes disponibles.",
+    operationsStatusLabel: "Estado actual",
+    operationsNotesLabel: "Notas de revision",
+    operationsApplyAction: "Aplicar revision",
+    operationsApplyingAction: "Aplicando...",
+    operationsSuccessFeedback: "Revision aplicada correctamente.",
+    operationsErrorFeedback: "No se pudo aplicar la revision. Intentalo nuevamente.",
+    operationsStatusPending: "Pendiente",
+    operationsStatusUnderReview: "En revision",
+    operationsStatusApproved: "Aprobada",
+    operationsStatusRejected: "Rechazada",
+    operationsStatusOptionUnderReview: "Marcar en revision",
+    operationsStatusOptionApproved: "Aprobar y publicar",
+    operationsStatusOptionRejected: "Rechazar",
     directoryTitle: "Directorio de Proveedores",
     searchPlaceholder: "Buscar por empresa, ciudad o descripcion",
     allCategoriesOption: "Todas las categorias",

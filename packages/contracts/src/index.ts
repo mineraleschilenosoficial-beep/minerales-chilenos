@@ -92,6 +92,62 @@ export const reviewCompanyRequestSchema = z.object({
 });
 
 /**
+ * Canonical status schema for company requests.
+ */
+export const companyRequestStatusSchema = z.enum([
+  "pending",
+  "under_review",
+  "approved",
+  "rejected"
+]);
+
+/**
+ * Company request schema returned by API.
+ */
+export const companyRequestSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(2).max(160),
+  tagline: z.string().min(2).max(240),
+  description: z.string().min(10).max(2000),
+  city: z.string().min(2).max(80),
+  region: z.string().min(2).max(80),
+  phone: z.string().min(6).max(40),
+  email: z.string().email(),
+  website: z.string().url().optional(),
+  category: z.nativeEnum(CompanyCategory),
+  requestedPlan: z.nativeEnum(CompanyPlan),
+  status: companyRequestStatusSchema,
+  createdAt: z.string(),
+  reviewNotes: z.string().max(2000).optional(),
+  companyId: z.string().min(1).optional()
+});
+
+/**
+ * List response schema for company requests endpoint.
+ */
+export const companyRequestListResponseSchema = z.object({
+  total: z.number().int().min(0),
+  items: z.array(companyRequestSchema)
+});
+
+/**
+ * Response schema after request creation.
+ */
+export const createCompanyRequestResponseSchema = z.object({
+  id: z.string().min(1),
+  status: companyRequestStatusSchema
+});
+
+/**
+ * Response schema after request review.
+ */
+export const reviewCompanyRequestResponseSchema = z.object({
+  id: z.string().min(1),
+  status: companyRequestStatusSchema,
+  companyId: z.string().min(1).optional()
+});
+
+/**
  * Schema used in the admin panel to update a published company profile.
  */
 export const updateCompanySchema = z.object({
@@ -121,6 +177,16 @@ export type UpdateCompanyInput = z.infer<typeof updateCompanySchema>;
  * Type-safe payload for request review actions.
  */
 export type ReviewCompanyRequestInput = z.infer<typeof reviewCompanyRequestSchema>;
+
+/**
+ * Type-safe company request model.
+ */
+export type CompanyRequest = z.infer<typeof companyRequestSchema>;
+
+/**
+ * Type-safe company request list response.
+ */
+export type CompanyRequestListResponse = z.infer<typeof companyRequestListResponseSchema>;
 
 /**
  * Type-safe company model used by frontend and backend.

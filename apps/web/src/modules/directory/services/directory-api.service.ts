@@ -2,11 +2,16 @@ import {
   companyListQuerySchema,
   companyListResponseSchema,
   companyMetricsSchema,
+  companyRequestListResponseSchema,
   companySchema,
   createCompanyRequestSchema,
+  reviewCompanyRequestResponseSchema,
+  reviewCompanyRequestSchema,
   type Company,
   type CompanyListResponse,
-  type CompanyMetrics
+  type CompanyMetrics,
+  type CompanyRequestListResponse,
+  type ReviewCompanyRequestInput
 } from "@minerales/contracts";
 import type { RequestFormState } from "../models/directory.types";
 
@@ -16,7 +21,9 @@ const DIRECTORY_API_ERRORS = {
   FETCH_COMPANIES_FAILED: "FETCH_COMPANIES_FAILED",
   FETCH_COMPANY_DETAILS_FAILED: "FETCH_COMPANY_DETAILS_FAILED",
   FETCH_COMPANY_METRICS_FAILED: "FETCH_COMPANY_METRICS_FAILED",
-  SUBMIT_COMPANY_REQUEST_FAILED: "SUBMIT_COMPANY_REQUEST_FAILED"
+  FETCH_COMPANY_REQUESTS_FAILED: "FETCH_COMPANY_REQUESTS_FAILED",
+  SUBMIT_COMPANY_REQUEST_FAILED: "SUBMIT_COMPANY_REQUEST_FAILED",
+  REVIEW_COMPANY_REQUEST_FAILED: "REVIEW_COMPANY_REQUEST_FAILED"
 } as const;
 
 /**
@@ -101,4 +108,39 @@ export async function submitCompanyRequest(formState: RequestFormState): Promise
   if (!response.ok) {
     throw new Error(DIRECTORY_API_ERRORS.SUBMIT_COMPANY_REQUEST_FAILED);
   }
+}
+
+/**
+ * Fetches company publication requests for internal operations.
+ */
+export async function fetchCompanyRequests(): Promise<CompanyRequestListResponse> {
+  const response = await fetch(new URL("/company-requests", API_BASE_URL));
+  if (!response.ok) {
+    throw new Error(DIRECTORY_API_ERRORS.FETCH_COMPANY_REQUESTS_FAILED);
+  }
+
+  const payload = await response.json();
+  return companyRequestListResponseSchema.parse(payload);
+}
+
+/**
+ * Reviews one company request.
+ */
+export async function reviewCompanyRequest(requestId: string, payload: unknown): Promise<void> {
+  const parsedPayload = reviewCompanyRequestSchema.parse(payload);
+
+  const response = await fetch(new URL(`/company-requests/${requestId}/review`, API_BASE_URL), {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(parsedPayload satisfies ReviewCompanyRequestInput)
+  });
+
+  if (!response.ok) {
+    throw new Error(DIRECTORY_API_ERRORS.REVIEW_COMPANY_REQUEST_FAILED);
+  }
+
+  const responsePayload = await response.json();
+  reviewCompanyRequestResponseSchema.parse(responsePayload);
 }
