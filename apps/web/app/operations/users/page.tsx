@@ -11,12 +11,10 @@ import {
 } from "@/modules/directory/services/directory-api.service";
 import {
   directoryTranslations,
-  type SupportedLocale
 } from "@/modules/i18n/directory-translations";
 import { OperationsShell } from "@/modules/operations/operations-shell";
+import { useOperationsSession } from "@/modules/operations/use-operations-session";
 import styles from "./page.module.css";
-
-const OPERATIONS_LOCALE_STORAGE_KEY = "mc.operations.locale";
 
 type UserDraft = {
   roles: UserRole[];
@@ -26,9 +24,8 @@ type UserDraft = {
 const ROLE_OPTIONS: UserRole[] = [UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole.COMPANY_USER];
 
 export default function OperationsUsersPage() {
-  const [locale, setLocale] = useState<SupportedLocale>("en");
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const { locale, setLocale, isAuthenticated, currentUser, handleAuthChange } =
+    useOperationsSession();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [userDrafts, setUserDrafts] = useState<Record<string, UserDraft>>({});
   const [loadingUsers, setLoadingUsers] = useState<boolean>(false);
@@ -52,17 +49,6 @@ export default function OperationsUsersPage() {
   const canManageUsers = currentUser?.roles.includes(UserRole.SUPER_ADMIN) ?? false;
   const canViewUsers =
     canManageUsers || (currentUser?.roles.includes(UserRole.STAFF) ?? false);
-
-  useEffect(() => {
-    const storedLocale = window.localStorage.getItem(OPERATIONS_LOCALE_STORAGE_KEY);
-    if (storedLocale === "en" || storedLocale === "es") {
-      setLocale(storedLocale);
-    }
-  }, []);
-
-  useEffect(() => {
-    window.localStorage.setItem(OPERATIONS_LOCALE_STORAGE_KEY, locale);
-  }, [locale]);
 
   const loadUsers = async () => {
     setLoadingUsers(true);
@@ -200,10 +186,9 @@ export default function OperationsUsersPage() {
         <OperationsShell
           locale={locale}
           setLocale={setLocale}
-          onAuthChange={({ isAuthenticated: shellAuthenticated, currentUser: shellUser }) => {
-            setIsAuthenticated(shellAuthenticated);
-            setCurrentUser(shellUser);
-            if (!shellAuthenticated) {
+          onAuthChange={(authState) => {
+            handleAuthChange(authState);
+            if (!authState.isAuthenticated) {
               setUsers([]);
               setUserDrafts({});
             }

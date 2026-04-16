@@ -10,9 +10,9 @@ import {
 } from "@/modules/directory/services/directory-api.service";
 import {
   directoryTranslations,
-  type SupportedLocale
 } from "@/modules/i18n/directory-translations";
 import { OperationsShell } from "@/modules/operations/operations-shell";
+import { useOperationsSession } from "@/modules/operations/use-operations-session";
 import styles from "./page.module.css";
 
 type RequestReviewDraft = {
@@ -24,8 +24,6 @@ type RejectConfirmationState = {
   requestId: string;
   reviewNotes: string;
 };
-
-const OPERATIONS_LOCALE_STORAGE_KEY = "mc.operations.locale";
 
 function getEditableStatus(
   status: CompanyRequest["status"]
@@ -54,7 +52,7 @@ export default function OperationsRequestsPage() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [locale, setLocale] = useState<SupportedLocale>("en");
+  const { locale, setLocale, isAuthenticated, handleAuthChange } = useOperationsSession();
   const [statusFilter, setStatusFilter] = useState<CompanyRequest["status"] | "all">("all");
   const [createdAtOrder, setCreatedAtOrder] = useState<"newest" | "oldest">("newest");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -64,7 +62,6 @@ export default function OperationsRequestsPage() {
   const [pageSize] = useState<number>(8);
   const [requests, setRequests] = useState<CompanyRequest[]>([]);
   const [reviewDrafts, setReviewDrafts] = useState<Record<string, RequestReviewDraft>>({});
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [exporting, setExporting] = useState<boolean>(false);
   const [applyingRequestId, setApplyingRequestId] = useState<string | null>(null);
@@ -72,17 +69,6 @@ export default function OperationsRequestsPage() {
   const [filtersHydrated, setFiltersHydrated] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<{ isError: boolean; message: string } | null>(null);
   const t = directoryTranslations[locale];
-
-  useEffect(() => {
-    const storedLocale = window.localStorage.getItem(OPERATIONS_LOCALE_STORAGE_KEY);
-    if (storedLocale === "en" || storedLocale === "es") {
-      setLocale(storedLocale);
-    }
-  }, []);
-
-  useEffect(() => {
-    window.localStorage.setItem(OPERATIONS_LOCALE_STORAGE_KEY, locale);
-  }, [locale]);
 
   const statusLabels = useMemo(
     () => ({
@@ -297,9 +283,7 @@ export default function OperationsRequestsPage() {
         <OperationsShell
           locale={locale}
           setLocale={setLocale}
-          onAuthChange={({ isAuthenticated: shellAuthenticated }) => {
-            setIsAuthenticated(shellAuthenticated);
-          }}
+          onAuthChange={handleAuthChange}
         >
           {() => null}
         </OperationsShell>
