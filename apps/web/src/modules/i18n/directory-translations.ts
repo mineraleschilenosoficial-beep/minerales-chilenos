@@ -64,6 +64,7 @@ type DirectoryTranslation = {
   operationsDashboardCategoryBreakdown: string;
   operationsDashboardOpenRequestAction: string;
   operationsDashboardWhatsAppAction: string;
+  operationsDashboardWhatsAppTemplate: string;
   operationsCompaniesTitle: string;
   operationsCompaniesSubtitle: string;
   operationsCompaniesCreateAction: string;
@@ -223,6 +224,8 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsDashboardCategoryBreakdown: "Companies by category",
     operationsDashboardOpenRequestAction: "Open request",
     operationsDashboardWhatsAppAction: "WhatsApp",
+    operationsDashboardWhatsAppTemplate:
+      "Hello, reaching out about {name}'s request on MineralesChilenos.",
     operationsCompaniesTitle: "Company Management",
     operationsCompaniesSubtitle: "Create, edit and remove published companies.",
     operationsCompaniesCreateAction: "Create company",
@@ -394,6 +397,8 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsDashboardCategoryBreakdown: "Empresas por categoria",
     operationsDashboardOpenRequestAction: "Abrir solicitud",
     operationsDashboardWhatsAppAction: "WhatsApp",
+    operationsDashboardWhatsAppTemplate:
+      "Hola, contacto por la solicitud de {name} en MineralesChilenos.",
     operationsCompaniesTitle: "Gestion de Empresas",
     operationsCompaniesSubtitle: "Crea, edita y elimina empresas publicadas.",
     operationsCompaniesCreateAction: "Crear empresa",

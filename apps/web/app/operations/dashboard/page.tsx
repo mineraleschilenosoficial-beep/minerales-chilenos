@@ -36,10 +36,7 @@ export default function OperationsDashboardPage() {
 
   const toWhatsAppLink = (phone: string, companyName: string): string => {
     const digits = phone.replace(/\D/g, "");
-    const message =
-      locale === "es"
-        ? `Hola, contacto por la solicitud de ${companyName} en MineralesChilenos.`
-        : `Hello, reaching out about ${companyName}'s request on MineralesChilenos.`;
+    const message = t.operationsDashboardWhatsAppTemplate.replace("{name}", companyName);
     return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
   };
 
