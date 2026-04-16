@@ -47,6 +47,9 @@ const DIRECTORY_API_ERRORS = {
 } as const;
 
 const AUTH_TOKEN_STORAGE_KEY = "mc.auth.token";
+const AUTH_ERRORS = {
+  SESSION_INVALID: "SESSION_INVALID"
+} as const;
 
 function resolveCsvFilename(
   contentDispositionHeader: string | null,
@@ -177,12 +180,7 @@ export async function fetchCompanyRequests(params?: {
   url.searchParams.set("page", String(parsedQuery.page));
   url.searchParams.set("pageSize", String(parsedQuery.pageSize));
 
-  const response = await fetch(url, {
-    headers: getAuthHeaders()
-  });
-  if (!response.ok) {
-    throw new Error(DIRECTORY_API_ERRORS.FETCH_COMPANY_REQUESTS_FAILED);
-  }
+  const response = await fetchWithAuth(url, undefined, DIRECTORY_API_ERRORS.FETCH_COMPANY_REQUESTS_FAILED);
 
   const payload = await response.json();
   return companyRequestListResponseSchema.parse(payload);
@@ -211,12 +209,11 @@ export async function downloadCompanyRequestsCsv(params?: {
   }
   url.searchParams.set("createdAtOrder", parsedQuery.createdAtOrder);
 
-  const response = await fetch(url, {
-    headers: getAuthHeaders()
-  });
-  if (!response.ok) {
-    throw new Error(DIRECTORY_API_ERRORS.EXPORT_COMPANY_REQUESTS_FAILED);
-  }
+  const response = await fetchWithAuth(
+    url,
+    undefined,
+    DIRECTORY_API_ERRORS.EXPORT_COMPANY_REQUESTS_FAILED
+  );
 
   const csvContent = await response.text();
   const contentDisposition = response.headers.get("Content-Disposition");
@@ -238,18 +235,17 @@ export async function downloadCompanyRequestsCsv(params?: {
 export async function reviewCompanyRequest(requestId: string, payload: unknown): Promise<void> {
   const parsedPayload = reviewCompanyRequestSchema.parse(payload);
 
-  const response = await fetch(new URL(`/company-requests/${requestId}/review`, API_BASE_URL), {
-    method: "PATCH",
-    headers: {
-      ...getAuthHeaders(),
-      "Content-Type": "application/json"
+  const response = await fetchWithAuth(
+    new URL(`/company-requests/${requestId}/review`, API_BASE_URL),
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(parsedPayload satisfies ReviewCompanyRequestInput)
     },
-    body: JSON.stringify(parsedPayload satisfies ReviewCompanyRequestInput)
-  });
-
-  if (!response.ok) {
-    throw new Error(DIRECTORY_API_ERRORS.REVIEW_COMPANY_REQUEST_FAILED);
-  }
+    DIRECTORY_API_ERRORS.REVIEW_COMPANY_REQUEST_FAILED
+  );
 
   const responsePayload = await response.json();
   reviewCompanyRequestResponseSchema.parse(responsePayload);
@@ -283,12 +279,7 @@ export async function loginOperator(email: string, password: string): Promise<Us
  * Fetches current operator profile from active JWT session.
  */
 export async function fetchCurrentOperator(): Promise<UserProfile> {
-  const response = await fetch(new URL("/auth/me", API_BASE_URL), {
-    headers: getAuthHeaders()
-  });
-  if (!response.ok) {
-    throw new Error("SESSION_INVALID");
-  }
+  const response = await fetchWithAuth(new URL("/auth/me", API_BASE_URL), undefined, "FETCH_ME_FAILED");
 
   return userProfileSchema.parse(await response.json());
 }
@@ -297,12 +288,11 @@ export async function fetchCurrentOperator(): Promise<UserProfile> {
  * Retrieves admin user list.
  */
 export async function fetchAdminUsers(): Promise<{ total: number; items: UserProfile[] }> {
-  const response = await fetch(new URL("/admin/users", API_BASE_URL), {
-    headers: getAuthHeaders()
-  });
-  if (!response.ok) {
-    throw new Error("FETCH_ADMIN_USERS_FAILED");
-  }
+  const response = await fetchWithAuth(
+    new URL("/admin/users", API_BASE_URL),
+    undefined,
+    "FETCH_ADMIN_USERS_FAILED"
+  );
 
   return userListResponseSchema.parse(await response.json());
 }
@@ -312,17 +302,17 @@ export async function fetchAdminUsers(): Promise<{ total: number; items: UserPro
  */
 export async function createAdminUser(payload: unknown): Promise<UserProfile> {
   const parsedPayload = adminCreateUserSchema.parse(payload);
-  const response = await fetch(new URL("/admin/users", API_BASE_URL), {
-    method: "POST",
-    headers: {
-      ...getAuthHeaders(),
-      "Content-Type": "application/json"
+  const response = await fetchWithAuth(
+    new URL("/admin/users", API_BASE_URL),
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(parsedPayload)
     },
-    body: JSON.stringify(parsedPayload)
-  });
-  if (!response.ok) {
-    throw new Error("CREATE_ADMIN_USER_FAILED");
-  }
+    "CREATE_ADMIN_USER_FAILED"
+  );
 
   return userProfileSchema.parse(await response.json());
 }
@@ -332,17 +322,17 @@ export async function createAdminUser(payload: unknown): Promise<UserProfile> {
  */
 export async function updateAdminUserRoles(userId: string, payload: unknown): Promise<UserProfile> {
   const parsedPayload = adminUpdateUserRolesSchema.parse(payload);
-  const response = await fetch(new URL(`/admin/users/${userId}/roles`, API_BASE_URL), {
-    method: "PATCH",
-    headers: {
-      ...getAuthHeaders(),
-      "Content-Type": "application/json"
+  const response = await fetchWithAuth(
+    new URL(`/admin/users/${userId}/roles`, API_BASE_URL),
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(parsedPayload)
     },
-    body: JSON.stringify(parsedPayload)
-  });
-  if (!response.ok) {
-    throw new Error("UPDATE_ADMIN_USER_ROLES_FAILED");
-  }
+    "UPDATE_ADMIN_USER_ROLES_FAILED"
+  );
 
   return userProfileSchema.parse(await response.json());
 }
@@ -352,17 +342,17 @@ export async function updateAdminUserRoles(userId: string, payload: unknown): Pr
  */
 export async function updateAdminUserActive(userId: string, payload: unknown): Promise<UserProfile> {
   const parsedPayload = adminUpdateUserActiveSchema.parse(payload);
-  const response = await fetch(new URL(`/admin/users/${userId}/active`, API_BASE_URL), {
-    method: "PATCH",
-    headers: {
-      ...getAuthHeaders(),
-      "Content-Type": "application/json"
+  const response = await fetchWithAuth(
+    new URL(`/admin/users/${userId}/active`, API_BASE_URL),
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(parsedPayload)
     },
-    body: JSON.stringify(parsedPayload)
-  });
-  if (!response.ok) {
-    throw new Error("UPDATE_ADMIN_USER_ACTIVE_FAILED");
-  }
+    "UPDATE_ADMIN_USER_ACTIVE_FAILED"
+  );
 
   return userProfileSchema.parse(await response.json());
 }
@@ -409,10 +399,7 @@ export async function fetchAdminCompanies(params?: {
   url.searchParams.set("page", String(parsedQuery.page));
   url.searchParams.set("pageSize", String(parsedQuery.pageSize));
 
-  const response = await fetch(url, { headers: getAuthHeaders() });
-  if (!response.ok) {
-    throw new Error("FETCH_ADMIN_COMPANIES_FAILED");
-  }
+  const response = await fetchWithAuth(url, undefined, "FETCH_ADMIN_COMPANIES_FAILED");
 
   return adminCompanyListResponseSchema.parse(await response.json());
 }
@@ -422,17 +409,17 @@ export async function fetchAdminCompanies(params?: {
  */
 export async function createAdminCompany(payload: unknown): Promise<Company> {
   const parsedPayload = adminCreateCompanySchema.parse(payload);
-  const response = await fetch(new URL("/companies/admin/companies", API_BASE_URL), {
-    method: "POST",
-    headers: {
-      ...getAuthHeaders(),
-      "Content-Type": "application/json"
+  const response = await fetchWithAuth(
+    new URL("/companies/admin/companies", API_BASE_URL),
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(parsedPayload)
     },
-    body: JSON.stringify(parsedPayload)
-  });
-  if (!response.ok) {
-    throw new Error("CREATE_ADMIN_COMPANY_FAILED");
-  }
+    "CREATE_ADMIN_COMPANY_FAILED"
+  );
   return companySchema.parse(await response.json());
 }
 
@@ -441,17 +428,17 @@ export async function createAdminCompany(payload: unknown): Promise<Company> {
  */
 export async function updateAdminCompany(companyId: string, payload: unknown): Promise<Company> {
   const parsedPayload = updateCompanySchema.parse(payload);
-  const response = await fetch(new URL(`/companies/admin/companies/${companyId}`, API_BASE_URL), {
-    method: "PATCH",
-    headers: {
-      ...getAuthHeaders(),
-      "Content-Type": "application/json"
+  const response = await fetchWithAuth(
+    new URL(`/companies/admin/companies/${companyId}`, API_BASE_URL),
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(parsedPayload)
     },
-    body: JSON.stringify(parsedPayload)
-  });
-  if (!response.ok) {
-    throw new Error("UPDATE_ADMIN_COMPANY_FAILED");
-  }
+    "UPDATE_ADMIN_COMPANY_FAILED"
+  );
   return companySchema.parse(await response.json());
 }
 
@@ -459,25 +446,24 @@ export async function updateAdminCompany(companyId: string, payload: unknown): P
  * Deletes one company from admin panel.
  */
 export async function deleteAdminCompany(companyId: string): Promise<void> {
-  const response = await fetch(new URL(`/companies/admin/companies/${companyId}`, API_BASE_URL), {
-    method: "DELETE",
-    headers: getAuthHeaders()
-  });
-  if (!response.ok) {
-    throw new Error("DELETE_ADMIN_COMPANY_FAILED");
-  }
+  await fetchWithAuth(
+    new URL(`/companies/admin/companies/${companyId}`, API_BASE_URL),
+    {
+      method: "DELETE"
+    },
+    "DELETE_ADMIN_COMPANY_FAILED"
+  );
 }
 
 /**
  * Retrieves dashboard counters and recent requests for admin panel.
  */
 export async function fetchAdminDashboard(): Promise<AdminDashboardSummary> {
-  const response = await fetch(new URL("/companies/admin/dashboard", API_BASE_URL), {
-    headers: getAuthHeaders()
-  });
-  if (!response.ok) {
-    throw new Error("FETCH_ADMIN_DASHBOARD_FAILED");
-  }
+  const response = await fetchWithAuth(
+    new URL("/companies/admin/dashboard", API_BASE_URL),
+    undefined,
+    "FETCH_ADMIN_DASHBOARD_FAILED"
+  );
   return adminDashboardSummarySchema.parse(await response.json());
 }
 
@@ -485,12 +471,11 @@ export async function fetchAdminDashboard(): Promise<AdminDashboardSummary> {
  * Retrieves plan/revenue summary for admin panel.
  */
 export async function fetchAdminPlansSummary(): Promise<AdminPlansSummary> {
-  const response = await fetch(new URL("/companies/admin/plans/summary", API_BASE_URL), {
-    headers: getAuthHeaders()
-  });
-  if (!response.ok) {
-    throw new Error("FETCH_ADMIN_PLANS_FAILED");
-  }
+  const response = await fetchWithAuth(
+    new URL("/companies/admin/plans/summary", API_BASE_URL),
+    undefined,
+    "FETCH_ADMIN_PLANS_FAILED"
+  );
   return adminPlansSummarySchema.parse(await response.json());
 }
 
@@ -525,4 +510,28 @@ function getAuthHeaders(): Record<string, string> {
   return {
     Authorization: `Bearer ${token}`
   };
+}
+
+async function fetchWithAuth(
+  input: URL | string,
+  init: RequestInit | undefined,
+  fallbackErrorCode: string
+): Promise<Response> {
+  const response = await fetch(input, {
+    ...init,
+    headers: {
+      ...getAuthHeaders(),
+      ...(init?.headers ?? {})
+    }
+  });
+
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      logoutOperator();
+      throw new Error(AUTH_ERRORS.SESSION_INVALID);
+    }
+    throw new Error(fallbackErrorCode);
+  }
+
+  return response;
 }
