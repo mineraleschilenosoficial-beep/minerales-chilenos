@@ -88,7 +88,9 @@ export const createCompanyRequestSchema = z.object({
  */
 export const reviewCompanyRequestSchema = z.object({
   status: z.enum(["under_review", "approved", "rejected"]),
-  reviewNotes: z.string().max(2000).optional()
+  reviewNotes: z.string().max(2000).optional(),
+  regionCode: z.string().trim().toUpperCase().min(2).max(16).optional(),
+  communeId: z.string().min(1).max(64).optional()
 });
 
 /**

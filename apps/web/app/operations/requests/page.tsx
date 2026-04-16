@@ -18,11 +18,15 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   reviewCompanyRequestSchema,
   type CompanyRequest,
+  type LocationCommune,
+  type LocationRegion,
   type ReviewCompanyRequestInput
 } from "@minerales/contracts";
 import { UserRole } from "@minerales/types";
 import {
   downloadCompanyRequestsCsv,
+  fetchLocationCommunes,
+  fetchLocationRegions,
   fetchCompanyRequests,
   reviewCompanyRequest
 } from "@/modules/directory/services/directory-api.service";
@@ -38,6 +42,8 @@ import { useOperationsSession } from "@/modules/operations/use-operations-sessio
 type RequestReviewDraft = {
   status: ReviewCompanyRequestInput["status"];
   reviewNotes: string;
+  regionCode: string;
+  communeId: string;
 };
 
 type RejectConfirmationState = {
@@ -83,6 +89,8 @@ export default function OperationsRequestsPage() {
   const [pageSize] = useState<number>(8);
   const [requests, setRequests] = useState<CompanyRequest[]>([]);
   const [reviewDrafts, setReviewDrafts] = useState<Record<string, RequestReviewDraft>>({});
+  const [regions, setRegions] = useState<LocationRegion[]>([]);
+  const [communesByRegion, setCommunesByRegion] = useState<Record<string, LocationCommune[]>>({});
   const [reviewNoteErrors, setReviewNoteErrors] = useState<Record<string, string | undefined>>({});
   const [loading, setLoading] = useState<boolean>(false);
   const [exporting, setExporting] = useState<boolean>(false);
@@ -100,6 +108,32 @@ export default function OperationsRequestsPage() {
     { value: "approved", label: t.operationsStatusOptionApproved },
     { value: "rejected", label: t.operationsStatusOptionRejected }
   ];
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const regionPayload = await fetchLocationRegions("CL");
+        setRegions(regionPayload.items);
+      } catch {
+        setRegions([]);
+      }
+    })();
+  }, []);
+
+  const ensureCommunesForRegion = useCallback(async (regionCode: string) => {
+    if (!regionCode) {
+      return;
+    }
+    if (communesByRegion[regionCode]) {
+      return;
+    }
+    try {
+      const communesPayload = await fetchLocationCommunes(regionCode);
+      setCommunesByRegion((current) => ({ ...current, [regionCode]: communesPayload.items }));
+    } catch {
+      setCommunesByRegion((current) => ({ ...current, [regionCode]: [] }));
+    }
+  }, [communesByRegion]);
 
   const statusLabels = useMemo(
     () => ({
@@ -236,7 +270,9 @@ export default function OperationsRequestsPage() {
           const existing = currentDrafts[request.id];
           nextDrafts[request.id] = existing ?? {
             status: getEditableStatus(request.status),
-            reviewNotes: request.reviewNotes ?? ""
+            reviewNotes: request.reviewNotes ?? "",
+            regionCode: "",
+            communeId: ""
           };
         }
 
@@ -294,7 +330,9 @@ export default function OperationsRequestsPage() {
   const executeReview = async (
     requestId: string,
     status: ReviewCompanyRequestInput["status"],
-    reviewNotes: string
+    reviewNotes: string,
+    regionCode?: string,
+    communeId?: string
   ) => {
     if (!canOperateRequests) {
       return;
@@ -307,7 +345,9 @@ export default function OperationsRequestsPage() {
 
     const parsedReviewPayload = reviewCompanyRequestSchema.safeParse({
       status,
-      reviewNotes: reviewNotes.trim() || undefined
+      reviewNotes: reviewNotes.trim() || undefined,
+      regionCode: regionCode?.trim() || undefined,
+      communeId: communeId?.trim() || undefined
     });
     if (!parsedReviewPayload.success) {
       const maxLengthError = parsedReviewPayload.error.issues.find(
@@ -328,7 +368,9 @@ export default function OperationsRequestsPage() {
     try {
       await reviewCompanyRequest(requestId, {
         status,
-        reviewNotes: reviewNotes.trim() || undefined
+        reviewNotes: reviewNotes.trim() || undefined,
+        regionCode: regionCode?.trim() || undefined,
+        communeId: communeId?.trim() || undefined
       });
       setSuccessFeedback(t.operationsSuccessFeedback);
       await loadRequests();
@@ -345,7 +387,7 @@ export default function OperationsRequestsPage() {
       return;
     }
 
-    await executeReview(requestId, draft.status, draft.reviewNotes);
+    await executeReview(requestId, draft.status, draft.reviewNotes, draft.regionCode, draft.communeId);
   };
 
   const handleConfirmReject = async () => {
@@ -465,7 +507,9 @@ export default function OperationsRequestsPage() {
             ? requests.map((request) => {
                 const draft = reviewDrafts[request.id] ?? {
                   status: getEditableStatus(request.status),
-                  reviewNotes: request.reviewNotes ?? ""
+                  reviewNotes: request.reviewNotes ?? "",
+                  regionCode: "",
+                  communeId: ""
                 };
                 const isApplying = applyingRequestId === request.id;
 
@@ -536,6 +580,53 @@ export default function OperationsRequestsPage() {
                         label={t.operationsNotesLabel}
                         error={reviewNoteErrors[request.id]}
                       />
+                      <Group grow align="end">
+                        <Select
+                          value={draft.regionCode}
+                          onChange={(value) => {
+                            const nextRegionCode = value ?? "";
+                            setReviewDrafts((currentDrafts) => ({
+                              ...currentDrafts,
+                              [request.id]: {
+                                ...draft,
+                                regionCode: nextRegionCode,
+                                communeId: ""
+                              }
+                            }));
+                            if (nextRegionCode.length > 0) {
+                              void ensureCommunesForRegion(nextRegionCode);
+                            }
+                          }}
+                          data={[
+                            { value: "", label: t.formRegionSelectPlaceholder },
+                            ...regions.map((region) => ({ value: region.code, label: region.name }))
+                          ]}
+                          label={t.formRegionLabel}
+                          allowDeselect={false}
+                        />
+                        <Select
+                          value={draft.communeId}
+                          onChange={(value) =>
+                            setReviewDrafts((currentDrafts) => ({
+                              ...currentDrafts,
+                              [request.id]: {
+                                ...draft,
+                                communeId: value ?? ""
+                              }
+                            }))
+                          }
+                          data={[
+                            { value: "", label: t.formCommuneSelectPlaceholder },
+                            ...(communesByRegion[draft.regionCode] ?? []).map((commune) => ({
+                              value: commune.id,
+                              label: commune.name
+                            }))
+                          ]}
+                          label={t.formCityLabel}
+                          disabled={!draft.regionCode}
+                          allowDeselect={false}
+                        />
+                      </Group>
                       <Stack gap={4}>
                         <Text size="xs" c="dimmed">
                           {t.operationsLatestReviewNotesLabel}
@@ -560,7 +651,15 @@ export default function OperationsRequestsPage() {
                         variant="default"
                         size="xs"
                         disabled={isApplying}
-                        onClick={() => void executeReview(request.id, "approved", draft.reviewNotes)}
+                        onClick={() =>
+                          void executeReview(
+                            request.id,
+                            "approved",
+                            draft.reviewNotes,
+                            draft.regionCode,
+                            draft.communeId
+                          )
+                        }
                       >
                         {t.operationsStatusOptionApproved}
                       </Button>

@@ -253,7 +253,7 @@ export class CompanyRequestsService {
     }
 
     if (parsedPayload.status === "approved") {
-      const company = await this.upsertCompanyFromRequest(existingRequest);
+      const company = await this.upsertCompanyFromRequest(existingRequest, parsedPayload);
       await this.prisma.companyRequest.update({
         where: { id: requestId },
         data: {
@@ -321,18 +321,10 @@ export class CompanyRequestsService {
     cityText: string;
     requestedPlanId: string;
     categories: Array<{ category: { id: string } }>;
-  }) {
+  }, reviewPayload: ReviewCompanyRequestInput) {
     const companySlug = this.toSlug(request.companyName);
-
     const [commune, existingCompany] = await Promise.all([
-      this.prisma.commune.findFirst({
-        where: {
-          name: {
-            equals: request.cityText,
-            mode: "insensitive"
-          }
-        }
-      }),
+      this.resolveApprovalCommune(request.cityText, reviewPayload),
       this.prisma.company.findUnique({
         where: { slug: companySlug }
       })
@@ -457,6 +449,53 @@ export class CompanyRequestsService {
     }
 
     return persistedCompany;
+  }
+
+  private async resolveApprovalCommune(
+    cityText: string,
+    reviewPayload: ReviewCompanyRequestInput
+  ) {
+    if (reviewPayload.communeId) {
+      const commune = await this.prisma.commune.findUnique({
+        where: { id: reviewPayload.communeId },
+        include: { region: true }
+      });
+      if (!commune) {
+        throw new BadRequestException("Selected commune does not exist");
+      }
+      if (reviewPayload.regionCode && commune.region.code !== reviewPayload.regionCode) {
+        throw new BadRequestException("Selected commune does not belong to selected region");
+      }
+      return commune;
+    }
+
+    if (reviewPayload.regionCode) {
+      const communeInRegion = await this.prisma.commune.findFirst({
+        where: {
+          name: {
+            equals: cityText,
+            mode: "insensitive"
+          },
+          region: {
+            code: reviewPayload.regionCode
+          }
+        },
+        include: { region: true }
+      });
+      if (communeInRegion) {
+        return communeInRegion;
+      }
+    }
+
+    return this.prisma.commune.findFirst({
+      where: {
+        name: {
+          equals: cityText,
+          mode: "insensitive"
+        }
+      },
+      include: { region: true }
+    });
   }
 
   private toSlug(value: string): string {
