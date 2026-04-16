@@ -62,3 +62,17 @@
   padding: 8px 6px;
   font-size: 13px;
 }
+
+.actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.actionLink {
+  border: 1px solid var(--mc-color-accent-border);
+  color: var(--mc-color-accent);
+  text-decoration: none;
+  padding: 4px 8px;
+  font-size: 12px;
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { UserRole } from "@minerales/types";
 import { fetchAdminDashboard } from "@/modules/directory/services/directory-api.service";
 import { directoryTranslations } from "@/modules/i18n/directory-translations";
@@ -16,6 +17,15 @@ export default function OperationsDashboardPage() {
   const [data, setData] = useState<Awaited<ReturnType<typeof fetchAdminDashboard>> | null>(null);
   const { feedback, clearFeedback, setErrorFeedback } = useOperationFeedback();
   const t = directoryTranslations[locale];
+
+  const toWhatsAppLink = (phone: string, companyName: string): string => {
+    const digits = phone.replace(/\D/g, "");
+    const message =
+      locale === "es"
+        ? `Hola, contacto por la solicitud de ${companyName} en MineralesChilenos.`
+        : `Hello, reaching out about ${companyName}'s request on MineralesChilenos.`;
+    return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+  };
 
   const canViewDashboard =
     currentUser?.roles.includes(UserRole.SUPER_ADMIN) || currentUser?.roles.includes(UserRole.STAFF);
@@ -81,6 +91,7 @@ export default function OperationsDashboardPage() {
                     <th>{t.operationsUsersTableName}</th>
                     <th>{t.operationsUsersTableEmail}</th>
                     <th>{t.operationsStatusLabel}</th>
+                    <th>{t.operationsApplyAction}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -89,6 +100,24 @@ export default function OperationsDashboardPage() {
                       <td>{request.name}</td>
                       <td>{request.email}</td>
                       <td>{request.status}</td>
+                      <td>
+                        <div className={styles.actions}>
+                          <Link
+                            href={`/operations/requests?search=${encodeURIComponent(request.name)}`}
+                            className={styles.actionLink}
+                          >
+                            {t.operationsDashboardOpenRequestAction}
+                          </Link>
+                          <a
+                            href={toWhatsAppLink(request.phone, request.name)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className={styles.actionLink}
+                          >
+                            {t.operationsDashboardWhatsAppAction}
+                          </a>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

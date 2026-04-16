@@ -61,6 +61,8 @@ type DirectoryTranslation = {
   operationsDashboardStandardCompanies: string;
   operationsDashboardRecentRequests: string;
   operationsDashboardCategoryBreakdown: string;
+  operationsDashboardOpenRequestAction: string;
+  operationsDashboardWhatsAppAction: string;
   operationsCompaniesTitle: string;
   operationsCompaniesSubtitle: string;
   operationsCompaniesCreateAction: string;
@@ -214,6 +216,8 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsDashboardStandardCompanies: "Standard companies",
     operationsDashboardRecentRequests: "Recent requests",
     operationsDashboardCategoryBreakdown: "Companies by category",
+    operationsDashboardOpenRequestAction: "Open request",
+    operationsDashboardWhatsAppAction: "WhatsApp",
     operationsCompaniesTitle: "Company Management",
     operationsCompaniesSubtitle: "Create, edit and remove published companies.",
     operationsCompaniesCreateAction: "Create company",
@@ -379,6 +383,8 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsDashboardStandardCompanies: "Empresas estandar",
     operationsDashboardRecentRequests: "Solicitudes recientes",
     operationsDashboardCategoryBreakdown: "Empresas por categoria",
+    operationsDashboardOpenRequestAction: "Abrir solicitud",
+    operationsDashboardWhatsAppAction: "WhatsApp",
     operationsCompaniesTitle: "Gestion de Empresas",
     operationsCompaniesSubtitle: "Crea, edita y elimina empresas publicadas.",
     operationsCompaniesCreateAction: "Crear empresa",
