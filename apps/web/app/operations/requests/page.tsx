@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { CompanyRequest, ReviewCompanyRequestInput } from "@minerales/contracts";
 import {
   downloadCompanyRequestsCsv,
@@ -47,6 +48,9 @@ function getStatusBadgeClass(status: CompanyRequest["status"]): string {
 }
 
 export default function OperationsRequestsPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [locale, setLocale] = useState<SupportedLocale>("en");
   const [statusFilter, setStatusFilter] = useState<CompanyRequest["status"] | "all">("all");
   const [createdAtOrder, setCreatedAtOrder] = useState<"newest" | "oldest">("newest");
@@ -61,6 +65,7 @@ export default function OperationsRequestsPage() {
   const [exporting, setExporting] = useState<boolean>(false);
   const [applyingRequestId, setApplyingRequestId] = useState<string | null>(null);
   const [rejectConfirmation, setRejectConfirmation] = useState<RejectConfirmationState | null>(null);
+  const [filtersHydrated, setFiltersHydrated] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<{ isError: boolean; message: string } | null>(null);
   const t = directoryTranslations[locale];
 
@@ -74,7 +79,69 @@ export default function OperationsRequestsPage() {
     [t]
   );
 
+  useEffect(() => {
+    const statusParam = searchParams.get("status");
+    const orderParam = searchParams.get("createdAtOrder");
+    const searchParam = searchParams.get("search");
+    const pageParam = searchParams.get("page");
+
+    if (
+      statusParam === "pending" ||
+      statusParam === "under_review" ||
+      statusParam === "approved" ||
+      statusParam === "rejected" ||
+      statusParam === "all"
+    ) {
+      setStatusFilter(statusParam);
+    }
+
+    if (orderParam === "newest" || orderParam === "oldest") {
+      setCreatedAtOrder(orderParam);
+    }
+
+    if (searchParam) {
+      setSearchQuery(searchParam);
+    }
+
+    if (pageParam) {
+      const parsedPage = Number.parseInt(pageParam, 10);
+      if (!Number.isNaN(parsedPage) && parsedPage > 0) {
+        setCurrentPage(parsedPage);
+      }
+    }
+
+    setFiltersHydrated(true);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!filtersHydrated) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams();
+    if (statusFilter !== "all") {
+      nextParams.set("status", statusFilter);
+    }
+    if (createdAtOrder !== "newest") {
+      nextParams.set("createdAtOrder", createdAtOrder);
+    }
+    if (searchQuery.trim().length > 0) {
+      nextParams.set("search", searchQuery.trim());
+    }
+    if (currentPage > 1) {
+      nextParams.set("page", String(currentPage));
+    }
+
+    const nextQuery = nextParams.toString();
+    const targetUrl = nextQuery.length > 0 ? `${pathname}?${nextQuery}` : pathname;
+    router.replace(targetUrl, { scroll: false });
+  }, [createdAtOrder, currentPage, filtersHydrated, pathname, router, searchQuery, statusFilter]);
+
   const loadRequests = useCallback(async () => {
+    if (!filtersHydrated) {
+      return;
+    }
+
     setLoading(true);
     try {
       const payload = await fetchCompanyRequests({
@@ -107,7 +174,15 @@ export default function OperationsRequestsPage() {
     } finally {
       setLoading(false);
     }
-  }, [createdAtOrder, currentPage, pageSize, searchQuery, statusFilter, t.operationsErrorFeedback]);
+  }, [
+    createdAtOrder,
+    currentPage,
+    filtersHydrated,
+    pageSize,
+    searchQuery,
+    statusFilter,
+    t.operationsErrorFeedback
+  ]);
 
   useEffect(() => {
     void loadRequests();
