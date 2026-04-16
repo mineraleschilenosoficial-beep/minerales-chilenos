@@ -1,4 +1,16 @@
-import { Body, Controller, Get, Header, HttpCode, Param, Patch, Post, Query, Res } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Header,
+  Headers,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Res
+} from "@nestjs/common";
 import {
   companyRequestExportQuerySchema,
   companyRequestListQuerySchema,
@@ -6,6 +18,7 @@ import {
   createCompanyRequestResponseSchema,
   reviewCompanyRequestResponseSchema
 } from "@minerales/contracts";
+import { gzipSync } from "node:zlib";
 import { CompanyRequestsService } from "./company-requests.service";
 
 @Controller("company-requests")
@@ -44,6 +57,7 @@ export class CompanyRequestsController {
   async exportRequestsCsv(
     @Res({ passthrough: true })
     response: { setHeader: (name: string, value: string) => void },
+    @Headers("accept-encoding") acceptEncoding?: string,
     @Query("status") status?: string,
     @Query("search") search?: string,
     @Query("createdAtOrder") createdAtOrder?: string
@@ -54,13 +68,21 @@ export class CompanyRequestsController {
       createdAtOrder
     });
 
+    const csvContent = await this.companyRequestsService.exportRequestsCsv(parsedQuery);
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     response.setHeader(
       "Content-Disposition",
       `attachment; filename="company-requests-${timestamp}.csv"`
     );
+    response.setHeader("Vary", "Accept-Encoding");
 
-    return await this.companyRequestsService.exportRequestsCsv(parsedQuery);
+    const supportsGzip = (acceptEncoding ?? "").toLowerCase().includes("gzip");
+    if (supportsGzip) {
+      response.setHeader("Content-Encoding", "gzip");
+      return gzipSync(csvContent);
+    }
+
+    return csvContent;
   }
 
   @Patch(":id/review")
