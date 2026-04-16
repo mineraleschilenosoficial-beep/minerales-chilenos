@@ -6,10 +6,6 @@ import { UserRole } from "@minerales/types";
 import {
   createAdminUser,
   fetchAdminUsers,
-  fetchCurrentOperator,
-  hasOperatorSession,
-  loginOperator,
-  logoutOperator,
   updateAdminUserActive,
   updateAdminUserRoles
 } from "@/modules/directory/services/directory-api.service";
@@ -17,6 +13,7 @@ import {
   directoryTranslations,
   type SupportedLocale
 } from "@/modules/i18n/directory-translations";
+import { OperationsShell } from "@/modules/operations/operations-shell";
 import styles from "./page.module.css";
 
 const OPERATIONS_LOCALE_STORAGE_KEY = "mc.operations.locale";
@@ -30,9 +27,6 @@ const ROLE_OPTIONS: UserRole[] = [UserRole.SUPER_ADMIN, UserRole.STAFF, UserRole
 
 export default function OperationsUsersPage() {
   const [locale, setLocale] = useState<SupportedLocale>("en");
-  const [authEmail, setAuthEmail] = useState<string>("");
-  const [authPassword, setAuthPassword] = useState<string>("");
-  const [authLoading, setAuthLoading] = useState<boolean>(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -92,54 +86,12 @@ export default function OperationsUsersPage() {
     }
   };
 
-  const loadCurrentUser = async () => {
-    try {
-      const me = await fetchCurrentOperator();
-      setCurrentUser(me);
-      setIsAuthenticated(true);
-    } catch {
-      logoutOperator();
-      setCurrentUser(null);
-      setIsAuthenticated(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!hasOperatorSession()) {
-      return;
-    }
-    void loadCurrentUser();
-  }, []);
-
   useEffect(() => {
     if (!isAuthenticated) {
       return;
     }
     void loadUsers();
   }, [isAuthenticated]);
-
-  const handleLogin = async () => {
-    setAuthLoading(true);
-    setFeedback(null);
-    try {
-      await loginOperator(authEmail, authPassword);
-      await loadCurrentUser();
-      setAuthPassword("");
-    } catch {
-      setFeedback({ isError: true, message: t.operationsAuthLoginError });
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleLogout = () => {
-    logoutOperator();
-    setIsAuthenticated(false);
-    setCurrentUser(null);
-    setUsers([]);
-    setUserDrafts({});
-    setFeedback(null);
-  };
 
   const toggleCreateRole = (role: UserRole) => {
     setCreateRoles((currentRoles) => {
@@ -242,68 +194,28 @@ export default function OperationsUsersPage() {
             <h1 className={styles.title}>{t.operationsUsersTitle}</h1>
             <p className={styles.subtitle}>{t.operationsUsersSubtitle}</p>
           </div>
-          <div className={styles.toolbar}>
-            <button
-              type="button"
-              className={styles.buttonSecondary}
-              onClick={() => setLocale("en")}
-              disabled={locale === "en"}
-            >
-              {t.localeEnglish}
-            </button>
-            <button
-              type="button"
-              className={styles.buttonSecondary}
-              onClick={() => setLocale("es")}
-              disabled={locale === "es"}
-            >
-              {t.localeSpanish}
-            </button>
-            <button type="button" className={styles.buttonSecondary} onClick={handleLogout}>
-              {t.operationsAuthLogoutAction}
-            </button>
-          </div>
+          <div />
         </div>
+
+        <OperationsShell
+          locale={locale}
+          setLocale={setLocale}
+          onAuthChange={({ isAuthenticated: shellAuthenticated, currentUser: shellUser }) => {
+            setIsAuthenticated(shellAuthenticated);
+            setCurrentUser(shellUser);
+            if (!shellAuthenticated) {
+              setUsers([]);
+              setUserDrafts({});
+            }
+          }}
+        >
+          {() => null}
+        </OperationsShell>
 
         {feedback ? (
           <p className={`${styles.feedback} ${feedback.isError ? styles.feedbackError : styles.feedbackSuccess}`}>
             {feedback.message}
           </p>
-        ) : null}
-
-        {!isAuthenticated ? (
-          <div className={styles.panel}>
-            <h2 className={styles.title}>{t.operationsAuthTitle}</h2>
-            <p className={styles.subtitle}>{t.operationsAuthSubtitle}</p>
-            <label className={styles.label} htmlFor="auth-email">
-              {t.operationsAuthEmailLabel}
-            </label>
-            <input
-              id="auth-email"
-              type="email"
-              className={styles.input}
-              value={authEmail}
-              onChange={(event) => setAuthEmail(event.target.value)}
-            />
-            <label className={styles.label} htmlFor="auth-password">
-              {t.operationsAuthPasswordLabel}
-            </label>
-            <input
-              id="auth-password"
-              type="password"
-              className={styles.input}
-              value={authPassword}
-              onChange={(event) => setAuthPassword(event.target.value)}
-            />
-            <button
-              type="button"
-              className={styles.button}
-              disabled={authLoading}
-              onClick={() => void handleLogin()}
-            >
-              {authLoading ? t.operationsApplyingAction : t.operationsAuthLoginAction}
-            </button>
-          </div>
         ) : null}
 
         {isAuthenticated && !canViewUsers ? (

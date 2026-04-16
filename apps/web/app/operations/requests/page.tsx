@@ -6,15 +6,13 @@ import type { CompanyRequest, ReviewCompanyRequestInput } from "@minerales/contr
 import {
   downloadCompanyRequestsCsv,
   fetchCompanyRequests,
-  hasOperatorSession,
-  loginOperator,
-  logoutOperator,
   reviewCompanyRequest
 } from "@/modules/directory/services/directory-api.service";
 import {
   directoryTranslations,
   type SupportedLocale
 } from "@/modules/i18n/directory-translations";
+import { OperationsShell } from "@/modules/operations/operations-shell";
 import styles from "./page.module.css";
 
 type RequestReviewDraft = {
@@ -66,10 +64,7 @@ export default function OperationsRequestsPage() {
   const [pageSize] = useState<number>(8);
   const [requests, setRequests] = useState<CompanyRequest[]>([]);
   const [reviewDrafts, setReviewDrafts] = useState<Record<string, RequestReviewDraft>>({});
-  const [authEmail, setAuthEmail] = useState<string>("");
-  const [authPassword, setAuthPassword] = useState<string>("");
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [authLoading, setAuthLoading] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [exporting, setExporting] = useState<boolean>(false);
   const [applyingRequestId, setApplyingRequestId] = useState<string | null>(null);
@@ -88,10 +83,6 @@ export default function OperationsRequestsPage() {
   useEffect(() => {
     window.localStorage.setItem(OPERATIONS_LOCALE_STORAGE_KEY, locale);
   }, [locale]);
-
-  useEffect(() => {
-    setIsAuthenticated(hasOperatorSession());
-  }, []);
 
   const statusLabels = useMemo(
     () => ({
@@ -212,29 +203,6 @@ export default function OperationsRequestsPage() {
     t.operationsErrorFeedback
   ]);
 
-  const handleLogin = async () => {
-    setAuthLoading(true);
-    setFeedback(null);
-    try {
-      await loginOperator(authEmail, authPassword);
-      setIsAuthenticated(true);
-      setAuthPassword("");
-      setFeedback(null);
-    } catch {
-      setFeedback({ isError: true, message: t.operationsAuthLoginError });
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleLogout = () => {
-    logoutOperator();
-    setIsAuthenticated(false);
-    setRequests([]);
-    setTotalPages(0);
-    setTotalResults(0);
-    setFeedback(null);
-  };
 
   useEffect(() => {
     void loadRequests();
@@ -323,28 +291,23 @@ export default function OperationsRequestsPage() {
             <h1 className={styles.title}>{t.operationsTitle}</h1>
             <p className={styles.subtitle}>{t.operationsSubtitle}</p>
           </div>
+          <div />
+        </div>
+
+        <OperationsShell
+          locale={locale}
+          setLocale={setLocale}
+          onAuthChange={({ isAuthenticated: shellAuthenticated }) => {
+            setIsAuthenticated(shellAuthenticated);
+          }}
+        >
+          {() => null}
+        </OperationsShell>
+
+        {isAuthenticated ? (
           <div className={styles.toolbar}>
-            <button
-              type="button"
-              className={styles.buttonSecondary}
-              onClick={() => setLocale("en")}
-              disabled={locale === "en"}
-            >
-              {t.localeEnglish}
-            </button>
-            <button
-              type="button"
-              className={styles.buttonSecondary}
-              onClick={() => setLocale("es")}
-              disabled={locale === "es"}
-            >
-              {t.localeSpanish}
-            </button>
             <button type="button" className={styles.button} onClick={() => void loadRequests()}>
               {t.operationsRefresh}
-            </button>
-            <button type="button" className={styles.buttonSecondary} onClick={handleLogout}>
-              {t.operationsAuthLogoutAction}
             </button>
             <button
               type="button"
@@ -391,47 +354,12 @@ export default function OperationsRequestsPage() {
               <option value="oldest">{t.operationsSortOldest}</option>
             </select>
           </div>
-        </div>
+        ) : null}
 
         {feedback ? (
           <p className={`${styles.feedback} ${feedback.isError ? styles.feedbackError : styles.feedbackSuccess}`}>
             {feedback.message}
           </p>
-        ) : null}
-
-        {!isAuthenticated ? (
-          <div className={styles.requestCard}>
-            <h2 className={styles.requestTitle}>{t.operationsAuthTitle}</h2>
-            <p className={styles.subtitle}>{t.operationsAuthSubtitle}</p>
-            <label className={styles.label} htmlFor="auth-email">
-              {t.operationsAuthEmailLabel}
-            </label>
-            <input
-              id="auth-email"
-              type="email"
-              className={styles.select}
-              value={authEmail}
-              onChange={(event) => setAuthEmail(event.target.value)}
-            />
-            <label className={styles.label} htmlFor="auth-password">
-              {t.operationsAuthPasswordLabel}
-            </label>
-            <input
-              id="auth-password"
-              type="password"
-              className={styles.select}
-              value={authPassword}
-              onChange={(event) => setAuthPassword(event.target.value)}
-            />
-            <button
-              type="button"
-              className={styles.button}
-              disabled={authLoading}
-              onClick={() => void handleLogin()}
-            >
-              {authLoading ? t.operationsApplyingAction : t.operationsAuthLoginAction}
-            </button>
-          </div>
         ) : null}
 
         {isAuthenticated ? <div className={styles.requests}>

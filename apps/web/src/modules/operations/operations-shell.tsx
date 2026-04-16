@@ -1,0 +1,146 @@
+"use client";
+
+import { useEffect, useState, type ReactNode } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import type { UserProfile } from "@minerales/contracts";
+import {
+  fetchCurrentOperator,
+  hasOperatorSession,
+  loginOperator,
+  logoutOperator
+} from "@/modules/directory/services/directory-api.service";
+import { directoryTranslations, type SupportedLocale } from "@/modules/i18n/directory-translations";
+import styles from "./operations-shell.module.css";
+
+type OperationsShellRenderProps = {
+  locale: SupportedLocale;
+  isAuthenticated: boolean;
+  currentUser: UserProfile | null;
+};
+
+type OperationsShellProps = {
+  locale: SupportedLocale;
+  setLocale: (nextLocale: SupportedLocale) => void;
+  onAuthChange?: (authState: { isAuthenticated: boolean; currentUser: UserProfile | null }) => void;
+  children: (props: OperationsShellRenderProps) => ReactNode;
+};
+
+/**
+ * Shared shell for operations views with common auth and navigation.
+ */
+export function OperationsShell({ locale, setLocale, onAuthChange, children }: OperationsShellProps) {
+  const pathname = usePathname();
+  const [authEmail, setAuthEmail] = useState<string>("");
+  const [authPassword, setAuthPassword] = useState<string>("");
+  const [authLoading, setAuthLoading] = useState<boolean>(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(hasOperatorSession());
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [authError, setAuthError] = useState<boolean>(false);
+  const t = directoryTranslations[locale];
+
+  useEffect(() => {
+    onAuthChange?.({ isAuthenticated, currentUser });
+  }, [currentUser, isAuthenticated, onAuthChange]);
+
+  useEffect(() => {
+    if (!hasOperatorSession()) {
+      return;
+    }
+
+    void (async () => {
+      try {
+        const me = await fetchCurrentOperator();
+        setCurrentUser(me);
+        setIsAuthenticated(true);
+      } catch {
+        logoutOperator();
+        setCurrentUser(null);
+        setIsAuthenticated(false);
+      }
+    })();
+  }, []);
+
+  const handleLogin = async () => {
+    setAuthLoading(true);
+    setAuthError(false);
+    try {
+      await loginOperator(authEmail, authPassword);
+      const me = await fetchCurrentOperator();
+      setCurrentUser(me);
+      setIsAuthenticated(true);
+      setAuthPassword("");
+    } catch {
+      setAuthError(true);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    logoutOperator();
+    setCurrentUser(null);
+    setIsAuthenticated(false);
+  };
+
+  return (
+    <>
+      <div className={styles.nav}>
+        <button type="button" onClick={() => setLocale("en")} disabled={locale === "en"}>
+          {t.localeEnglish}
+        </button>
+        <button type="button" onClick={() => setLocale("es")} disabled={locale === "es"}>
+          {t.localeSpanish}
+        </button>
+        <Link
+          href="/operations/requests"
+          className={`${styles.link} ${pathname === "/operations/requests" ? styles.linkActive : ""}`}
+        >
+          {t.operationsTitle}
+        </Link>
+        <Link
+          href="/operations/users"
+          className={`${styles.link} ${pathname === "/operations/users" ? styles.linkActive : ""}`}
+        >
+          {t.operationsUsersTitle}
+        </Link>
+        {isAuthenticated ? (
+          <button type="button" onClick={handleLogout}>
+            {t.operationsAuthLogoutAction}
+          </button>
+        ) : null}
+      </div>
+
+      {!isAuthenticated ? (
+        <div className={styles.authCard}>
+          <h3>{t.operationsAuthTitle}</h3>
+          <p>{t.operationsAuthSubtitle}</p>
+          <label htmlFor="ops-auth-email">{t.operationsAuthEmailLabel}</label>
+          <input
+            id="ops-auth-email"
+            type="email"
+            value={authEmail}
+            onChange={(event) => setAuthEmail(event.target.value)}
+          />
+          <label htmlFor="ops-auth-password">{t.operationsAuthPasswordLabel}</label>
+          <input
+            id="ops-auth-password"
+            type="password"
+            value={authPassword}
+            onChange={(event) => setAuthPassword(event.target.value)}
+          />
+          <button type="button" disabled={authLoading} onClick={() => void handleLogin()}>
+            {authLoading ? t.operationsApplyingAction : t.operationsAuthLoginAction}
+          </button>
+          {authError ? <div>{t.operationsAuthLoginError}</div> : null}
+        </div>
+      ) : null}
+
+      {children({
+        locale,
+        isAuthenticated,
+        currentUser
+      })}
+    </>
+  );
+}
