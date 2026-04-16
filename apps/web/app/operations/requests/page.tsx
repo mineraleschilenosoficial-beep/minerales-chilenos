@@ -14,6 +14,11 @@ type RequestReviewDraft = {
   reviewNotes: string;
 };
 
+type RejectConfirmationState = {
+  requestId: string;
+  reviewNotes: string;
+};
+
 function getEditableStatus(
   status: CompanyRequest["status"]
 ): ReviewCompanyRequestInput["status"] {
@@ -48,6 +53,7 @@ export default function OperationsRequestsPage() {
   const [reviewDrafts, setReviewDrafts] = useState<Record<string, RequestReviewDraft>>({});
   const [loading, setLoading] = useState<boolean>(false);
   const [applyingRequestId, setApplyingRequestId] = useState<string | null>(null);
+  const [rejectConfirmation, setRejectConfirmation] = useState<RejectConfirmationState | null>(null);
   const [feedback, setFeedback] = useState<{ isError: boolean; message: string } | null>(null);
   const t = directoryTranslations[locale];
 
@@ -134,6 +140,15 @@ export default function OperationsRequestsPage() {
     }
 
     await executeReview(requestId, draft.status, draft.reviewNotes);
+  };
+
+  const handleConfirmReject = async () => {
+    if (!rejectConfirmation) {
+      return;
+    }
+
+    await executeReview(rejectConfirmation.requestId, "rejected", rejectConfirmation.reviewNotes);
+    setRejectConfirmation(null);
   };
 
   return (
@@ -286,7 +301,12 @@ export default function OperationsRequestsPage() {
                         type="button"
                         className={styles.buttonSecondary}
                         disabled={isApplying}
-                        onClick={() => void executeReview(request.id, "rejected", draft.reviewNotes)}
+                        onClick={() =>
+                          setRejectConfirmation({
+                            requestId: request.id,
+                            reviewNotes: draft.reviewNotes
+                          })
+                        }
                       >
                         {t.operationsStatusOptionRejected}
                       </button>
@@ -327,6 +347,26 @@ export default function OperationsRequestsPage() {
           </button>
         </div>
       </div>
+      {rejectConfirmation ? (
+        <div className={styles.modalBackdrop} onClick={() => setRejectConfirmation(null)}>
+          <div className={styles.modal} onClick={(event) => event.stopPropagation()}>
+            <h3 className={styles.modalTitle}>{t.operationsRejectConfirmTitle}</h3>
+            <p className={styles.modalMessage}>{t.operationsRejectConfirmMessage}</p>
+            <div className={styles.quickActions}>
+              <button
+                type="button"
+                className={styles.buttonSecondary}
+                onClick={() => setRejectConfirmation(null)}
+              >
+                {t.operationsRejectCancelAction}
+              </button>
+              <button type="button" className={styles.button} onClick={() => void handleConfirmReject()}>
+                {t.operationsRejectConfirmAction}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

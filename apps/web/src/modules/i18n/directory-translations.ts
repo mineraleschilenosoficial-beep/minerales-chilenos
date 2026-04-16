@@ -45,6 +45,10 @@ type DirectoryTranslation = {
   operationsStatusOptionUnderReview: string;
   operationsStatusOptionApproved: string;
   operationsStatusOptionRejected: string;
+  operationsRejectConfirmTitle: string;
+  operationsRejectConfirmMessage: string;
+  operationsRejectConfirmAction: string;
+  operationsRejectCancelAction: string;
   directoryTitle: string;
   searchPlaceholder: string;
   allCategoriesOption: string;
@@ -118,6 +122,11 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsStatusOptionUnderReview: "Mark as under review",
     operationsStatusOptionApproved: "Approve and publish",
     operationsStatusOptionRejected: "Reject",
+    operationsRejectConfirmTitle: "Confirm rejection",
+    operationsRejectConfirmMessage:
+      "This request will be marked as rejected. You can include notes for traceability.",
+    operationsRejectConfirmAction: "Confirm reject",
+    operationsRejectCancelAction: "Cancel",
     directoryTitle: "Supplier Directory",
     searchPlaceholder: "Search by company, city, or tagline",
     allCategoriesOption: "All categories",
@@ -202,6 +211,11 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsStatusOptionUnderReview: "Marcar en revision",
     operationsStatusOptionApproved: "Aprobar y publicar",
     operationsStatusOptionRejected: "Rechazar",
+    operationsRejectConfirmTitle: "Confirmar rechazo",
+    operationsRejectConfirmMessage:
+      "Esta solicitud quedara marcada como rechazada. Puedes incluir notas para trazabilidad.",
+    operationsRejectConfirmAction: "Confirmar rechazo",
+    operationsRejectCancelAction: "Cancelar",
     directoryTitle: "Directorio de Proveedores",
     searchPlaceholder: "Buscar por empresa, ciudad o descripcion",
     allCategoriesOption: "Todas las categorias",

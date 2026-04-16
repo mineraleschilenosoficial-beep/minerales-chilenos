@@ -153,3 +153,31 @@
 .feedbackError {
   color: var(--mc-color-danger);
 }
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: var(--mc-color-overlay);
+}
+
+.modal {
+  width: min(520px, 100%);
+  background: var(--mc-color-surface-1);
+  border: 1px solid var(--mc-color-accent-border);
+  padding: 18px;
+  display: grid;
+  gap: 10px;
+}
+
+.modalTitle {
+  margin: 0;
+  font-size: 20px;
+}
+
+.modalMessage {
+  margin: 0;
+  color: var(--mc-color-text-secondary);
+}
