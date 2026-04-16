@@ -66,20 +66,28 @@ export default function OperationsDashboardPage() {
           <>
             <div className={styles.grid}>
               <div className={styles.card}>
-                <div className={styles.cardLabel}>{t.operationsDashboardActiveCompanies}</div>
-                <div className={styles.cardValue}>{data.activeCompanies}</div>
+                <Link href="/operations/companies?status=active" className={styles.cardLink}>
+                  <div className={styles.cardLabel}>{t.operationsDashboardActiveCompanies}</div>
+                  <div className={styles.cardValue}>{data.activeCompanies}</div>
+                </Link>
               </div>
               <div className={styles.card}>
-                <div className={styles.cardLabel}>{t.operationsDashboardPendingRequests}</div>
-                <div className={styles.cardValue}>{data.pendingRequests}</div>
+                <Link href="/operations/requests?status=pending" className={styles.cardLink}>
+                  <div className={styles.cardLabel}>{t.operationsDashboardPendingRequests}</div>
+                  <div className={styles.cardValue}>{data.pendingRequests}</div>
+                </Link>
               </div>
               <div className={styles.card}>
-                <div className={styles.cardLabel}>{t.operationsDashboardPremiumCompanies}</div>
-                <div className={styles.cardValue}>{data.premiumCompanies}</div>
+                <Link href="/operations/companies?plan=premium" className={styles.cardLink}>
+                  <div className={styles.cardLabel}>{t.operationsDashboardPremiumCompanies}</div>
+                  <div className={styles.cardValue}>{data.premiumCompanies}</div>
+                </Link>
               </div>
               <div className={styles.card}>
-                <div className={styles.cardLabel}>{t.operationsDashboardStandardCompanies}</div>
-                <div className={styles.cardValue}>{data.standardCompanies}</div>
+                <Link href="/operations/companies?plan=standard" className={styles.cardLink}>
+                  <div className={styles.cardLabel}>{t.operationsDashboardStandardCompanies}</div>
+                  <div className={styles.cardValue}>{data.standardCompanies}</div>
+                </Link>
               </div>
             </div>
 

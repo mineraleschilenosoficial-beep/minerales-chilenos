@@ -33,6 +33,12 @@
   padding: 14px;
 }
 
+.cardLink {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
 .cardLabel {
   font-size: 12px;
   color: var(--mc-color-text-secondary);
