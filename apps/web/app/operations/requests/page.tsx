@@ -7,6 +7,8 @@ import {
   directoryTranslations,
   type SupportedLocale
 } from "@/modules/i18n/directory-translations";
+import { ThemeToggle } from "@/modules/theme/theme-toggle";
+import { useTheme } from "@/modules/theme/use-theme";
 import styles from "./page.module.css";
 
 type RequestReviewDraft = {
@@ -31,6 +33,7 @@ export default function OperationsRequestsPage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [applyingRequestId, setApplyingRequestId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ isError: boolean; message: string } | null>(null);
+  const { theme, setTheme } = useTheme();
   const t = directoryTranslations[locale];
 
   const statusLabels = useMemo(
@@ -119,6 +122,13 @@ export default function OperationsRequestsPage() {
             <button type="button" className={styles.button} onClick={() => void loadRequests()}>
               {t.operationsRefresh}
             </button>
+            <ThemeToggle
+              theme={theme}
+              onChange={setTheme}
+              label={t.themeSwitcherLabel}
+              lightLabel={t.themeLight}
+              darkLabel={t.themeDark}
+            />
           </div>
         </div>
 

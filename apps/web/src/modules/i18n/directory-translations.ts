@@ -6,6 +6,9 @@ type DirectoryTranslation = {
   localeSwitcherLabel: string;
   localeEnglish: string;
   localeSpanish: string;
+  themeSwitcherLabel: string;
+  themeLight: string;
+  themeDark: string;
   brandName: string;
   brandTagline: string;
   heroTitle: string;
@@ -69,6 +72,9 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     localeSwitcherLabel: "Language",
     localeEnglish: "EN",
     localeSpanish: "ES",
+    themeSwitcherLabel: "Theme",
+    themeLight: "Light",
+    themeDark: "Dark",
     brandName: "MineralesChilenos.cl",
     brandTagline: "B2B Mining Supplier Directory",
     heroTitle: "Find trusted mining suppliers in Chile.",
@@ -144,6 +150,9 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     localeSwitcherLabel: "Idioma",
     localeEnglish: "EN",
     localeSpanish: "ES",
+    themeSwitcherLabel: "Tema",
+    themeLight: "Claro",
+    themeDark: "Oscuro",
     brandName: "MineralesChilenos.cl",
     brandTagline: "Directorio B2B de Proveedores Mineros",
     heroTitle: "Encuentra proveedores mineros confiables en Chile.",

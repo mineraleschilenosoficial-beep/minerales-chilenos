@@ -17,6 +17,8 @@ import {
   fetchCompanyById,
   submitCompanyRequest
 } from "@/modules/directory/services/directory-api.service";
+import { ThemeToggle } from "@/modules/theme/theme-toggle";
+import { useTheme } from "@/modules/theme/use-theme";
 import styles from "./page.module.css";
 
 export default function HomePage() {
@@ -36,6 +38,7 @@ export default function HomePage() {
   const [feedbackMessage, setFeedbackMessage] = useState<string>("");
   const [feedbackIsError, setFeedbackIsError] = useState<boolean>(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const { theme, setTheme } = useTheme();
   const t = directoryTranslations[locale];
 
   useEffect(() => {
@@ -169,6 +172,13 @@ export default function HomePage() {
               {t.localeSpanish}
             </button>
           </div>
+          <ThemeToggle
+            theme={theme}
+            onChange={setTheme}
+            label={t.themeSwitcherLabel}
+            lightLabel={t.themeLight}
+            darkLabel={t.themeDark}
+          />
         </div>
       </header>
 
