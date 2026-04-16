@@ -1,0 +1,61 @@
+:root {
+  --mc-font-family: Inter, system-ui, -apple-system, sans-serif;
+
+  --mc-color-bg: #f6f7f9;
+  --mc-color-surface-1: #ffffff;
+  --mc-color-surface-2: #f2f4f7;
+  --mc-color-surface-3: #e8ecf2;
+
+  --mc-color-text-primary: #17191d;
+  --mc-color-text-secondary: #596273;
+  --mc-color-text-muted: #7b8392;
+
+  --mc-color-accent: #b58921;
+  --mc-color-accent-weak: rgba(181, 137, 33, 0.24);
+  --mc-color-accent-border: rgba(181, 137, 33, 0.3);
+  --mc-color-accent-contrast: #0f1215;
+
+  --mc-color-border-soft: rgba(15, 18, 21, 0.12);
+  --mc-color-overlay: rgba(0, 0, 0, 0.55);
+
+  --mc-color-success: #1f9f55;
+  --mc-color-danger: #c93838;
+}
+
+[data-theme="dark"] {
+  --mc-color-bg: #0c0e10;
+  --mc-color-surface-1: #15191d;
+  --mc-color-surface-2: #101317;
+  --mc-color-surface-3: #0f1215;
+
+  --mc-color-text-primary: #e8e6e0;
+  --mc-color-text-secondary: #b5b1a7;
+  --mc-color-text-muted: #9f9a90;
+
+  --mc-color-accent: #c9a84c;
+  --mc-color-accent-weak: rgba(201, 168, 76, 0.22);
+  --mc-color-accent-border: rgba(201, 168, 76, 0.28);
+  --mc-color-accent-contrast: #101114;
+
+  --mc-color-border-soft: rgba(255, 255, 255, 0.06);
+  --mc-color-overlay: rgba(0, 0, 0, 0.7);
+
+  --mc-color-success: #87d79d;
+  --mc-color-danger: #ff8e8e;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background: var(--mc-color-bg);
+  color: var(--mc-color-text-primary);
+  font-family: var(--mc-font-family);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}

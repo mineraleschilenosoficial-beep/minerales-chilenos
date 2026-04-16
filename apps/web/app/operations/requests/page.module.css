@@ -1,0 +1,113 @@
+.page {
+  min-height: 100vh;
+  background: var(--mc-color-bg);
+  color: var(--mc-color-text-primary);
+  font-family: var(--mc-font-family);
+}
+
+.container {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 24px 20px 40px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.title {
+  margin: 0;
+  font-size: 28px;
+}
+
+.subtitle {
+  margin: 6px 0 0;
+  color: var(--mc-color-text-secondary);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.button {
+  border: 1px solid var(--mc-color-accent);
+  background: var(--mc-color-accent);
+  color: var(--mc-color-accent-contrast);
+  padding: 8px 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.buttonSecondary {
+  border: 1px solid var(--mc-color-accent-border);
+  background: transparent;
+  color: var(--mc-color-accent);
+  padding: 8px 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.button:disabled,
+.buttonSecondary:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.requests {
+  display: grid;
+  gap: 10px;
+}
+
+.requestCard {
+  background: var(--mc-color-surface-1);
+  border: 1px solid var(--mc-color-accent-weak);
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.requestTitle {
+  margin: 0;
+  font-size: 18px;
+}
+
+.requestMeta {
+  color: var(--mc-color-text-muted);
+  font-size: 13px;
+  display: grid;
+  gap: 4px;
+}
+
+.label {
+  color: var(--mc-color-text-secondary);
+  font-size: 12px;
+}
+
+.select,
+.textarea {
+  width: 100%;
+  background: var(--mc-color-surface-3);
+  border: 1px solid var(--mc-color-accent-weak);
+  color: var(--mc-color-text-primary);
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.feedback {
+  font-size: 13px;
+}
+
+.feedbackSuccess {
+  color: var(--mc-color-success);
+}
+
+.feedbackError {
+  color: var(--mc-color-danger);
+}
