@@ -14,7 +14,7 @@ import {
   Textarea,
   Title
 } from "@mantine/core";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { CompanyRequest, ReviewCompanyRequestInput } from "@minerales/contracts";
 import { UserRole } from "@minerales/types";
@@ -85,6 +85,7 @@ export default function OperationsRequestsPage() {
   const [applyingRequestId, setApplyingRequestId] = useState<string | null>(null);
   const [rejectConfirmation, setRejectConfirmation] = useState<RejectConfirmationState | null>(null);
   const [filtersHydrated, setFiltersHydrated] = useState<boolean>(false);
+  const hasFilterResetInitialized = useRef<boolean>(false);
   const { feedback, clearFeedback, setErrorFeedback, setSuccessFeedback } = useOperationFeedback();
   const t = directoryTranslations[locale];
   const canOperateRequests =
@@ -240,8 +241,15 @@ export default function OperationsRequestsPage() {
   }, [loadRequests]);
 
   useEffect(() => {
+    if (!filtersHydrated) {
+      return;
+    }
+    if (!hasFilterResetInitialized.current) {
+      hasFilterResetInitialized.current = true;
+      return;
+    }
     setCurrentPage(1);
-  }, [searchQuery, statusFilter, createdAtOrder]);
+  }, [createdAtOrder, filtersHydrated, searchQuery, statusFilter]);
 
   const dateFormatter = useMemo(
     () =>
