@@ -17,6 +17,8 @@ Objetivo: construir y mantener una app de produccion en monorepo con calidad emp
 - Si hay ambiguedad funcional, preguntar antes de implementar.
 - No inventar endpoints ni reglas de negocio; declarar supuestos.
 - No implementar panel admin si no existe backend funcional para soportarlo.
+- UI framework oficial para frontend: Mantine (componentes, layout y patrones de interaccion).
+- Para UI nueva o modificada, preferir componentes nativos de Mantine antes de crear soluciones custom con CSS manual.
 - Entregar un commit por cada cambio exitoso.
 - Antes de cerrar un commit, ejecutar pruebas y validaciones necesarias.
 
@@ -76,6 +78,7 @@ Reglas:
 - Priorizar una identidad visual propia y consistente con la marca.
 - Usar microcopys concretos (sin frases grandilocuentes ni relleno).
 - Cuidar jerarquia visual, espaciado, contraste y legibilidad en desktop/mobile.
+- Todas las vistas nuevas o modificadas deben ser responsive (mobile, tablet y desktop) con enfoque mobile-first.
 - Reducir elementos decorativos innecesarios; priorizar claridad y conversion.
 - Antes de cerrar cambios visuales, revisar coherencia de tono y UX en pantallas clave.
 
