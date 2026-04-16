@@ -81,10 +81,10 @@ export function OperationsShell({ locale, setLocale, onAuthChange }: OperationsS
         <Group justify="space-between" align="center" gap="sm" wrap="wrap">
           <div>
             <Text fw={700} size="sm">
-              MineralesChilenos Admin
+              {t.operationsAdminShellTitle}
             </Text>
             <Text size="xs" c="dimmed">
-              {isAuthenticated ? currentUser?.email : t.operationsAuthTitle}
+              {isAuthenticated ? currentUser?.email : t.operationsAdminShellSubtitle}
             </Text>
           </div>
           <Group gap="xs" wrap="wrap" className="ops-toolbar">

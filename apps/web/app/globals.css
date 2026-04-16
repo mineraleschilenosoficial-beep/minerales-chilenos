@@ -91,6 +91,22 @@ h3 {
   background: color-mix(in srgb, var(--mc-color-surface-1) 84%, transparent) !important;
   border: 1px solid var(--mc-color-accent-weak) !important;
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mc-color-accent-weak) 45%, transparent);
+  position: relative;
+}
+
+.ops-panel::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--mc-color-accent) 65%, transparent) 52%,
+    transparent 100%
+  );
 }
 
 .ops-kpi {

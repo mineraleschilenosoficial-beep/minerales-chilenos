@@ -91,6 +91,8 @@ type DirectoryTranslation = {
   operationsAuthLoginPageHint: string;
   operationsAuthGoToLogin: string;
   operationsAuthBackToDirectory: string;
+  operationsAdminShellTitle: string;
+  operationsAdminShellSubtitle: string;
   operationsNoAccess: string;
   operationsNavDashboard: string;
   operationsNavCompanies: string;
@@ -309,6 +311,8 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsAuthLoginPageHint: "Sign in from the dedicated admin access page.",
     operationsAuthGoToLogin: "Go to login",
     operationsAuthBackToDirectory: "Back to directory",
+    operationsAdminShellTitle: "MineralesChilenos Admin",
+    operationsAdminShellSubtitle: "Operations control panel",
     operationsNoAccess: "Your account does not have permission for this section.",
     operationsNavDashboard: "Dashboard",
     operationsNavCompanies: "Companies",
@@ -540,6 +544,8 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsAuthLoginPageHint: "Ingresa desde la pantalla dedicada de acceso admin.",
     operationsAuthGoToLogin: "Ir a login",
     operationsAuthBackToDirectory: "Volver al directorio",
+    operationsAdminShellTitle: "MineralesChilenos Admin",
+    operationsAdminShellSubtitle: "Panel de control operativo",
     operationsNoAccess: "Tu cuenta no tiene permisos para esta seccion.",
     operationsNavDashboard: "Dashboard",
     operationsNavCompanies: "Empresas",
