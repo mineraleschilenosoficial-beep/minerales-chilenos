@@ -1,5 +1,6 @@
-import { Body, Controller, Get, HttpCode, Param, Patch, Post } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query } from "@nestjs/common";
 import {
+  companyRequestListQuerySchema,
   companyRequestListResponseSchema,
   createCompanyRequestResponseSchema,
   reviewCompanyRequestResponseSchema
@@ -18,8 +19,12 @@ export class CompanyRequestsController {
   }
 
   @Get()
-  async listRequests() {
-    const response = await this.companyRequestsService.listRequests();
+  async listRequests(@Query("status") status?: string) {
+    const parsedQuery = companyRequestListQuerySchema.parse({
+      status: status ?? "all"
+    });
+
+    const response = await this.companyRequestsService.listRequests(parsedQuery);
     return companyRequestListResponseSchema.parse(response);
   }
 

@@ -1,7 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import {
+  companyRequestListQuerySchema,
   createCompanyRequestSchema,
   reviewCompanyRequestSchema,
+  type CompanyRequestListQuery,
   type ReviewCompanyRequestInput
 } from "@minerales/contracts";
 import { CompanyPlan } from "@minerales/types";
@@ -62,8 +64,16 @@ export class CompanyRequestsService {
   /**
    * Lists all submitted requests.
    */
-  async listRequests() {
+  async listRequests(query: CompanyRequestListQuery) {
+    const parsedQuery = companyRequestListQuerySchema.parse(query);
+
     const requests = await this.prisma.companyRequest.findMany({
+      where:
+        parsedQuery.status === "all"
+          ? undefined
+          : {
+              status: this.toPrismaStatusFilter(parsedQuery.status)
+            },
       include: {
         categories: {
           include: {
@@ -81,6 +91,21 @@ export class CompanyRequestsService {
       total: requests.length,
       items: requests.map((request: Awaited<typeof requests>[number]) => this.mapRequest(request))
     };
+  }
+
+  private toPrismaStatusFilter(
+    status: CompanyRequestListQuery["status"]
+  ): "PENDING" | "UNDER_REVIEW" | "APPROVED" | "REJECTED" {
+    switch (status) {
+      case "under_review":
+        return "UNDER_REVIEW";
+      case "approved":
+        return "APPROVED";
+      case "rejected":
+        return "REJECTED";
+      default:
+        return "PENDING";
+    }
   }
 
   /**

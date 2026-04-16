@@ -100,6 +100,10 @@
   font: inherit;
 }
 
+.toolbarSelect {
+  width: 180px;
+}
+
 .feedback {
   font-size: 13px;
 }

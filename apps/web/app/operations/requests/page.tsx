@@ -26,6 +26,7 @@ function getEditableStatus(
 
 export default function OperationsRequestsPage() {
   const [locale, setLocale] = useState<SupportedLocale>("en");
+  const [statusFilter, setStatusFilter] = useState<CompanyRequest["status"] | "all">("all");
   const [requests, setRequests] = useState<CompanyRequest[]>([]);
   const [reviewDrafts, setReviewDrafts] = useState<Record<string, RequestReviewDraft>>({});
   const [loading, setLoading] = useState<boolean>(false);
@@ -46,7 +47,9 @@ export default function OperationsRequestsPage() {
   const loadRequests = useCallback(async () => {
     setLoading(true);
     try {
-      const payload = await fetchCompanyRequests();
+      const payload = await fetchCompanyRequests({
+        status: statusFilter
+      });
       setRequests(payload.items);
       setReviewDrafts((currentDrafts) => {
         const nextDrafts: Record<string, RequestReviewDraft> = {};
@@ -66,7 +69,7 @@ export default function OperationsRequestsPage() {
     } finally {
       setLoading(false);
     }
-  }, [t.operationsErrorFeedback]);
+  }, [statusFilter, t.operationsErrorFeedback]);
 
   useEffect(() => {
     void loadRequests();
@@ -119,6 +122,23 @@ export default function OperationsRequestsPage() {
             <button type="button" className={styles.button} onClick={() => void loadRequests()}>
               {t.operationsRefresh}
             </button>
+            <label className={styles.label} htmlFor="status-filter">
+              {t.operationsFilterStatusLabel}
+            </label>
+            <select
+              id="status-filter"
+              className={`${styles.select} ${styles.toolbarSelect}`}
+              value={statusFilter}
+              onChange={(event) =>
+                setStatusFilter(event.target.value as CompanyRequest["status"] | "all")
+              }
+            >
+              <option value="all">{t.operationsFilterStatusAll}</option>
+              <option value="pending">{t.operationsStatusPending}</option>
+              <option value="under_review">{t.operationsStatusUnderReview}</option>
+              <option value="approved">{t.operationsStatusApproved}</option>
+              <option value="rejected">{t.operationsStatusRejected}</option>
+            </select>
           </div>
         </div>
 

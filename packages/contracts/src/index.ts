@@ -102,6 +102,15 @@ export const companyRequestStatusSchema = z.enum([
 ]);
 
 /**
+ * Query schema for listing company requests.
+ */
+export const companyRequestListQuerySchema = z.object({
+  status: z
+    .union([z.literal("all"), companyRequestStatusSchema])
+    .default("all")
+});
+
+/**
  * Company request schema returned by API.
  */
 export const companyRequestSchema = z.object({
@@ -187,6 +196,11 @@ export type CompanyRequest = z.infer<typeof companyRequestSchema>;
  * Type-safe company request list response.
  */
 export type CompanyRequestListResponse = z.infer<typeof companyRequestListResponseSchema>;
+
+/**
+ * Type-safe company request list query payload.
+ */
+export type CompanyRequestListQuery = z.infer<typeof companyRequestListQuerySchema>;
 
 /**
  * Type-safe company model used by frontend and backend.

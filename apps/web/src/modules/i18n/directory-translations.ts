@@ -25,6 +25,8 @@ type DirectoryTranslation = {
   operationsTitle: string;
   operationsSubtitle: string;
   operationsRefresh: string;
+  operationsFilterStatusLabel: string;
+  operationsFilterStatusAll: string;
   operationsEmptyState: string;
   operationsStatusLabel: string;
   operationsNotesLabel: string;
@@ -92,6 +94,8 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsTitle: "Request Operations",
     operationsSubtitle: "Review and process supplier publication requests.",
     operationsRefresh: "Refresh",
+    operationsFilterStatusLabel: "Filter status",
+    operationsFilterStatusAll: "All statuses",
     operationsEmptyState: "No requests available.",
     operationsStatusLabel: "Current status",
     operationsNotesLabel: "Review notes",
@@ -170,6 +174,8 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsTitle: "Operacion de Solicitudes",
     operationsSubtitle: "Revisa y procesa solicitudes de publicacion de proveedores.",
     operationsRefresh: "Actualizar",
+    operationsFilterStatusLabel: "Filtrar estado",
+    operationsFilterStatusAll: "Todos los estados",
     operationsEmptyState: "No hay solicitudes disponibles.",
     operationsStatusLabel: "Estado actual",
     operationsNotesLabel: "Notas de revision",

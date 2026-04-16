@@ -2,6 +2,7 @@ import {
   companyListQuerySchema,
   companyListResponseSchema,
   companyMetricsSchema,
+  companyRequestListQuerySchema,
   companyRequestListResponseSchema,
   companySchema,
   createCompanyRequestSchema,
@@ -113,8 +114,18 @@ export async function submitCompanyRequest(formState: RequestFormState): Promise
 /**
  * Fetches company publication requests for internal operations.
  */
-export async function fetchCompanyRequests(): Promise<CompanyRequestListResponse> {
-  const response = await fetch(new URL("/company-requests", API_BASE_URL));
+export async function fetchCompanyRequests(params?: {
+  status?: "all" | "pending" | "under_review" | "approved" | "rejected";
+}): Promise<CompanyRequestListResponse> {
+  const parsedQuery = companyRequestListQuerySchema.parse({
+    status: params?.status ?? "all"
+  });
+  const url = new URL("/company-requests", API_BASE_URL);
+  if (parsedQuery.status !== "all") {
+    url.searchParams.set("status", parsedQuery.status);
+  }
+
+  const response = await fetch(url);
   if (!response.ok) {
     throw new Error(DIRECTORY_API_ERRORS.FETCH_COMPANY_REQUESTS_FAILED);
   }
