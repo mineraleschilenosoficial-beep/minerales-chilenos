@@ -173,6 +173,9 @@ type DirectoryTranslation = {
   operationsCreatedAtLabel: string;
   operationsLatestReviewNotesLabel: string;
   operationsNoReviewNotes: string;
+  operationsRequestedLocationLabel: string;
+  operationsNormalizedLocationLabel: string;
+  operationsNormalizedLocationPending: string;
   operationsRejectConfirmTitle: string;
   operationsRejectConfirmMessage: string;
   operationsRejectConfirmAction: string;
@@ -406,6 +409,9 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsCreatedAtLabel: "Created at",
     operationsLatestReviewNotesLabel: "Latest review notes",
     operationsNoReviewNotes: "No review notes yet.",
+    operationsRequestedLocationLabel: "Requested location",
+    operationsNormalizedLocationLabel: "Normalized location",
+    operationsNormalizedLocationPending: "Not selected yet.",
     operationsRejectConfirmTitle: "Confirm rejection",
     operationsRejectConfirmMessage:
       "This request will be marked as rejected. You can include notes for traceability.",
@@ -651,6 +657,9 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsCreatedAtLabel: "Creada el",
     operationsLatestReviewNotesLabel: "Ultimas notas de revision",
     operationsNoReviewNotes: "Sin notas de revision.",
+    operationsRequestedLocationLabel: "Ubicacion solicitada",
+    operationsNormalizedLocationLabel: "Ubicacion normalizada",
+    operationsNormalizedLocationPending: "Aun no seleccionada.",
     operationsRejectConfirmTitle: "Confirmar rechazo",
     operationsRejectConfirmMessage:
       "Esta solicitud quedara marcada como rechazada. Puedes incluir notas para trazabilidad.",

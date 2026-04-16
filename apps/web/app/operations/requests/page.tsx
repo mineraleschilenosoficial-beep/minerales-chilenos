@@ -512,6 +512,16 @@ export default function OperationsRequestsPage() {
                   communeId: ""
                 };
                 const isApplying = applyingRequestId === request.id;
+                const selectedRegionName =
+                  regions.find((region) => region.code === draft.regionCode)?.name ?? "";
+                const selectedCommuneName =
+                  (communesByRegion[draft.regionCode] ?? []).find(
+                    (commune) => commune.id === draft.communeId
+                  )?.name ?? "";
+                const normalizedLocationLabel =
+                  selectedRegionName && selectedCommuneName
+                    ? `${selectedCommuneName}, ${selectedRegionName}`
+                    : t.operationsNormalizedLocationPending;
 
                 return (
                   <Paper
@@ -535,7 +545,10 @@ export default function OperationsRequestsPage() {
                           {request.phone}
                         </Text>
                         <Text size="sm" c="dimmed">
-                        {request.city}, {request.region}
+                          {t.operationsRequestedLocationLabel}: {request.city}, {request.region}
+                        </Text>
+                        <Text size="sm" c="dimmed">
+                          {t.operationsNormalizedLocationLabel}: {normalizedLocationLabel}
                         </Text>
                         <Badge variant="light" color={getStatusBadgeColor(request.status)} w="fit-content">
                           {statusLabels[request.status]}
