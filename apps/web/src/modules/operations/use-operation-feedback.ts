@@ -8,7 +8,8 @@ export type OperationFeedback = {
 };
 
 /**
- * Shared feedback state helper for operations screens.
+ * @description Exposes operation feedback state and helper mutators.
+ * @returns Feedback state plus helper actions to clear, set success and set error messages.
  */
 export function useOperationFeedback() {
   const [feedback, setFeedback] = useState<OperationFeedback | null>(null);

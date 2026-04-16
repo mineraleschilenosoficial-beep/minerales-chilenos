@@ -7,7 +7,8 @@ import type { SupportedLocale } from "@/modules/i18n/directory-translations";
 const OPERATIONS_LOCALE_STORAGE_KEY = "mc.operations.locale";
 
 /**
- * Shared operations session state for locale and authenticated identity.
+ * @description Manages operations locale preference and shared authentication state snapshot.
+ * @returns Session state plus locale setter and auth change handler for operations pages.
  */
 export function useOperationsSession() {
   const [locale, setLocale] = useState<SupportedLocale>("en");

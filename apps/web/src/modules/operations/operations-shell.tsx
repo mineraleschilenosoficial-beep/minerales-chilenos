@@ -28,7 +28,12 @@ type OperationsShellProps = {
 };
 
 /**
- * Shared shell for operations views with common auth and navigation.
+ * @description Renders the shared operations shell with locale switch, auth form, and navigation links.
+ * @param locale Current locale value used for translations.
+ * @param setLocale Locale setter callback.
+ * @param onAuthChange Optional callback notified when auth state changes.
+ * @param children Render function receiving locale and auth snapshot.
+ * @returns Shell UI wrapper with children content.
  */
 export function OperationsShell({ locale, setLocale, onAuthChange, children }: OperationsShellProps) {
   const pathname = usePathname();
