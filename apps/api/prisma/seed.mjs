@@ -375,7 +375,7 @@ async function main() {
 
 async function seedAdminUser() {
   const adminEmail = (process.env.SEED_ADMIN_EMAIL ?? "admin@mineraleschilenos.cl").toLowerCase();
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "ChangeMe123!";
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "minero2025";
   const adminFullName = process.env.SEED_ADMIN_NAME ?? "Platform Admin";
 
   const passwordHash = await hash(adminPassword, 12);
