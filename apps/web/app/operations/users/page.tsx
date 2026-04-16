@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Badge,
   Button,
   Checkbox,
   Container,
@@ -263,7 +264,7 @@ export default function OperationsUsersPage() {
               <Text>{t.statsLoadingValue}</Text>
             ) : (
               <Table.ScrollContainer minWidth={880}>
-                <Table striped highlightOnHover withTableBorder>
+                <Table striped highlightOnHover withTableBorder className="ops-table">
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th>{t.operationsUsersTableName}</Table.Th>
@@ -297,7 +298,13 @@ export default function OperationsUsersPage() {
                                 ))}
                               </Group>
                             ) : (
-                              user.roles.map((role) => roleLabels[role]).join(", ")
+                              <Group gap="xs" wrap="wrap">
+                                {user.roles.map((role) => (
+                                  <Badge key={`${user.id}_${role}`} variant="light">
+                                    {roleLabels[role]}
+                                  </Badge>
+                                ))}
+                              </Group>
                             )}
                           </Table.Td>
                           <Table.Td>

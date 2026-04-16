@@ -54,31 +54,31 @@ export default function OperationsPlansPage() {
               <Text size="xs" c="dimmed">
                 {t.operationsPlansPremium}
               </Text>
-              <Title order={2}>{summary.premiumCompanies}</Title>
+              <Title order={2} className="ops-kpi-value">{summary.premiumCompanies}</Title>
             </Paper>
             <Paper withBorder p="md" className="ops-panel ops-kpi">
               <Text size="xs" c="dimmed">
                 {t.operationsPlansStandard}
               </Text>
-              <Title order={2}>{summary.standardCompanies}</Title>
+              <Title order={2} className="ops-kpi-value">{summary.standardCompanies}</Title>
             </Paper>
             <Paper withBorder p="md" className="ops-panel ops-kpi">
               <Text size="xs" c="dimmed">
                 {t.operationsPlansFree}
               </Text>
-              <Title order={2}>{summary.freeCompanies}</Title>
+              <Title order={2} className="ops-kpi-value">{summary.freeCompanies}</Title>
             </Paper>
             <Paper withBorder p="md" className="ops-panel ops-kpi">
               <Text size="xs" c="dimmed">
                 {t.operationsPlansTotal}
               </Text>
-              <Title order={2}>{summary.totalCompanies}</Title>
+              <Title order={2} className="ops-kpi-value">{summary.totalCompanies}</Title>
             </Paper>
             <Paper withBorder p="md" className="ops-panel ops-kpi">
               <Text size="xs" c="dimmed">
                 {t.operationsPlansProjectedRevenue}
               </Text>
-              <Title order={2}>
+              <Title order={2} className="ops-kpi-value">
                 {summary.projectedMonthlyRevenueClp.toLocaleString(resolveFormattingLocale(locale))}
               </Title>
             </Paper>

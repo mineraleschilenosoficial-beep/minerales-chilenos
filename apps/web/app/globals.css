@@ -111,3 +111,19 @@ h3 {
   border-color: var(--mc-color-accent-border) !important;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.34);
 }
+
+.ops-table th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--mc-color-text-muted);
+}
+
+.ops-table td {
+  vertical-align: top;
+}
+
+.ops-kpi-value {
+  color: var(--mc-color-accent);
+  line-height: 0.9;
+}

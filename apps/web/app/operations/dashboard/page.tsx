@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
+  Badge,
   Button,
   Container,
   Group,
@@ -33,6 +34,16 @@ export default function OperationsDashboardPage() {
     approved: t.operationsStatusApproved,
     rejected: t.operationsStatusRejected
   };
+  const categoryIcons = {
+    laboratory: "🔬",
+    consulting: "📋",
+    equipment: "⚙️",
+    explosives: "💥",
+    safety: "🦺",
+    transport: "🚛",
+    software: "💻",
+    engineering: "🏗️"
+  } as const;
 
   const toWhatsAppLink = (phone: string, companyName: string): string => {
     const digits = phone.replace(/\D/g, "");
@@ -89,6 +100,7 @@ export default function OperationsDashboardPage() {
                     variant="subtle"
                     justify="start"
                     px={0}
+                    className="ops-kpi-value"
                   >
                     {data.activeCompanies}
                   </Button>
@@ -105,6 +117,7 @@ export default function OperationsDashboardPage() {
                     variant="subtle"
                     justify="start"
                     px={0}
+                    className="ops-kpi-value"
                   >
                     {data.pendingRequests}
                   </Button>
@@ -121,6 +134,7 @@ export default function OperationsDashboardPage() {
                     variant="subtle"
                     justify="start"
                     px={0}
+                    className="ops-kpi-value"
                   >
                     {data.premiumCompanies}
                   </Button>
@@ -137,6 +151,7 @@ export default function OperationsDashboardPage() {
                     variant="subtle"
                     justify="start"
                     px={0}
+                    className="ops-kpi-value"
                   >
                     {data.standardCompanies}
                   </Button>
@@ -149,7 +164,7 @@ export default function OperationsDashboardPage() {
                 {t.operationsDashboardRecentRequests}
               </Title>
               <Table.ScrollContainer minWidth={720}>
-                <Table striped highlightOnHover withTableBorder>
+                <Table striped highlightOnHover withTableBorder className="ops-table">
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th>{t.operationsUsersTableName}</Table.Th>
@@ -163,7 +178,9 @@ export default function OperationsDashboardPage() {
                       <Table.Tr key={request.id}>
                         <Table.Td>{request.name}</Table.Td>
                         <Table.Td>{request.email}</Table.Td>
-                        <Table.Td>{requestStatusLabels[request.status]}</Table.Td>
+                        <Table.Td>
+                          <Badge variant="light">{requestStatusLabels[request.status]}</Badge>
+                        </Table.Td>
                         <Table.Td>
                           <Group gap="xs" wrap="wrap">
                             <Button
@@ -198,7 +215,7 @@ export default function OperationsDashboardPage() {
                 {t.operationsDashboardCategoryBreakdown}
               </Title>
               <Table.ScrollContainer minWidth={480}>
-                <Table striped highlightOnHover withTableBorder>
+                <Table striped highlightOnHover withTableBorder className="ops-table">
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th>{t.formCategoryLabel}</Table.Th>
@@ -216,7 +233,7 @@ export default function OperationsDashboardPage() {
                             variant="subtle"
                             px={0}
                           >
-                            {t.categories[item.category]}
+                            {(categoryIcons[item.category] ?? "⛏️") + " " + t.categories[item.category]}
                           </Button>
                         </Table.Td>
                         <Table.Td>{item.total}</Table.Td>

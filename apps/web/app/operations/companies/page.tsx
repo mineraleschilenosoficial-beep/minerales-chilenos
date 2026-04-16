@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Badge,
   Button,
   Container,
   Group,
@@ -466,7 +467,7 @@ export default function OperationsCompaniesPage() {
 
             {loading ? <Text>{t.statsLoadingValue}</Text> : null}
             <Table.ScrollContainer minWidth={780}>
-              <Table striped highlightOnHover withTableBorder>
+              <Table striped highlightOnHover withTableBorder className="ops-table">
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th>{t.operationsUsersTableName}</Table.Th>
@@ -479,8 +480,25 @@ export default function OperationsCompaniesPage() {
                   {companies.map((company) => (
                     <Table.Tr key={company.id}>
                       <Table.Td>{company.name}</Table.Td>
-                      <Table.Td>{companyStatusLabels[company.status]}</Table.Td>
-                      <Table.Td>{companyPlanLabels[company.plan]}</Table.Td>
+                      <Table.Td>
+                        <Badge variant="light" color={company.status === "active" ? "green" : "gray"}>
+                          {companyStatusLabels[company.status]}
+                        </Badge>
+                      </Table.Td>
+                      <Table.Td>
+                        <Badge
+                          variant="light"
+                          color={
+                            company.plan === "premium"
+                              ? "yellow"
+                              : company.plan === "standard"
+                                ? "blue"
+                                : "gray"
+                          }
+                        >
+                          {companyPlanLabels[company.plan]}
+                        </Badge>
+                      </Table.Td>
                       <Table.Td>
                         <Group gap="xs" wrap="wrap">
                           <Button variant="light" size="xs" onClick={() => startEdit(company)}>
