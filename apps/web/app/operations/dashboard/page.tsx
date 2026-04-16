@@ -1,6 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  Button,
+  Container,
+  Group,
+  Paper,
+  SimpleGrid,
+  Stack,
+  Table,
+  Text,
+  Title
+} from "@mantine/core";
 import Link from "next/link";
 import { UserRole } from "@minerales/types";
 import { fetchAdminDashboard } from "@/modules/directory/services/directory-api.service";
@@ -9,7 +20,6 @@ import { OperationsFeedback } from "@/modules/operations/operations-feedback";
 import { OperationsShell } from "@/modules/operations/operations-shell";
 import { useOperationFeedback } from "@/modules/operations/use-operation-feedback";
 import { useOperationsSession } from "@/modules/operations/use-operations-session";
-import styles from "./page.module.css";
 
 export default function OperationsDashboardPage() {
   const { locale, setLocale, isAuthenticated, currentUser, handleAuthChange } = useOperationsSession();
@@ -51,118 +61,173 @@ export default function OperationsDashboardPage() {
   }, [canViewDashboard, clearFeedback, isAuthenticated, setErrorFeedback, t.operationsErrorFeedback]);
 
   return (
-    <div className={styles.page}>
-      <div className={styles.container}>
-        <h1 className={styles.title}>{t.operationsDashboardTitle}</h1>
-        <p className={styles.subtitle}>{t.operationsDashboardSubtitle}</p>
+    <Container size="lg" py="lg">
+      <Stack gap="sm">
+        <Title order={1}>{t.operationsDashboardTitle}</Title>
+        <Text c="dimmed">{t.operationsDashboardSubtitle}</Text>
 
         <OperationsShell locale={locale} setLocale={setLocale} onAuthChange={handleAuthChange}>
           {() => null}
         </OperationsShell>
         <OperationsFeedback feedback={feedback} />
-        {isAuthenticated && !canViewDashboard ? <div>{t.operationsNoAccess}</div> : null}
+        {isAuthenticated && !canViewDashboard ? <Text>{t.operationsNoAccess}</Text> : null}
 
         {isAuthenticated && canViewDashboard && data ? (
           <>
-            <div className={styles.grid}>
-              <div className={styles.card}>
-                <Link href="/operations/companies?status=active" className={styles.cardLink}>
-                  <div className={styles.cardLabel}>{t.operationsDashboardActiveCompanies}</div>
-                  <div className={styles.cardValue}>{data.activeCompanies}</div>
-                </Link>
-              </div>
-              <div className={styles.card}>
-                <Link href="/operations/requests?status=pending" className={styles.cardLink}>
-                  <div className={styles.cardLabel}>{t.operationsDashboardPendingRequests}</div>
-                  <div className={styles.cardValue}>{data.pendingRequests}</div>
-                </Link>
-              </div>
-              <div className={styles.card}>
-                <Link href="/operations/companies?plan=premium" className={styles.cardLink}>
-                  <div className={styles.cardLabel}>{t.operationsDashboardPremiumCompanies}</div>
-                  <div className={styles.cardValue}>{data.premiumCompanies}</div>
-                </Link>
-              </div>
-              <div className={styles.card}>
-                <Link href="/operations/companies?plan=standard" className={styles.cardLink}>
-                  <div className={styles.cardLabel}>{t.operationsDashboardStandardCompanies}</div>
-                  <div className={styles.cardValue}>{data.standardCompanies}</div>
-                </Link>
-              </div>
-            </div>
+            <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="sm">
+              <Paper withBorder p="md">
+                <Stack gap={2}>
+                  <Text size="xs" c="dimmed">
+                    {t.operationsDashboardActiveCompanies}
+                  </Text>
+                  <Button
+                    component={Link}
+                    href="/operations/companies?status=active"
+                    variant="subtle"
+                    justify="start"
+                    px={0}
+                  >
+                    {data.activeCompanies}
+                  </Button>
+                </Stack>
+              </Paper>
+              <Paper withBorder p="md">
+                <Stack gap={2}>
+                  <Text size="xs" c="dimmed">
+                    {t.operationsDashboardPendingRequests}
+                  </Text>
+                  <Button
+                    component={Link}
+                    href="/operations/requests?status=pending"
+                    variant="subtle"
+                    justify="start"
+                    px={0}
+                  >
+                    {data.pendingRequests}
+                  </Button>
+                </Stack>
+              </Paper>
+              <Paper withBorder p="md">
+                <Stack gap={2}>
+                  <Text size="xs" c="dimmed">
+                    {t.operationsDashboardPremiumCompanies}
+                  </Text>
+                  <Button
+                    component={Link}
+                    href="/operations/companies?plan=premium"
+                    variant="subtle"
+                    justify="start"
+                    px={0}
+                  >
+                    {data.premiumCompanies}
+                  </Button>
+                </Stack>
+              </Paper>
+              <Paper withBorder p="md">
+                <Stack gap={2}>
+                  <Text size="xs" c="dimmed">
+                    {t.operationsDashboardStandardCompanies}
+                  </Text>
+                  <Button
+                    component={Link}
+                    href="/operations/companies?plan=standard"
+                    variant="subtle"
+                    justify="start"
+                    px={0}
+                  >
+                    {data.standardCompanies}
+                  </Button>
+                </Stack>
+              </Paper>
+            </SimpleGrid>
 
-            <div className={styles.panel}>
-              <h3>{t.operationsDashboardRecentRequests}</h3>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>{t.operationsUsersTableName}</th>
-                    <th>{t.operationsUsersTableEmail}</th>
-                    <th>{t.operationsStatusLabel}</th>
-                    <th>{t.operationsApplyAction}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.requestsRecent.map((request) => (
-                    <tr key={request.id}>
-                      <td>{request.name}</td>
-                      <td>{request.email}</td>
-                      <td>{request.status}</td>
-                      <td>
-                        <div className={styles.actions}>
-                          <Link
-                            href={`/operations/requests?search=${encodeURIComponent(request.name)}&requestId=${request.id}`}
-                            className={styles.actionLink}
-                          >
-                            {t.operationsDashboardOpenRequestAction}
-                          </Link>
-                          <a
-                            href={toWhatsAppLink(request.phone, request.name)}
-                            target="_blank"
-                            rel="noreferrer"
-                            className={styles.actionLink}
-                          >
-                            {t.operationsDashboardWhatsAppAction}
-                          </a>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Paper withBorder p="md" mt="sm">
+              <Title order={3} mb="sm">
+                {t.operationsDashboardRecentRequests}
+              </Title>
+              <Table.ScrollContainer minWidth={720}>
+                <Table striped highlightOnHover withTableBorder>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>{t.operationsUsersTableName}</Table.Th>
+                      <Table.Th>{t.operationsUsersTableEmail}</Table.Th>
+                      <Table.Th>{t.operationsStatusLabel}</Table.Th>
+                      <Table.Th>{t.operationsApplyAction}</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {data.requestsRecent.map((request) => (
+                      <Table.Tr key={request.id}>
+                        <Table.Td>{request.name}</Table.Td>
+                        <Table.Td>{request.email}</Table.Td>
+                        <Table.Td>{request.status}</Table.Td>
+                        <Table.Td>
+                          <Group gap="xs" wrap="wrap">
+                            <Button
+                              component={Link}
+                              href={`/operations/requests?search=${encodeURIComponent(request.name)}&requestId=${request.id}`}
+                              size="xs"
+                              variant="light"
+                            >
+                              {t.operationsDashboardOpenRequestAction}
+                            </Button>
+                            <Button
+                              component="a"
+                              href={toWhatsAppLink(request.phone, request.name)}
+                              target="_blank"
+                              rel="noreferrer"
+                              size="xs"
+                              variant="light"
+                            >
+                              {t.operationsDashboardWhatsAppAction}
+                            </Button>
+                          </Group>
+                        </Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </Table.ScrollContainer>
+            </Paper>
 
-            <div className={styles.panel}>
-              <h3>{t.operationsDashboardCategoryBreakdown}</h3>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>{t.formCategoryLabel}</th>
-                    <th>{t.operationsTotalResultsLabel}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.byCategory.map((item) => (
-                    <tr key={item.category}>
-                      <td>
-                        <Link
-                          href={`/operations/companies?category=${item.category}`}
-                          className={styles.actionLink}
-                        >
-                          {t.categories[item.category]}
-                        </Link>
-                      </td>
-                      <td>{item.total}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Paper withBorder p="md" mt="sm">
+              <Title order={3} mb="sm">
+                {t.operationsDashboardCategoryBreakdown}
+              </Title>
+              <Table.ScrollContainer minWidth={480}>
+                <Table striped highlightOnHover withTableBorder>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>{t.formCategoryLabel}</Table.Th>
+                      <Table.Th>{t.operationsTotalResultsLabel}</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {data.byCategory.map((item) => (
+                      <Table.Tr key={item.category}>
+                        <Table.Td>
+                          <Button
+                            component={Link}
+                            href={`/operations/companies?category=${item.category}`}
+                            size="xs"
+                            variant="subtle"
+                            px={0}
+                          >
+                            {t.categories[item.category]}
+                          </Button>
+                        </Table.Td>
+                        <Table.Td>{item.total}</Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </Table.ScrollContainer>
+            </Paper>
           </>
         ) : null}
 
-        {isAuthenticated && canViewDashboard && loading ? <div>{t.statsLoadingValue}</div> : null}
-      </div>
-    </div>
+        {isAuthenticated && canViewDashboard && loading ? <Text>{t.statsLoadingValue}</Text> : null}
+      </Stack>
+    </Container>
   );
 }
