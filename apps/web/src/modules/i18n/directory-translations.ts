@@ -206,6 +206,7 @@ type DirectoryTranslation = {
   formErrorMinChars6: string;
   formErrorMinChars8: string;
   formErrorMinChars10: string;
+  formErrorMaxChars2000: string;
   formErrorSelectRole: string;
   submitSuccessFeedback: string;
   submitErrorFeedback: string;
@@ -436,6 +437,7 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     formErrorMinChars6: "Use at least 6 characters.",
     formErrorMinChars8: "Use at least 8 characters.",
     formErrorMinChars10: "Use at least 10 characters.",
+    formErrorMaxChars2000: "Use at most 2000 characters.",
     formErrorSelectRole: "Select at least one role.",
     submitSuccessFeedback: "Request submitted successfully. We will contact you soon.",
     submitErrorFeedback: "Unable to submit request right now. Please try again.",
@@ -677,6 +679,7 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     formErrorMinChars6: "Debe tener al menos 6 caracteres.",
     formErrorMinChars8: "Debe tener al menos 8 caracteres.",
     formErrorMinChars10: "Debe tener al menos 10 caracteres.",
+    formErrorMaxChars2000: "Debe tener maximo 2000 caracteres.",
     formErrorSelectRole: "Selecciona al menos un rol.",
     submitSuccessFeedback: "Solicitud enviada correctamente. Te contactaremos pronto.",
     submitErrorFeedback: "No se pudo enviar la solicitud. Intentalo nuevamente.",

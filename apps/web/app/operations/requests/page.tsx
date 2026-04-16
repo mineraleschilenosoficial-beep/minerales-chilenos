@@ -15,7 +15,11 @@ import {
 } from "@mantine/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { CompanyRequest, ReviewCompanyRequestInput } from "@minerales/contracts";
+import {
+  reviewCompanyRequestSchema,
+  type CompanyRequest,
+  type ReviewCompanyRequestInput
+} from "@minerales/contracts";
 import { UserRole } from "@minerales/types";
 import {
   downloadCompanyRequestsCsv,
@@ -79,6 +83,7 @@ export default function OperationsRequestsPage() {
   const [pageSize] = useState<number>(8);
   const [requests, setRequests] = useState<CompanyRequest[]>([]);
   const [reviewDrafts, setReviewDrafts] = useState<Record<string, RequestReviewDraft>>({});
+  const [reviewNoteErrors, setReviewNoteErrors] = useState<Record<string, string | undefined>>({});
   const [loading, setLoading] = useState<boolean>(false);
   const [exporting, setExporting] = useState<boolean>(false);
   const [applyingRequestId, setApplyingRequestId] = useState<string | null>(null);
@@ -300,6 +305,24 @@ export default function OperationsRequestsPage() {
       return;
     }
 
+    const parsedReviewPayload = reviewCompanyRequestSchema.safeParse({
+      status,
+      reviewNotes: reviewNotes.trim() || undefined
+    });
+    if (!parsedReviewPayload.success) {
+      const maxLengthError = parsedReviewPayload.error.issues.find(
+        (issue) => issue.path[0] === "reviewNotes" && issue.code === "too_big" && issue.maximum === 2000
+      );
+      if (maxLengthError) {
+        setReviewNoteErrors((current) => ({ ...current, [requestId]: t.formErrorMaxChars2000 }));
+        return;
+      }
+      setReviewNoteErrors((current) => ({ ...current, [requestId]: t.invalidFormFeedback }));
+      return;
+    }
+
+    setReviewNoteErrors((current) => ({ ...current, [requestId]: undefined }));
+
     setApplyingRequestId(requestId);
     clearFeedback();
     try {
@@ -499,18 +522,20 @@ export default function OperationsRequestsPage() {
 
                       <Textarea
                         rows={3}
-                      value={draft.reviewNotes}
-                      onChange={(event) =>
-                        setReviewDrafts((currentDrafts) => ({
-                          ...currentDrafts,
-                          [request.id]: {
-                            ...draft,
-                            reviewNotes: event.target.value
-                          }
-                        }))
-                      }
-                      label={t.operationsNotesLabel}
-                    />
+                        value={draft.reviewNotes}
+                        onChange={(event) => {
+                          setReviewDrafts((currentDrafts) => ({
+                            ...currentDrafts,
+                            [request.id]: {
+                              ...draft,
+                              reviewNotes: event.target.value
+                            }
+                          }));
+                          setReviewNoteErrors((current) => ({ ...current, [request.id]: undefined }));
+                        }}
+                        label={t.operationsNotesLabel}
+                        error={reviewNoteErrors[request.id]}
+                      />
                       <Stack gap={4}>
                         <Text size="xs" c="dimmed">
                           {t.operationsLatestReviewNotesLabel}
