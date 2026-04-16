@@ -457,3 +457,111 @@ export type CompanyListQuery = z.infer<typeof companyListQuerySchema>;
  * Type-safe company metrics payload.
  */
 export type CompanyMetrics = z.infer<typeof companyMetricsSchema>;
+
+/**
+ * Country catalog item schema.
+ */
+export const locationCountrySchema = z.object({
+  code: z.string().length(2),
+  name: z.string().min(2).max(120),
+  dialCode: z.string().max(20).optional(),
+  emoji: z.string().max(8).optional()
+});
+
+/**
+ * Region catalog item schema.
+ */
+export const locationRegionSchema = z.object({
+  code: z.string().min(2).max(16),
+  name: z.string().min(2).max(120),
+  countryCode: z.string().length(2)
+});
+
+/**
+ * Commune catalog item schema.
+ */
+export const locationCommuneSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(2).max(120),
+  identifier: z.string().max(40).optional(),
+  regionCode: z.string().min(2).max(16),
+  countryCode: z.string().length(2)
+});
+
+/**
+ * Query schema for region catalog endpoint.
+ */
+export const locationRegionsQuerySchema = z.object({
+  countryCode: z.string().trim().toUpperCase().length(2).default("CL")
+});
+
+/**
+ * Query schema for commune catalog endpoint.
+ */
+export const locationCommunesQuerySchema = z.object({
+  regionCode: z.string().trim().toUpperCase().min(2).max(16)
+});
+
+/**
+ * Country catalog list response schema.
+ */
+export const locationCountriesResponseSchema = z.object({
+  total: z.number().int().min(0),
+  items: z.array(locationCountrySchema)
+});
+
+/**
+ * Region catalog list response schema.
+ */
+export const locationRegionsResponseSchema = z.object({
+  total: z.number().int().min(0),
+  items: z.array(locationRegionSchema)
+});
+
+/**
+ * Commune catalog list response schema.
+ */
+export const locationCommunesResponseSchema = z.object({
+  total: z.number().int().min(0),
+  items: z.array(locationCommuneSchema)
+});
+
+/**
+ * Type-safe country catalog item.
+ */
+export type LocationCountry = z.infer<typeof locationCountrySchema>;
+
+/**
+ * Type-safe region catalog item.
+ */
+export type LocationRegion = z.infer<typeof locationRegionSchema>;
+
+/**
+ * Type-safe commune catalog item.
+ */
+export type LocationCommune = z.infer<typeof locationCommuneSchema>;
+
+/**
+ * Type-safe query for region catalog.
+ */
+export type LocationRegionsQuery = z.infer<typeof locationRegionsQuerySchema>;
+
+/**
+ * Type-safe query for commune catalog.
+ */
+export type LocationCommunesQuery = z.infer<typeof locationCommunesQuerySchema>;
+
+/**
+ * Type-safe response for country catalog endpoint.
+ */
+export type LocationCountriesResponse = z.infer<typeof locationCountriesResponseSchema>;
+
+/**
+ * Type-safe response for region catalog endpoint.
+ */
+export type LocationRegionsResponse = z.infer<typeof locationRegionsResponseSchema>;
+
+/**
+ * Type-safe response for commune catalog endpoint.
+ */
+export type LocationCommunesResponse = z.infer<typeof locationCommunesResponseSchema>;

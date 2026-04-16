@@ -6,12 +6,14 @@ import { CompaniesController } from "./modules/companies/companies.controller";
 import { CompanyRequestsController } from "./modules/company-requests/company-requests.controller";
 import { AuthController } from "./modules/auth/auth.controller";
 import { UsersAdminController } from "./modules/users-admin/users-admin.controller";
+import { LocationsController } from "./modules/locations/locations.controller";
 import { CompaniesService } from "./modules/companies/companies.service";
 import { CompanyRequestsService } from "./modules/company-requests/company-requests.service";
 import { AuthService } from "./modules/auth/auth.service";
 import { JwtStrategy } from "./modules/auth/jwt.strategy";
 import { RolesGuard } from "./modules/auth/guards/roles.guard";
 import { UsersAdminService } from "./modules/users-admin/users-admin.service";
+import { LocationsService } from "./modules/locations/locations.service";
 import { PrismaService } from "./database/prisma.service";
 
 @Module({
@@ -26,7 +28,8 @@ import { PrismaService } from "./database/prisma.service";
     CompaniesController,
     CompanyRequestsController,
     AuthController,
-    UsersAdminController
+    UsersAdminController,
+    LocationsController
   ],
   providers: [
     PrismaService,
@@ -34,6 +37,7 @@ import { PrismaService } from "./database/prisma.service";
     CompanyRequestsService,
     AuthService,
     UsersAdminService,
+    LocationsService,
     JwtStrategy,
     RolesGuard
   ]
