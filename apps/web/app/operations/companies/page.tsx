@@ -311,17 +311,19 @@ export default function OperationsCompaniesPage() {
   };
 
   return (
-    <Container size="lg" py="lg">
+    <Container size="lg" py="lg" className="ops-page">
       <Stack gap="sm">
-        <Title order={1}>{t.operationsCompaniesTitle}</Title>
-        <Text c="dimmed">{t.operationsCompaniesSubtitle}</Text>
+        <Title order={1} className="ops-heading">
+          {t.operationsCompaniesTitle}
+        </Title>
+        <Text className="ops-subtitle">{t.operationsCompaniesSubtitle}</Text>
 
         <OperationsShell locale={locale} setLocale={setLocale} onAuthChange={handleAuthChange} />
         <OperationsFeedback feedback={feedback} />
 
         {isAuthenticated && canManage ? (
           <>
-            <Group align="end" gap="sm" wrap="wrap">
+            <Group align="end" gap="sm" wrap="wrap" className="ops-toolbar">
               <TextInput
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
@@ -366,7 +368,7 @@ export default function OperationsCompaniesPage() {
               />
             </Group>
 
-            <Paper withBorder p="md">
+            <Paper withBorder p="md" className="ops-panel">
               <Stack gap="sm">
                 <Group grow align="end">
                   <TextInput
@@ -501,7 +503,7 @@ export default function OperationsCompaniesPage() {
                 </Table.Tbody>
               </Table>
             </Table.ScrollContainer>
-            <Group gap="sm" mt="xs" wrap="wrap">
+            <Group gap="sm" mt="xs" wrap="wrap" className="ops-toolbar">
               <Button
                 variant="default"
                 onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}

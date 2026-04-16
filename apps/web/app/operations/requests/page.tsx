@@ -351,10 +351,12 @@ export default function OperationsRequestsPage() {
   };
 
   return (
-    <Container size="lg" py="lg">
+    <Container size="lg" py="lg" className="ops-page">
       <Stack gap="sm">
-        <Title order={1}>{t.operationsTitle}</Title>
-        <Text c="dimmed">{t.operationsSubtitle}</Text>
+        <Title order={1} className="ops-heading">
+          {t.operationsTitle}
+        </Title>
+        <Text className="ops-subtitle">{t.operationsSubtitle}</Text>
 
         <OperationsShell
           locale={locale}
@@ -363,7 +365,7 @@ export default function OperationsRequestsPage() {
         />
 
         {isAuthenticated && canOperateRequests ? (
-          <Group align="end" gap="sm" wrap="wrap">
+          <Group align="end" gap="sm" wrap="wrap" className="ops-toolbar">
             <Button onClick={() => void loadRequests()}>
               {t.operationsRefresh}
             </Button>
@@ -422,9 +424,9 @@ export default function OperationsRequestsPage() {
         {isAuthenticated && !canOperateRequests ? <Text>{t.operationsNoAccess}</Text> : null}
 
         {isAuthenticated && canOperateRequests ? <Stack gap="sm">
-          {loading ? <Paper withBorder p="md">{t.statsLoadingValue}</Paper> : null}
+          {loading ? <Paper withBorder p="md" className="ops-panel">{t.statsLoadingValue}</Paper> : null}
           {!loading && requests.length === 0 ? (
-            <Paper withBorder p="md">{t.operationsEmptyState}</Paper>
+            <Paper withBorder p="md" className="ops-panel">{t.operationsEmptyState}</Paper>
           ) : null}
           {!loading
             ? requests.map((request) => {
@@ -439,6 +441,7 @@ export default function OperationsRequestsPage() {
                     withBorder
                     key={request.id}
                     p="md"
+                    className="ops-panel"
                     style={
                       request.id === highlightedRequestId
                         ? { borderColor: "var(--mantine-color-yellow-6)" }
@@ -580,6 +583,7 @@ export default function OperationsRequestsPage() {
         <Paper
           withBorder
           p="md"
+          className="ops-panel ops-floating"
           style={{
             position: "fixed",
             right: 16,

@@ -37,10 +37,12 @@ export default function OperationsPlansPage() {
   }, [canViewPlans, clearFeedback, isAuthenticated, setErrorFeedback, t.operationsErrorFeedback]);
 
   return (
-    <Container size="md" py="lg">
+    <Container size="md" py="lg" className="ops-page">
       <Stack gap="sm">
-        <Title order={1}>{t.operationsPlansTitle}</Title>
-        <Text c="dimmed">{t.operationsPlansSubtitle}</Text>
+        <Title order={1} className="ops-heading">
+          {t.operationsPlansTitle}
+        </Title>
+        <Text className="ops-subtitle">{t.operationsPlansSubtitle}</Text>
 
         <OperationsShell locale={locale} setLocale={setLocale} onAuthChange={handleAuthChange} />
         <OperationsFeedback feedback={feedback} />
@@ -48,31 +50,31 @@ export default function OperationsPlansPage() {
 
         {isAuthenticated && canViewPlans && summary ? (
           <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="sm">
-            <Paper withBorder p="md">
+            <Paper withBorder p="md" className="ops-panel ops-kpi">
               <Text size="xs" c="dimmed">
                 {t.operationsPlansPremium}
               </Text>
               <Title order={2}>{summary.premiumCompanies}</Title>
             </Paper>
-            <Paper withBorder p="md">
+            <Paper withBorder p="md" className="ops-panel ops-kpi">
               <Text size="xs" c="dimmed">
                 {t.operationsPlansStandard}
               </Text>
               <Title order={2}>{summary.standardCompanies}</Title>
             </Paper>
-            <Paper withBorder p="md">
+            <Paper withBorder p="md" className="ops-panel ops-kpi">
               <Text size="xs" c="dimmed">
                 {t.operationsPlansFree}
               </Text>
               <Title order={2}>{summary.freeCompanies}</Title>
             </Paper>
-            <Paper withBorder p="md">
+            <Paper withBorder p="md" className="ops-panel ops-kpi">
               <Text size="xs" c="dimmed">
                 {t.operationsPlansTotal}
               </Text>
               <Title order={2}>{summary.totalCompanies}</Title>
             </Paper>
-            <Paper withBorder p="md">
+            <Paper withBorder p="md" className="ops-panel ops-kpi">
               <Text size="xs" c="dimmed">
                 {t.operationsPlansProjectedRevenue}
               </Text>

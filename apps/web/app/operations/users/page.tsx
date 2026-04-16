@@ -186,10 +186,12 @@ export default function OperationsUsersPage() {
   };
 
   return (
-    <Container size="lg" py="lg">
+    <Container size="lg" py="lg" className="ops-page">
       <Stack gap="sm">
-        <Title order={1}>{t.operationsUsersTitle}</Title>
-        <Text c="dimmed">{t.operationsUsersSubtitle}</Text>
+        <Title order={1} className="ops-heading">
+          {t.operationsUsersTitle}
+        </Title>
+        <Text className="ops-subtitle">{t.operationsUsersSubtitle}</Text>
 
         <OperationsShell
           locale={locale}
@@ -206,13 +208,13 @@ export default function OperationsUsersPage() {
         <OperationsFeedback feedback={feedback} />
 
         {isAuthenticated && !canViewUsers ? (
-          <Paper withBorder p="md">
+          <Paper withBorder p="md" className="ops-panel">
             {t.operationsUsersNoAccess}
           </Paper>
         ) : null}
 
         {isAuthenticated && canManageUsers ? (
-          <Paper withBorder p="md">
+          <Paper withBorder p="md" className="ops-panel">
             <Stack gap="sm">
               <Title order={3}>{t.operationsUsersCreateTitle}</Title>
               <TextInput
@@ -256,7 +258,7 @@ export default function OperationsUsersPage() {
         ) : null}
 
         {isAuthenticated && canViewUsers ? (
-          <Paper withBorder p="md">
+          <Paper withBorder p="md" className="ops-panel">
             {loadingUsers ? (
               <Text>{t.statsLoadingValue}</Text>
             ) : (

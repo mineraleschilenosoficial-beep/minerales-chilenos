@@ -73,3 +73,41 @@ h3 {
   font-family: var(--mc-font-display);
   letter-spacing: 0.8px;
 }
+
+.ops-page {
+  max-width: 1200px;
+}
+
+.ops-heading {
+  margin: 0;
+  line-height: 0.95;
+}
+
+.ops-subtitle {
+  color: var(--mc-color-text-secondary);
+}
+
+.ops-panel {
+  background: color-mix(in srgb, var(--mc-color-surface-1) 84%, transparent) !important;
+  border: 1px solid var(--mc-color-accent-weak) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mc-color-accent-weak) 45%, transparent);
+}
+
+.ops-kpi {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--mc-color-surface-1) 92%, transparent) 0%,
+    color-mix(in srgb, var(--mc-color-surface-2) 80%, transparent) 100%
+  ) !important;
+}
+
+.ops-toolbar {
+  padding: 12px;
+  border: 1px solid var(--mc-color-accent-weak);
+  background: color-mix(in srgb, var(--mc-color-surface-2) 70%, transparent);
+}
+
+.ops-floating {
+  border-color: var(--mc-color-accent-border) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.34);
+}

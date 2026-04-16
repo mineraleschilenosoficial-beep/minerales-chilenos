@@ -77,7 +77,7 @@ export function OperationsShell({ locale, setLocale, onAuthChange }: OperationsS
 
   return (
     <>
-      <Group gap="xs" mb="sm" wrap="wrap">
+      <Group gap="xs" mb="sm" wrap="wrap" className="ops-toolbar">
         <Button
           size="xs"
           variant={locale === "en" ? "filled" : "light"}

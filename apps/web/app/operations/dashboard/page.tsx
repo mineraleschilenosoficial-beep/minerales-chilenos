@@ -64,10 +64,12 @@ export default function OperationsDashboardPage() {
   }, [canViewDashboard, clearFeedback, isAuthenticated, setErrorFeedback, t.operationsErrorFeedback]);
 
   return (
-    <Container size="lg" py="lg">
+    <Container size="lg" py="lg" className="ops-page">
       <Stack gap="sm">
-        <Title order={1}>{t.operationsDashboardTitle}</Title>
-        <Text c="dimmed">{t.operationsDashboardSubtitle}</Text>
+        <Title order={1} className="ops-heading">
+          {t.operationsDashboardTitle}
+        </Title>
+        <Text className="ops-subtitle">{t.operationsDashboardSubtitle}</Text>
 
         <OperationsShell locale={locale} setLocale={setLocale} onAuthChange={handleAuthChange} />
         <OperationsFeedback feedback={feedback} />
@@ -76,7 +78,7 @@ export default function OperationsDashboardPage() {
         {isAuthenticated && canViewDashboard && data ? (
           <>
             <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="sm">
-              <Paper withBorder p="md">
+              <Paper withBorder p="md" className="ops-panel ops-kpi">
                 <Stack gap={2}>
                   <Text size="xs" c="dimmed">
                     {t.operationsDashboardActiveCompanies}
@@ -92,7 +94,7 @@ export default function OperationsDashboardPage() {
                   </Button>
                 </Stack>
               </Paper>
-              <Paper withBorder p="md">
+              <Paper withBorder p="md" className="ops-panel ops-kpi">
                 <Stack gap={2}>
                   <Text size="xs" c="dimmed">
                     {t.operationsDashboardPendingRequests}
@@ -108,7 +110,7 @@ export default function OperationsDashboardPage() {
                   </Button>
                 </Stack>
               </Paper>
-              <Paper withBorder p="md">
+              <Paper withBorder p="md" className="ops-panel ops-kpi">
                 <Stack gap={2}>
                   <Text size="xs" c="dimmed">
                     {t.operationsDashboardPremiumCompanies}
@@ -124,7 +126,7 @@ export default function OperationsDashboardPage() {
                   </Button>
                 </Stack>
               </Paper>
-              <Paper withBorder p="md">
+              <Paper withBorder p="md" className="ops-panel ops-kpi">
                 <Stack gap={2}>
                   <Text size="xs" c="dimmed">
                     {t.operationsDashboardStandardCompanies}
@@ -142,7 +144,7 @@ export default function OperationsDashboardPage() {
               </Paper>
             </SimpleGrid>
 
-            <Paper withBorder p="md" mt="sm">
+            <Paper withBorder p="md" mt="sm" className="ops-panel">
               <Title order={3} mb="sm">
                 {t.operationsDashboardRecentRequests}
               </Title>
@@ -191,7 +193,7 @@ export default function OperationsDashboardPage() {
               </Table.ScrollContainer>
             </Paper>
 
-            <Paper withBorder p="md" mt="sm">
+            <Paper withBorder p="md" mt="sm" className="ops-panel">
               <Title order={3} mb="sm">
                 {t.operationsDashboardCategoryBreakdown}
               </Title>

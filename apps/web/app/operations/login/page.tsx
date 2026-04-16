@@ -57,7 +57,7 @@ export default function OperationsLoginPage() {
   };
 
   return (
-    <Container size={520} py="xl">
+    <Container size={520} py="xl" className="ops-page">
       <Stack gap="md">
         <Group justify="space-between">
           <Group gap="xs">
@@ -73,10 +73,12 @@ export default function OperationsLoginPage() {
           </Button>
         </Group>
 
-        <Paper withBorder p="lg">
+        <Paper withBorder p="lg" className="ops-panel">
           <Stack gap="sm">
-            <Title order={2}>{t.operationsAuthTitle}</Title>
-            <Text c="dimmed">{t.operationsAuthSubtitle}</Text>
+            <Title order={2} className="ops-heading">
+              {t.operationsAuthTitle}
+            </Title>
+            <Text className="ops-subtitle">{t.operationsAuthSubtitle}</Text>
             <TextInput
               label={t.operationsAuthEmailLabel}
               value={email}
