@@ -1,5 +1,17 @@
 "use client";
 
+import {
+  Button,
+  Checkbox,
+  Container,
+  Group,
+  Paper,
+  Stack,
+  Table,
+  Text,
+  TextInput,
+  Title
+} from "@mantine/core";
 import { useEffect, useMemo, useState } from "react";
 import type { UserProfile } from "@minerales/contracts";
 import { UserRole } from "@minerales/types";
@@ -16,7 +28,6 @@ import { OperationsFeedback } from "@/modules/operations/operations-feedback";
 import { useOperationFeedback } from "@/modules/operations/use-operation-feedback";
 import { OperationsShell } from "@/modules/operations/operations-shell";
 import { useOperationsSession } from "@/modules/operations/use-operations-session";
-import styles from "./page.module.css";
 
 type UserDraft = {
   roles: UserRole[];
@@ -175,15 +186,10 @@ export default function OperationsUsersPage() {
   };
 
   return (
-    <div className={styles.page}>
-      <div className={styles.container}>
-        <div className={styles.header}>
-          <div>
-            <h1 className={styles.title}>{t.operationsUsersTitle}</h1>
-            <p className={styles.subtitle}>{t.operationsUsersSubtitle}</p>
-          </div>
-          <div />
-        </div>
+    <Container size="lg" py="lg">
+      <Stack gap="sm">
+        <Title order={1}>{t.operationsUsersTitle}</Title>
+        <Text c="dimmed">{t.operationsUsersSubtitle}</Text>
 
         <OperationsShell
           locale={locale}
@@ -202,141 +208,131 @@ export default function OperationsUsersPage() {
         <OperationsFeedback feedback={feedback} />
 
         {isAuthenticated && !canViewUsers ? (
-          <div className={styles.panel}>{t.operationsUsersNoAccess}</div>
+          <Paper withBorder p="md">
+            {t.operationsUsersNoAccess}
+          </Paper>
         ) : null}
 
         {isAuthenticated && canManageUsers ? (
-          <div className={styles.panel}>
-            <h3 className={styles.title}>{t.operationsUsersCreateTitle}</h3>
-            <label className={styles.label} htmlFor="create-name">
-              {t.operationsUsersNameLabel}
-            </label>
-            <input
-              id="create-name"
-              className={styles.input}
-              value={createName}
-              onChange={(event) => setCreateName(event.target.value)}
-            />
-            <label className={styles.label} htmlFor="create-email">
-              {t.operationsUsersEmailLabel}
-            </label>
-            <input
-              id="create-email"
-              type="email"
-              className={styles.input}
-              value={createEmail}
-              onChange={(event) => setCreateEmail(event.target.value)}
-            />
-            <label className={styles.label} htmlFor="create-password">
-              {t.operationsUsersPasswordLabel}
-            </label>
-            <input
-              id="create-password"
-              type="password"
-              className={styles.input}
-              value={createPassword}
-              onChange={(event) => setCreatePassword(event.target.value)}
-            />
-            <span className={styles.label}>{t.operationsUsersRolesLabel}</span>
-            <div className={styles.roles}>
-              {ROLE_OPTIONS.map((role) => (
-                <label key={role} className={styles.roleChip}>
-                  <input
-                    type="checkbox"
+          <Paper withBorder p="md">
+            <Stack gap="sm">
+              <Title order={3}>{t.operationsUsersCreateTitle}</Title>
+              <TextInput
+                id="create-name"
+                label={t.operationsUsersNameLabel}
+                value={createName}
+                onChange={(event) => setCreateName(event.target.value)}
+              />
+              <TextInput
+                id="create-email"
+                type="email"
+                label={t.operationsUsersEmailLabel}
+                value={createEmail}
+                onChange={(event) => setCreateEmail(event.target.value)}
+              />
+              <TextInput
+                id="create-password"
+                type="password"
+                label={t.operationsUsersPasswordLabel}
+                value={createPassword}
+                onChange={(event) => setCreatePassword(event.target.value)}
+              />
+              <Text size="sm" c="dimmed">
+                {t.operationsUsersRolesLabel}
+              </Text>
+              <Group gap="md" wrap="wrap">
+                {ROLE_OPTIONS.map((role) => (
+                  <Checkbox
+                    key={role}
                     checked={createRoles.includes(role)}
                     onChange={() => toggleCreateRole(role)}
+                    label={roleLabels[role]}
                   />
-                  <span>{roleLabels[role]}</span>
-                </label>
-              ))}
-            </div>
-            <button
-              type="button"
-              className={styles.button}
-              disabled={creatingUser}
-              onClick={() => void handleCreateUser()}
-            >
-              {creatingUser ? t.operationsApplyingAction : t.operationsUsersCreateAction}
-            </button>
-          </div>
+                ))}
+              </Group>
+              <Button loading={creatingUser} onClick={() => void handleCreateUser()}>
+                {t.operationsUsersCreateAction}
+              </Button>
+            </Stack>
+          </Paper>
         ) : null}
 
         {isAuthenticated && canViewUsers ? (
-          <div className={styles.panel}>
+          <Paper withBorder p="md">
             {loadingUsers ? (
-              <div>{t.statsLoadingValue}</div>
+              <Text>{t.statsLoadingValue}</Text>
             ) : (
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>{t.operationsUsersTableName}</th>
-                    <th>{t.operationsUsersTableEmail}</th>
-                    <th>{t.operationsUsersTableRoles}</th>
-                    <th>{t.operationsUsersTableActive}</th>
-                    {canManageUsers ? <th>{t.operationsApplyAction}</th> : null}
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((user) => {
-                    const draft = userDrafts[user.id] ?? {
-                      roles: user.roles,
-                      isActive: user.isActive
-                    };
+              <Table.ScrollContainer minWidth={880}>
+                <Table striped highlightOnHover withTableBorder>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>{t.operationsUsersTableName}</Table.Th>
+                      <Table.Th>{t.operationsUsersTableEmail}</Table.Th>
+                      <Table.Th>{t.operationsUsersTableRoles}</Table.Th>
+                      <Table.Th>{t.operationsUsersTableActive}</Table.Th>
+                      {canManageUsers ? <Table.Th>{t.operationsApplyAction}</Table.Th> : null}
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {users.map((user) => {
+                      const draft = userDrafts[user.id] ?? {
+                        roles: user.roles,
+                        isActive: user.isActive
+                      };
 
-                    return (
-                      <tr key={user.id}>
-                        <td data-label={t.operationsUsersTableName}>{user.fullName}</td>
-                        <td data-label={t.operationsUsersTableEmail}>{user.email}</td>
-                        <td data-label={t.operationsUsersTableRoles}>
-                          {canManageUsers ? (
-                            <div className={styles.roles}>
-                              {ROLE_OPTIONS.map((role) => (
-                                <label key={`${user.id}_${role}`} className={styles.roleChip}>
-                                  <input
-                                    type="checkbox"
+                      return (
+                        <Table.Tr key={user.id}>
+                          <Table.Td>{user.fullName}</Table.Td>
+                          <Table.Td>{user.email}</Table.Td>
+                          <Table.Td>
+                            {canManageUsers ? (
+                              <Group gap="md" wrap="wrap">
+                                {ROLE_OPTIONS.map((role) => (
+                                  <Checkbox
+                                    key={`${user.id}_${role}`}
                                     checked={draft.roles.includes(role)}
                                     onChange={() => toggleDraftRole(user.id, role)}
+                                    label={roleLabels[role]}
                                   />
-                                  <span>{roleLabels[role]}</span>
-                                </label>
-                              ))}
-                            </div>
-                          ) : (
-                            user.roles.map((role) => roleLabels[role]).join(", ")
-                          )}
-                        </td>
-                        <td data-label={t.operationsUsersTableActive}>
-                          {draft.isActive ? t.operationsUsersActiveYes : t.operationsUsersActiveNo}
-                        </td>
-                        {canManageUsers ? (
-                          <td data-label={t.operationsApplyAction}>
-                            <div className={styles.roles}>
-                              <button
-                                type="button"
-                                className={styles.buttonSecondary}
-                                onClick={() => void handleSaveRoles(user.id)}
-                              >
-                                {t.operationsUsersSaveRolesAction}
-                              </button>
-                              <button
-                                type="button"
-                                className={styles.buttonSecondary}
-                                onClick={() => void handleToggleActive(user.id)}
-                              >
-                                {t.operationsUsersToggleActiveAction}
-                              </button>
-                            </div>
-                          </td>
-                        ) : null}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                                ))}
+                              </Group>
+                            ) : (
+                              user.roles.map((role) => roleLabels[role]).join(", ")
+                            )}
+                          </Table.Td>
+                          <Table.Td>
+                            {draft.isActive ? t.operationsUsersActiveYes : t.operationsUsersActiveNo}
+                          </Table.Td>
+                          {canManageUsers ? (
+                            <Table.Td>
+                              <Group gap="xs" wrap="wrap">
+                                <Button
+                                  variant="default"
+                                  size="xs"
+                                  onClick={() => void handleSaveRoles(user.id)}
+                                >
+                                  {t.operationsUsersSaveRolesAction}
+                                </Button>
+                                <Button
+                                  variant="default"
+                                  size="xs"
+                                  onClick={() => void handleToggleActive(user.id)}
+                                >
+                                  {t.operationsUsersToggleActiveAction}
+                                </Button>
+                              </Group>
+                            </Table.Td>
+                          ) : null}
+                        </Table.Tr>
+                      );
+                    })}
+                  </Table.Tbody>
+                </Table>
+              </Table.ScrollContainer>
             )}
-          </div>
+          </Paper>
         ) : null}
-      </div>
-    </div>
+      </Stack>
+    </Container>
   );
 }
