@@ -1,4 +1,6 @@
 import {
+  authLoginSchema,
+  authResponseSchema,
   companyListQuerySchema,
   companyListResponseSchema,
   companyMetricsSchema,
@@ -13,6 +15,7 @@ import {
   type CompanyListResponse,
   type CompanyMetrics,
   type CompanyRequestListResponse,
+  type UserProfile,
   type ReviewCompanyRequestInput
 } from "@minerales/contracts";
 import type { RequestFormState } from "../models/directory.types";
@@ -28,6 +31,8 @@ const DIRECTORY_API_ERRORS = {
   SUBMIT_COMPANY_REQUEST_FAILED: "SUBMIT_COMPANY_REQUEST_FAILED",
   REVIEW_COMPANY_REQUEST_FAILED: "REVIEW_COMPANY_REQUEST_FAILED"
 } as const;
+
+const AUTH_TOKEN_STORAGE_KEY = "mc.auth.token";
 
 function resolveCsvFilename(
   contentDispositionHeader: string | null,
@@ -158,7 +163,9 @@ export async function fetchCompanyRequests(params?: {
   url.searchParams.set("page", String(parsedQuery.page));
   url.searchParams.set("pageSize", String(parsedQuery.pageSize));
 
-  const response = await fetch(url);
+  const response = await fetch(url, {
+    headers: getAuthHeaders()
+  });
   if (!response.ok) {
     throw new Error(DIRECTORY_API_ERRORS.FETCH_COMPANY_REQUESTS_FAILED);
   }
@@ -190,7 +197,9 @@ export async function downloadCompanyRequestsCsv(params?: {
   }
   url.searchParams.set("createdAtOrder", parsedQuery.createdAtOrder);
 
-  const response = await fetch(url);
+  const response = await fetch(url, {
+    headers: getAuthHeaders()
+  });
   if (!response.ok) {
     throw new Error(DIRECTORY_API_ERRORS.EXPORT_COMPANY_REQUESTS_FAILED);
   }
@@ -218,6 +227,7 @@ export async function reviewCompanyRequest(requestId: string, payload: unknown):
   const response = await fetch(new URL(`/company-requests/${requestId}/review`, API_BASE_URL), {
     method: "PATCH",
     headers: {
+      ...getAuthHeaders(),
       "Content-Type": "application/json"
     },
     body: JSON.stringify(parsedPayload satisfies ReviewCompanyRequestInput)
@@ -229,4 +239,61 @@ export async function reviewCompanyRequest(requestId: string, payload: unknown):
 
   const responsePayload = await response.json();
   reviewCompanyRequestResponseSchema.parse(responsePayload);
+}
+
+/**
+ * Authenticates an operator and stores JWT for protected API calls.
+ */
+export async function loginOperator(email: string, password: string): Promise<UserProfile> {
+  const payload = authLoginSchema.parse({ email, password });
+  const response = await fetch(new URL("/auth/login", API_BASE_URL), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    throw new Error("LOGIN_FAILED");
+  }
+
+  const parsedResponse = authResponseSchema.parse(await response.json());
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, parsedResponse.accessToken);
+  }
+  return parsedResponse.user;
+}
+
+/**
+ * Clears persisted operator session token.
+ */
+export function logoutOperator(): void {
+  if (typeof window !== "undefined") {
+    window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+  }
+}
+
+/**
+ * Returns whether an operator token exists in storage.
+ */
+export function hasOperatorSession(): boolean {
+  return readOperatorToken().length > 0;
+}
+
+function readOperatorToken(): string {
+  if (typeof window === "undefined") {
+    return "";
+  }
+  return window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) ?? "";
+}
+
+function getAuthHeaders(): Record<string, string> {
+  const token = readOperatorToken();
+  if (token.length === 0) {
+    return {};
+  }
+  return {
+    Authorization: `Bearer ${token}`
+  };
 }

@@ -40,6 +40,13 @@ type DirectoryTranslation = {
   operationsPaginationPrev: string;
   operationsPaginationNext: string;
   operationsTotalResultsLabel: string;
+  operationsAuthTitle: string;
+  operationsAuthSubtitle: string;
+  operationsAuthEmailLabel: string;
+  operationsAuthPasswordLabel: string;
+  operationsAuthLoginAction: string;
+  operationsAuthLogoutAction: string;
+  operationsAuthLoginError: string;
   operationsEmptyState: string;
   operationsStatusLabel: string;
   operationsNotesLabel: string;
@@ -129,6 +136,13 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsPaginationPrev: "Previous",
     operationsPaginationNext: "Next",
     operationsTotalResultsLabel: "Total results",
+    operationsAuthTitle: "Operator access",
+    operationsAuthSubtitle: "Authenticate to review and manage requests.",
+    operationsAuthEmailLabel: "Email",
+    operationsAuthPasswordLabel: "Password",
+    operationsAuthLoginAction: "Sign in",
+    operationsAuthLogoutAction: "Sign out",
+    operationsAuthLoginError: "Invalid credentials or inactive user.",
     operationsEmptyState: "No requests available.",
     operationsStatusLabel: "Current status",
     operationsNotesLabel: "Review notes",
@@ -230,6 +244,13 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsPaginationPrev: "Anterior",
     operationsPaginationNext: "Siguiente",
     operationsTotalResultsLabel: "Total resultados",
+    operationsAuthTitle: "Acceso operador",
+    operationsAuthSubtitle: "Autenticate para revisar y gestionar solicitudes.",
+    operationsAuthEmailLabel: "Correo",
+    operationsAuthPasswordLabel: "Contrasena",
+    operationsAuthLoginAction: "Ingresar",
+    operationsAuthLogoutAction: "Salir",
+    operationsAuthLoginError: "Credenciales invalidas o usuario inactivo.",
     operationsEmptyState: "No hay solicitudes disponibles.",
     operationsStatusLabel: "Estado actual",
     operationsNotesLabel: "Notas de revision",
