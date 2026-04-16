@@ -74,6 +74,14 @@ function getStatusBadgeColor(status: CompanyRequest["status"]): string {
   }
 }
 
+function normalizeLocationValue(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
 export default function OperationsRequestsPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -522,6 +530,11 @@ export default function OperationsRequestsPage() {
                   selectedRegionName && selectedCommuneName
                     ? `${selectedCommuneName}, ${selectedRegionName}`
                     : t.operationsNormalizedLocationPending;
+                const isLocationSelectionComplete = selectedRegionName.length > 0 && selectedCommuneName.length > 0;
+                const isNormalizedLocationMatch =
+                  isLocationSelectionComplete &&
+                  normalizeLocationValue(selectedCommuneName) === normalizeLocationValue(request.city) &&
+                  normalizeLocationValue(selectedRegionName) === normalizeLocationValue(request.region);
 
                 return (
                   <Paper
@@ -550,6 +563,17 @@ export default function OperationsRequestsPage() {
                         <Text size="sm" c="dimmed">
                           {t.operationsNormalizedLocationLabel}: {normalizedLocationLabel}
                         </Text>
+                        {isLocationSelectionComplete ? (
+                          <Badge
+                            variant="light"
+                            color={isNormalizedLocationMatch ? "green" : "orange"}
+                            w="fit-content"
+                          >
+                            {isNormalizedLocationMatch
+                              ? t.operationsLocationMatchLabel
+                              : t.operationsLocationMismatchLabel}
+                          </Badge>
+                        ) : null}
                         <Badge variant="light" color={getStatusBadgeColor(request.status)} w="fit-content">
                           {statusLabels[request.status]}
                         </Badge>

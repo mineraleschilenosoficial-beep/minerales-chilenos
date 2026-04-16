@@ -176,6 +176,8 @@ type DirectoryTranslation = {
   operationsRequestedLocationLabel: string;
   operationsNormalizedLocationLabel: string;
   operationsNormalizedLocationPending: string;
+  operationsLocationMatchLabel: string;
+  operationsLocationMismatchLabel: string;
   operationsRejectConfirmTitle: string;
   operationsRejectConfirmMessage: string;
   operationsRejectConfirmAction: string;
@@ -412,6 +414,8 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsRequestedLocationLabel: "Requested location",
     operationsNormalizedLocationLabel: "Normalized location",
     operationsNormalizedLocationPending: "Not selected yet.",
+    operationsLocationMatchLabel: "Location match",
+    operationsLocationMismatchLabel: "Location mismatch",
     operationsRejectConfirmTitle: "Confirm rejection",
     operationsRejectConfirmMessage:
       "This request will be marked as rejected. You can include notes for traceability.",
@@ -660,6 +664,8 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsRequestedLocationLabel: "Ubicacion solicitada",
     operationsNormalizedLocationLabel: "Ubicacion normalizada",
     operationsNormalizedLocationPending: "Aun no seleccionada.",
+    operationsLocationMatchLabel: "Ubicacion coincide",
+    operationsLocationMismatchLabel: "Ubicacion distinta",
     operationsRejectConfirmTitle: "Confirmar rechazo",
     operationsRejectConfirmMessage:
       "Esta solicitud quedara marcada como rechazada. Puedes incluir notas para trazabilidad.",
