@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Alert, Button, Group } from "@mantine/core";
+import { Alert, Button, Group, Paper, Text } from "@mantine/core";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { UserProfile } from "@minerales/contracts";
@@ -77,67 +77,79 @@ export function OperationsShell({ locale, setLocale, onAuthChange }: OperationsS
 
   return (
     <>
-      <Group gap="xs" mb="sm" wrap="wrap" className="ops-toolbar">
-        <Button
-          size="xs"
-          variant={locale === "en" ? "filled" : "light"}
-          onClick={() => setLocale("en")}
-        >
-          {t.localeEnglish}
-        </Button>
-        <Button
-          size="xs"
-          variant={locale === "es" ? "filled" : "light"}
-          onClick={() => setLocale("es")}
-        >
-          {t.localeSpanish}
-        </Button>
-        <Button
-          size="xs"
-          component={Link}
-          href="/operations/dashboard"
-          variant={pathname === "/operations/dashboard" ? "filled" : "light"}
-        >
-          {t.operationsNavDashboard}
-        </Button>
-        <Button
-          size="xs"
-          component={Link}
-          href="/operations/companies"
-          variant={pathname === "/operations/companies" ? "filled" : "light"}
-        >
-          {t.operationsNavCompanies}
-        </Button>
-        <Button
-          size="xs"
-          component={Link}
-          href="/operations/requests"
-          variant={pathname === "/operations/requests" ? "filled" : "light"}
-        >
-          {t.operationsNavRequests}
-        </Button>
-        <Button
-          size="xs"
-          component={Link}
-          href="/operations/users"
-          variant={pathname === "/operations/users" ? "filled" : "light"}
-        >
-          {t.operationsNavUsers}
-        </Button>
-        <Button
-          size="xs"
-          component={Link}
-          href="/operations/plans"
-          variant={pathname === "/operations/plans" ? "filled" : "light"}
-        >
-          {t.operationsNavPlans}
-        </Button>
-        {isAuthenticated ? (
-          <Button size="xs" variant="default" onClick={handleLogout}>
-            {t.operationsAuthLogoutAction}
-          </Button>
-        ) : null}
-      </Group>
+      <Paper withBorder p="sm" mb="sm" className="ops-panel">
+        <Group justify="space-between" align="center" gap="sm" wrap="wrap">
+          <div>
+            <Text fw={700} size="sm">
+              MineralesChilenos Admin
+            </Text>
+            <Text size="xs" c="dimmed">
+              {isAuthenticated ? currentUser?.email : t.operationsAuthTitle}
+            </Text>
+          </div>
+          <Group gap="xs" wrap="wrap" className="ops-toolbar">
+            <Button
+              size="xs"
+              variant={locale === "en" ? "filled" : "light"}
+              onClick={() => setLocale("en")}
+            >
+              {t.localeEnglish}
+            </Button>
+            <Button
+              size="xs"
+              variant={locale === "es" ? "filled" : "light"}
+              onClick={() => setLocale("es")}
+            >
+              {t.localeSpanish}
+            </Button>
+            <Button
+              size="xs"
+              component={Link}
+              href="/operations/dashboard"
+              variant={pathname === "/operations/dashboard" ? "filled" : "light"}
+            >
+              {t.operationsNavDashboard}
+            </Button>
+            <Button
+              size="xs"
+              component={Link}
+              href="/operations/companies"
+              variant={pathname === "/operations/companies" ? "filled" : "light"}
+            >
+              {t.operationsNavCompanies}
+            </Button>
+            <Button
+              size="xs"
+              component={Link}
+              href="/operations/requests"
+              variant={pathname === "/operations/requests" ? "filled" : "light"}
+            >
+              {t.operationsNavRequests}
+            </Button>
+            <Button
+              size="xs"
+              component={Link}
+              href="/operations/users"
+              variant={pathname === "/operations/users" ? "filled" : "light"}
+            >
+              {t.operationsNavUsers}
+            </Button>
+            <Button
+              size="xs"
+              component={Link}
+              href="/operations/plans"
+              variant={pathname === "/operations/plans" ? "filled" : "light"}
+            >
+              {t.operationsNavPlans}
+            </Button>
+            {isAuthenticated ? (
+              <Button size="xs" variant="default" onClick={handleLogout}>
+                {t.operationsAuthLogoutAction}
+              </Button>
+            ) : null}
+          </Group>
+        </Group>
+      </Paper>
 
       {!isAuthenticated ? (
         <Alert color="yellow" variant="light" mb="md">
