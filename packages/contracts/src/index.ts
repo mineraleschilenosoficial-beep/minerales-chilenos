@@ -145,7 +145,9 @@ export const companyRequestSchema = z.object({
   status: companyRequestStatusSchema,
   createdAt: z.string(),
   reviewNotes: z.string().max(2000).optional(),
-  companyId: z.string().min(1).optional()
+  companyId: z.string().min(1).optional(),
+  normalizedRegionCode: z.string().min(2).max(16).optional(),
+  normalizedCommuneId: z.string().min(1).max(64).optional()
 });
 
 /**

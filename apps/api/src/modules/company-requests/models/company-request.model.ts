@@ -13,4 +13,6 @@ export type CompanyRequestModel = Omit<CreateCompanyRequestInput, "requestedPlan
   status: CompanyRequestStatus;
   reviewNotes?: string;
   companyId?: string;
+  normalizedRegionCode?: string;
+  normalizedCommuneId?: string;
 };

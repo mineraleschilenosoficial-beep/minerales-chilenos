@@ -205,6 +205,7 @@ model Commune {
   updatedAt DateTime         @updatedAt
   region    Region           @relation(fields: [regionId], references: [id], onDelete: Restrict)
   addresses CompanyAddress[]
+  normalizedCompanyRequests CompanyRequest[]
 
   @@unique([regionId, name])
   @@index([isActive])
@@ -283,6 +284,8 @@ model CompanySubscription {
 model CompanyRequest {
   id                String                   @id @default(cuid())
   companyId         String?
+  normalizedCommuneId String?
+  normalizedRegionCode String?
   requestedByUserId String?
   reviewedById      String?
   companyName       String
@@ -301,6 +304,7 @@ model CompanyRequest {
   createdAt         DateTime                 @default(now())
   updatedAt         DateTime                 @updatedAt
   company           Company?                 @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  normalizedCommune Commune?                @relation(fields: [normalizedCommuneId], references: [id], onDelete: SetNull)
   requestedByUser   User?                    @relation("CompanyRequestRequestedBy", fields: [requestedByUserId], references: [id], onDelete: SetNull)
   reviewedBy        User?                    @relation("CompanyRequestReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
   requestedPlan     Plan                     @relation(fields: [requestedPlanId], references: [id], onDelete: Restrict)
@@ -308,6 +312,7 @@ model CompanyRequest {
 
   @@index([status, createdAt])
   @@index([requestedByUserId])
+  @@index([normalizedCommuneId])
 }
 
 model CompanyRequestCategory {

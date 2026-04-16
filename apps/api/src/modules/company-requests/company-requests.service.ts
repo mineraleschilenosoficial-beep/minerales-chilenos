@@ -135,6 +135,8 @@ export class CompanyRequestsService {
       "phone",
       "city",
       "region",
+      "normalizedRegionCode",
+      "normalizedCommuneId",
       "status",
       "category",
       "requestedPlan",
@@ -150,6 +152,8 @@ export class CompanyRequestsService {
       request.phone,
       request.city,
       request.region,
+      request.normalizedRegionCode ?? "",
+      request.normalizedCommuneId ?? "",
       request.status,
       request.category,
       request.requestedPlan,
@@ -254,13 +258,16 @@ export class CompanyRequestsService {
 
     if (parsedPayload.status === "approved") {
       const company = await this.upsertCompanyFromRequest(existingRequest, parsedPayload);
+      const normalizedCommune = await this.resolveApprovalCommune(existingRequest.cityText, parsedPayload);
       await this.prisma.companyRequest.update({
         where: { id: requestId },
         data: {
           status: "APPROVED",
           reviewNotes: parsedPayload.reviewNotes,
           reviewedAt: new Date(),
-          companyId: company.id
+          companyId: company.id,
+          normalizedRegionCode: normalizedCommune?.region.code ?? parsedPayload.regionCode ?? null,
+          normalizedCommuneId: normalizedCommune?.id ?? parsedPayload.communeId ?? null
         }
       });
 
@@ -272,12 +279,15 @@ export class CompanyRequestsService {
     }
 
     const prismaStatus = this.toPrismaRequestStatus(parsedPayload.status);
+    const selectedNormalization = await this.resolveManualNormalization(parsedPayload);
     await this.prisma.companyRequest.update({
       where: { id: requestId },
       data: {
         status: prismaStatus,
         reviewNotes: parsedPayload.reviewNotes,
-        reviewedAt: new Date()
+        reviewedAt: new Date(),
+        normalizedRegionCode: selectedNormalization?.regionCode ?? null,
+        normalizedCommuneId: selectedNormalization?.communeId ?? null
       }
     });
 
@@ -498,6 +508,31 @@ export class CompanyRequestsService {
     });
   }
 
+  private async resolveManualNormalization(reviewPayload: ReviewCompanyRequestInput) {
+    if (reviewPayload.communeId) {
+      const commune = await this.prisma.commune.findUnique({
+        where: { id: reviewPayload.communeId },
+        include: { region: true }
+      });
+      if (!commune) {
+        throw new BadRequestException("Selected commune does not exist");
+      }
+      if (reviewPayload.regionCode && commune.region.code !== reviewPayload.regionCode) {
+        throw new BadRequestException("Selected commune does not belong to selected region");
+      }
+      return {
+        regionCode: commune.region.code,
+        communeId: commune.id
+      };
+    }
+    if (reviewPayload.regionCode) {
+      return {
+        regionCode: reviewPayload.regionCode
+      };
+    }
+    return undefined;
+  }
+
   private toSlug(value: string): string {
     return value
       .normalize("NFD")
@@ -519,6 +554,8 @@ export class CompanyRequestsService {
     website: string | null;
     cityText: string;
     regionText: string;
+    normalizedRegionCode: string | null;
+    normalizedCommuneId: string | null;
     status: string;
     reviewNotes: string | null;
     createdAt: Date;
@@ -540,7 +577,9 @@ export class CompanyRequestsService {
       createdAt: request.createdAt.toISOString(),
       status: this.toCompanyRequestStatus(request.status),
       reviewNotes: request.reviewNotes ?? undefined,
-      companyId: request.companyId ?? undefined
+      companyId: request.companyId ?? undefined,
+      normalizedRegionCode: request.normalizedRegionCode ?? undefined,
+      normalizedCommuneId: request.normalizedCommuneId ?? undefined
     };
   }
 

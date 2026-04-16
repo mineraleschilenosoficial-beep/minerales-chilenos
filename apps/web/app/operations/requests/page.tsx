@@ -279,8 +279,8 @@ export default function OperationsRequestsPage() {
           nextDrafts[request.id] = existing ?? {
             status: getEditableStatus(request.status),
             reviewNotes: request.reviewNotes ?? "",
-            regionCode: "",
-            communeId: ""
+            regionCode: request.normalizedRegionCode ?? "",
+            communeId: request.normalizedCommuneId ?? ""
           };
         }
 
@@ -314,6 +314,17 @@ export default function OperationsRequestsPage() {
   useEffect(() => {
     void loadRequests();
   }, [loadRequests]);
+
+  useEffect(() => {
+    const regionCodes = new Set(
+      Object.values(reviewDrafts)
+        .map((draft) => draft.regionCode)
+        .filter((regionCode) => regionCode.length > 0)
+    );
+    for (const regionCode of regionCodes) {
+      void ensureCommunesForRegion(regionCode);
+    }
+  }, [ensureCommunesForRegion, reviewDrafts]);
 
   useEffect(() => {
     if (!filtersHydrated) {
