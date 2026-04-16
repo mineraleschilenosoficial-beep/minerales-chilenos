@@ -10,7 +10,7 @@ const AUTH_SESSION_COOKIE_KEY = "mc.auth.session";
  * @param request Incoming Next.js request.
  * @returns Redirect response or continue response.
  */
-export function proxy(request: NextRequest) {
+export default function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (!pathname.startsWith(OPERATIONS_PREFIX)) {
     return NextResponse.next();
