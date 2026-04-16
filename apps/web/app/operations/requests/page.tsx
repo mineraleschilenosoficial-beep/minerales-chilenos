@@ -11,6 +11,7 @@ import {
 import {
   directoryTranslations,
 } from "@/modules/i18n/directory-translations";
+import { OperationsFeedback } from "@/modules/operations/operations-feedback";
 import { useOperationFeedback } from "@/modules/operations/use-operation-feedback";
 import { OperationsShell } from "@/modules/operations/operations-shell";
 import { useOperationsSession } from "@/modules/operations/use-operations-session";
@@ -341,11 +342,7 @@ export default function OperationsRequestsPage() {
           </div>
         ) : null}
 
-        {feedback ? (
-          <p className={`${styles.feedback} ${feedback.isError ? styles.feedbackError : styles.feedbackSuccess}`}>
-            {feedback.message}
-          </p>
-        ) : null}
+        <OperationsFeedback feedback={feedback} />
 
         {isAuthenticated ? <div className={styles.requests}>
           {loading ? <div className={styles.requestCard}>{t.statsLoadingValue}</div> : null}
