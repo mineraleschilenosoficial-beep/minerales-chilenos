@@ -101,16 +101,23 @@ export default function OperationsRequestsPage() {
     setCurrentPage(1);
   }, [searchQuery, statusFilter]);
 
-  const handleApplyReview = async (requestId: string) => {
+  const executeReview = async (
+    requestId: string,
+    status: ReviewCompanyRequestInput["status"],
+    reviewNotes: string
+  ) => {
     const draft = reviewDrafts[requestId];
-    if (!draft) {
+    if (!draft && reviewNotes.length === 0) {
       return;
     }
 
     setApplyingRequestId(requestId);
     setFeedback(null);
     try {
-      await reviewCompanyRequest(requestId, draft);
+      await reviewCompanyRequest(requestId, {
+        status,
+        reviewNotes: reviewNotes.trim() || undefined
+      });
       setFeedback({ isError: false, message: t.operationsSuccessFeedback });
       await loadRequests();
     } catch {
@@ -118,6 +125,15 @@ export default function OperationsRequestsPage() {
     } finally {
       setApplyingRequestId(null);
     }
+  };
+
+  const handleApplyReview = async (requestId: string) => {
+    const draft = reviewDrafts[requestId];
+    if (!draft) {
+      return;
+    }
+
+    await executeReview(requestId, draft.status, draft.reviewNotes);
   };
 
   return (
@@ -248,6 +264,33 @@ export default function OperationsRequestsPage() {
                         }))
                       }
                     />
+
+                    <div className={styles.quickActions}>
+                      <button
+                        type="button"
+                        className={styles.buttonSecondary}
+                        disabled={isApplying}
+                        onClick={() => void executeReview(request.id, "under_review", draft.reviewNotes)}
+                      >
+                        {t.operationsStatusOptionUnderReview}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.buttonSecondary}
+                        disabled={isApplying}
+                        onClick={() => void executeReview(request.id, "approved", draft.reviewNotes)}
+                      >
+                        {t.operationsStatusOptionApproved}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.buttonSecondary}
+                        disabled={isApplying}
+                        onClick={() => void executeReview(request.id, "rejected", draft.reviewNotes)}
+                      >
+                        {t.operationsStatusOptionRejected}
+                      </button>
+                    </div>
 
                     <button
                       type="button"

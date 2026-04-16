@@ -136,6 +136,12 @@
   min-width: 260px;
 }
 
+.quickActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .feedback {
   font-size: 13px;
 }
