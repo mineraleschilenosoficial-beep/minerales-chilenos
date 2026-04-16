@@ -27,6 +27,10 @@ type DirectoryTranslation = {
   operationsRefresh: string;
   operationsFilterStatusLabel: string;
   operationsFilterStatusAll: string;
+  operationsSearchPlaceholder: string;
+  operationsPaginationPage: string;
+  operationsPaginationPrev: string;
+  operationsPaginationNext: string;
   operationsEmptyState: string;
   operationsStatusLabel: string;
   operationsNotesLabel: string;
@@ -96,6 +100,10 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsRefresh: "Refresh",
     operationsFilterStatusLabel: "Filter status",
     operationsFilterStatusAll: "All statuses",
+    operationsSearchPlaceholder: "Search by company, email, or phone",
+    operationsPaginationPage: "Page",
+    operationsPaginationPrev: "Previous",
+    operationsPaginationNext: "Next",
     operationsEmptyState: "No requests available.",
     operationsStatusLabel: "Current status",
     operationsNotesLabel: "Review notes",
@@ -176,6 +184,10 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsRefresh: "Actualizar",
     operationsFilterStatusLabel: "Filtrar estado",
     operationsFilterStatusAll: "Todos los estados",
+    operationsSearchPlaceholder: "Buscar por empresa, correo o telefono",
+    operationsPaginationPage: "Pagina",
+    operationsPaginationPrev: "Anterior",
+    operationsPaginationNext: "Siguiente",
     operationsEmptyState: "No hay solicitudes disponibles.",
     operationsStatusLabel: "Estado actual",
     operationsNotesLabel: "Notas de revision",

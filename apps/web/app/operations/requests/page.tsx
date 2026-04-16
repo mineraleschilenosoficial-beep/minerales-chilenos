@@ -27,6 +27,10 @@ function getEditableStatus(
 export default function OperationsRequestsPage() {
   const [locale, setLocale] = useState<SupportedLocale>("en");
   const [statusFilter, setStatusFilter] = useState<CompanyRequest["status"] | "all">("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(0);
+  const [pageSize] = useState<number>(8);
   const [requests, setRequests] = useState<CompanyRequest[]>([]);
   const [reviewDrafts, setReviewDrafts] = useState<Record<string, RequestReviewDraft>>({});
   const [loading, setLoading] = useState<boolean>(false);
@@ -48,9 +52,13 @@ export default function OperationsRequestsPage() {
     setLoading(true);
     try {
       const payload = await fetchCompanyRequests({
-        status: statusFilter
+        status: statusFilter,
+        search: searchQuery,
+        page: currentPage,
+        pageSize
       });
       setRequests(payload.items);
+      setTotalPages(payload.totalPages);
       setReviewDrafts((currentDrafts) => {
         const nextDrafts: Record<string, RequestReviewDraft> = {};
         for (const request of payload.items) {
@@ -65,15 +73,20 @@ export default function OperationsRequestsPage() {
       });
     } catch {
       setRequests([]);
+      setTotalPages(0);
       setFeedback({ isError: true, message: t.operationsErrorFeedback });
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, t.operationsErrorFeedback]);
+  }, [currentPage, pageSize, searchQuery, statusFilter, t.operationsErrorFeedback]);
 
   useEffect(() => {
     void loadRequests();
   }, [loadRequests]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
 
   const handleApplyReview = async (requestId: string) => {
     const draft = reviewDrafts[requestId];
@@ -122,6 +135,13 @@ export default function OperationsRequestsPage() {
             <button type="button" className={styles.button} onClick={() => void loadRequests()}>
               {t.operationsRefresh}
             </button>
+            <input
+              type="text"
+              className={`${styles.select} ${styles.toolbarInput}`}
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder={t.operationsSearchPlaceholder}
+            />
             <label className={styles.label} htmlFor="status-filter">
               {t.operationsFilterStatusLabel}
             </label>
@@ -228,6 +248,27 @@ export default function OperationsRequestsPage() {
                 );
               })
             : null}
+        </div>
+        <div className={styles.toolbar}>
+          <button
+            type="button"
+            className={styles.buttonSecondary}
+            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+            disabled={loading || currentPage <= 1}
+          >
+            {t.operationsPaginationPrev}
+          </button>
+          <span className={styles.label}>
+            {t.operationsPaginationPage} {totalPages === 0 ? 0 : currentPage}/{totalPages}
+          </span>
+          <button
+            type="button"
+            className={styles.buttonSecondary}
+            onClick={() => setCurrentPage((page) => Math.min(totalPages || 1, page + 1))}
+            disabled={loading || totalPages === 0 || currentPage >= totalPages}
+          >
+            {t.operationsPaginationNext}
+          </button>
         </div>
       </div>
     </div>

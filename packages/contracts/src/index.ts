@@ -105,9 +105,12 @@ export const companyRequestStatusSchema = z.enum([
  * Query schema for listing company requests.
  */
 export const companyRequestListQuerySchema = z.object({
+  search: z.string().trim().max(120).optional(),
   status: z
     .union([z.literal("all"), companyRequestStatusSchema])
-    .default("all")
+    .default("all"),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(50).default(10)
 });
 
 /**
@@ -136,6 +139,9 @@ export const companyRequestSchema = z.object({
  */
 export const companyRequestListResponseSchema = z.object({
   total: z.number().int().min(0),
+  page: z.number().int().min(1),
+  pageSize: z.number().int().min(1),
+  totalPages: z.number().int().min(0),
   items: z.array(companyRequestSchema)
 });
 

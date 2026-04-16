@@ -66,29 +66,69 @@ export class CompanyRequestsService {
    */
   async listRequests(query: CompanyRequestListQuery) {
     const parsedQuery = companyRequestListQuerySchema.parse(query);
+    const normalizedSearch = (parsedQuery.search ?? "").trim();
 
-    const requests = await this.prisma.companyRequest.findMany({
-      where:
-        parsedQuery.status === "all"
-          ? undefined
-          : {
-              status: this.toPrismaStatusFilter(parsedQuery.status)
-            },
-      include: {
-        categories: {
-          include: {
-            category: true
-          }
+    const whereClause = {
+      ...(parsedQuery.status === "all"
+        ? {}
+        : {
+            status: this.toPrismaStatusFilter(parsedQuery.status)
+          }),
+      ...(normalizedSearch.length === 0
+        ? {}
+        : {
+            OR: [
+              {
+                companyName: {
+                  contains: normalizedSearch,
+                  mode: "insensitive" as const
+                }
+              },
+              {
+                contactEmail: {
+                  contains: normalizedSearch,
+                  mode: "insensitive" as const
+                }
+              },
+              {
+                contactPhone: {
+                  contains: normalizedSearch,
+                  mode: "insensitive" as const
+                }
+              }
+            ]
+          })
+    };
+
+    const [total, requests] = await Promise.all([
+      this.prisma.companyRequest.count({
+        where: whereClause
+      }),
+      this.prisma.companyRequest.findMany({
+        where: whereClause,
+        include: {
+          categories: {
+            include: {
+              category: true
+            }
+          },
+          requestedPlan: true
         },
-        requestedPlan: true
-      },
-      orderBy: {
-        createdAt: "desc"
-      }
-    });
+        orderBy: {
+          createdAt: "desc"
+        },
+        skip: (parsedQuery.page - 1) * parsedQuery.pageSize,
+        take: parsedQuery.pageSize
+      })
+    ]);
+
+    const totalPages = total === 0 ? 0 : Math.ceil(total / parsedQuery.pageSize);
 
     return {
-      total: requests.length,
+      total,
+      page: parsedQuery.page,
+      pageSize: parsedQuery.pageSize,
+      totalPages,
       items: requests.map((request: Awaited<typeof requests>[number]) => this.mapRequest(request))
     };
   }

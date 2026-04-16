@@ -115,15 +115,26 @@ export async function submitCompanyRequest(formState: RequestFormState): Promise
  * Fetches company publication requests for internal operations.
  */
 export async function fetchCompanyRequests(params?: {
+  search?: string;
   status?: "all" | "pending" | "under_review" | "approved" | "rejected";
+  page?: number;
+  pageSize?: number;
 }): Promise<CompanyRequestListResponse> {
   const parsedQuery = companyRequestListQuerySchema.parse({
-    status: params?.status ?? "all"
+    search: params?.search,
+    status: params?.status ?? "all",
+    page: params?.page ?? 1,
+    pageSize: params?.pageSize ?? 10
   });
   const url = new URL("/company-requests", API_BASE_URL);
+  if (parsedQuery.search && parsedQuery.search.length > 0) {
+    url.searchParams.set("search", parsedQuery.search);
+  }
   if (parsedQuery.status !== "all") {
     url.searchParams.set("status", parsedQuery.status);
   }
+  url.searchParams.set("page", String(parsedQuery.page));
+  url.searchParams.set("pageSize", String(parsedQuery.pageSize));
 
   const response = await fetch(url);
   if (!response.ok) {

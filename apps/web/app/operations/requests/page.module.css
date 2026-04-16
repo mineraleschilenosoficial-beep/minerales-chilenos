@@ -104,6 +104,10 @@
   width: 180px;
 }
 
+.toolbarInput {
+  min-width: 260px;
+}
+
 .feedback {
   font-size: 13px;
 }

@@ -19,9 +19,17 @@ export class CompanyRequestsController {
   }
 
   @Get()
-  async listRequests(@Query("status") status?: string) {
+  async listRequests(
+    @Query("status") status?: string,
+    @Query("search") search?: string,
+    @Query("page") page?: string,
+    @Query("pageSize") pageSize?: string
+  ) {
     const parsedQuery = companyRequestListQuerySchema.parse({
-      status: status ?? "all"
+      status: status ?? "all",
+      search,
+      page,
+      pageSize
     });
 
     const response = await this.companyRequestsService.listRequests(parsedQuery);
