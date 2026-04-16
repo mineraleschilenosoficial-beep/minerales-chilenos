@@ -24,6 +24,8 @@ type RejectConfirmationState = {
   reviewNotes: string;
 };
 
+const OPERATIONS_LOCALE_STORAGE_KEY = "mc.operations.locale";
+
 function getEditableStatus(
   status: CompanyRequest["status"]
 ): ReviewCompanyRequestInput["status"] {
@@ -68,6 +70,17 @@ export default function OperationsRequestsPage() {
   const [filtersHydrated, setFiltersHydrated] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<{ isError: boolean; message: string } | null>(null);
   const t = directoryTranslations[locale];
+
+  useEffect(() => {
+    const storedLocale = window.localStorage.getItem(OPERATIONS_LOCALE_STORAGE_KEY);
+    if (storedLocale === "en" || storedLocale === "es") {
+      setLocale(storedLocale);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(OPERATIONS_LOCALE_STORAGE_KEY, locale);
+  }, [locale]);
 
   const statusLabels = useMemo(
     () => ({
