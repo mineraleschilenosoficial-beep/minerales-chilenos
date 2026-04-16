@@ -86,11 +86,11 @@ export default function OperationsUsersPage() {
   };
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !canViewUsers) {
       return;
     }
     void loadUsers();
-  }, [isAuthenticated]);
+  }, [canViewUsers, isAuthenticated]);
 
   const toggleCreateRole = (role: UserRole) => {
     setCreateRoles((currentRoles) => {
