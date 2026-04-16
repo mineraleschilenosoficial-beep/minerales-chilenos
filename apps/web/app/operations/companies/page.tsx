@@ -57,6 +57,7 @@ export default function OperationsCompaniesPage() {
   const canManage =
     currentUser?.roles.includes(UserRole.SUPER_ADMIN) ||
     currentUser?.roles.includes(UserRole.STAFF);
+  const canDelete = currentUser?.roles.includes(UserRole.SUPER_ADMIN) ?? false;
 
   const loadCompanies = async () => {
     setLoading(true);
@@ -225,6 +226,54 @@ export default function OperationsCompaniesPage() {
                 onChange={(event) => setDraft((current) => ({ ...current, phone: event.target.value }))}
                 placeholder={t.formPhoneLabel}
               />
+              <input
+                className={styles.input}
+                value={draft.website}
+                onChange={(event) => setDraft((current) => ({ ...current, website: event.target.value }))}
+                placeholder={t.formWebsiteLabel}
+              />
+              <select
+                className={styles.select}
+                value={draft.category}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, category: event.target.value as CompanyCategory }))
+                }
+              >
+                {Object.entries(t.categories).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              <select
+                className={styles.select}
+                value={draft.plan}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, plan: event.target.value as CompanyPlan }))
+                }
+              >
+                <option value="free">{t.plans.free}</option>
+                <option value="standard">{t.plans.standard}</option>
+                <option value="premium">{t.plans.premium}</option>
+              </select>
+              <select
+                className={styles.select}
+                value={draft.status}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, status: event.target.value as CompanyStatus }))
+                }
+              >
+                <option value="active">{t.operationsUsersActiveYes}</option>
+                <option value="inactive">{t.operationsUsersActiveNo}</option>
+              </select>
+              <input
+                className={styles.input}
+                value={draft.description}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, description: event.target.value }))
+                }
+                placeholder={t.formDescriptionLabel}
+              />
               <button
                 type="button"
                 className={styles.button}
@@ -271,13 +320,15 @@ export default function OperationsCompaniesPage() {
                         >
                           {t.operationsEditAction}
                         </button>
-                        <button
-                          type="button"
-                          className={styles.buttonSecondary}
-                          onClick={() => void handleDelete(company.id)}
-                        >
-                          {t.operationsCompaniesDeleteAction}
-                        </button>
+                        {canDelete ? (
+                          <button
+                            type="button"
+                            className={styles.buttonSecondary}
+                            onClick={() => void handleDelete(company.id)}
+                          >
+                            {t.operationsCompaniesDeleteAction}
+                          </button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>
@@ -286,6 +337,7 @@ export default function OperationsCompaniesPage() {
             </table>
           </>
         ) : null}
+        {isAuthenticated && !canManage ? <div>{t.operationsUsersNoAccess}</div> : null}
       </div>
     </div>
   );
