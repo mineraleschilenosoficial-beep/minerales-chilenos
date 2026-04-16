@@ -47,6 +47,7 @@ const DIRECTORY_API_ERRORS = {
 } as const;
 
 const AUTH_TOKEN_STORAGE_KEY = "mc.auth.token";
+export const AUTH_SESSION_INVALID_EVENT = "mc:auth-session-invalid";
 const AUTH_ERRORS = {
   SESSION_INVALID: "SESSION_INVALID"
 } as const;
@@ -528,10 +529,19 @@ async function fetchWithAuth(
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) {
       logoutOperator();
+      emitSessionInvalidEvent();
       throw new Error(AUTH_ERRORS.SESSION_INVALID);
     }
     throw new Error(fallbackErrorCode);
   }
 
   return response;
+}
+
+function emitSessionInvalidEvent(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(new CustomEvent(AUTH_SESSION_INVALID_EVENT));
 }

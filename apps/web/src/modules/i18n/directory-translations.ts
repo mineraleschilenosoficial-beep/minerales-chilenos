@@ -47,6 +47,7 @@ type DirectoryTranslation = {
   operationsAuthLoginAction: string;
   operationsAuthLogoutAction: string;
   operationsAuthLoginError: string;
+  operationsAuthSessionExpired: string;
   operationsNoAccess: string;
   operationsNavDashboard: string;
   operationsNavCompanies: string;
@@ -205,6 +206,7 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsAuthLoginAction: "Sign in",
     operationsAuthLogoutAction: "Sign out",
     operationsAuthLoginError: "Invalid credentials or inactive user.",
+    operationsAuthSessionExpired: "Your session expired. Please sign in again.",
     operationsNoAccess: "Your account does not have permission for this section.",
     operationsNavDashboard: "Dashboard",
     operationsNavCompanies: "Companies",
@@ -375,6 +377,7 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsAuthLoginAction: "Ingresar",
     operationsAuthLogoutAction: "Salir",
     operationsAuthLoginError: "Credenciales invalidas o usuario inactivo.",
+    operationsAuthSessionExpired: "Tu sesion expiro. Ingresa nuevamente.",
     operationsNoAccess: "Tu cuenta no tiene permisos para esta seccion.",
     operationsNavDashboard: "Dashboard",
     operationsNavCompanies: "Empresas",

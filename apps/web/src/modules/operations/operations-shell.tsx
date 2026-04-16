@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { UserProfile } from "@minerales/contracts";
 import {
+  AUTH_SESSION_INVALID_EVENT,
   fetchCurrentOperator,
   hasOperatorSession,
   loginOperator,
@@ -36,7 +37,7 @@ export function OperationsShell({ locale, setLocale, onAuthChange, children }: O
   const [authLoading, setAuthLoading] = useState<boolean>(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(hasOperatorSession());
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [authError, setAuthError] = useState<boolean>(false);
+  const [authErrorMessage, setAuthErrorMessage] = useState<string>("");
   const t = directoryTranslations[locale];
 
   useEffect(() => {
@@ -57,21 +58,36 @@ export function OperationsShell({ locale, setLocale, onAuthChange, children }: O
         logoutOperator();
         setCurrentUser(null);
         setIsAuthenticated(false);
+        setAuthErrorMessage(t.operationsAuthSessionExpired);
       }
     })();
-  }, []);
+  }, [t.operationsAuthSessionExpired]);
+
+  useEffect(() => {
+    const handleSessionInvalid = () => {
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+      setAuthErrorMessage(t.operationsAuthSessionExpired);
+    };
+
+    window.addEventListener(AUTH_SESSION_INVALID_EVENT, handleSessionInvalid);
+    return () => {
+      window.removeEventListener(AUTH_SESSION_INVALID_EVENT, handleSessionInvalid);
+    };
+  }, [t.operationsAuthSessionExpired]);
 
   const handleLogin = async () => {
     setAuthLoading(true);
-    setAuthError(false);
+    setAuthErrorMessage("");
     try {
       await loginOperator(authEmail, authPassword);
       const me = await fetchCurrentOperator();
       setCurrentUser(me);
       setIsAuthenticated(true);
       setAuthPassword("");
+      setAuthErrorMessage("");
     } catch {
-      setAuthError(true);
+      setAuthErrorMessage(t.operationsAuthLoginError);
     } finally {
       setAuthLoading(false);
     }
@@ -150,7 +166,7 @@ export function OperationsShell({ locale, setLocale, onAuthChange, children }: O
           <button type="button" disabled={authLoading} onClick={() => void handleLogin()}>
             {authLoading ? t.operationsApplyingAction : t.operationsAuthLoginAction}
           </button>
-          {authError ? <div>{t.operationsAuthLoginError}</div> : null}
+          {authErrorMessage.length > 0 ? <div>{authErrorMessage}</div> : null}
         </div>
       ) : null}
 
