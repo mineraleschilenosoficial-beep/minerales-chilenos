@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { hash } from "bcryptjs";
 
 const prisma = new PrismaClient();
 
@@ -369,6 +370,43 @@ async function main() {
   await seedCategories();
   await seedRegionsAndCities();
   await seedCompanies();
+  await seedAdminUser();
+}
+
+async function seedAdminUser() {
+  const adminEmail = (process.env.SEED_ADMIN_EMAIL ?? "admin@mineraleschilenos.cl").toLowerCase();
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "ChangeMe123!";
+  const adminFullName = process.env.SEED_ADMIN_NAME ?? "Platform Admin";
+
+  const passwordHash = await hash(adminPassword, 12);
+  const user = await prisma.user.upsert({
+    where: { email: adminEmail },
+    update: {
+      fullName: adminFullName,
+      passwordHash,
+      isActive: true
+    },
+    create: {
+      email: adminEmail,
+      fullName: adminFullName,
+      passwordHash,
+      isActive: true
+    }
+  });
+
+  await prisma.userRoleAssignment.upsert({
+    where: {
+      userId_role: {
+        userId: user.id,
+        role: "SUPER_ADMIN"
+      }
+    },
+    update: {},
+    create: {
+      userId: user.id,
+      role: "SUPER_ADMIN"
+    }
+  });
 }
 
 main()

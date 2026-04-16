@@ -30,6 +30,15 @@ export enum CompanyCategory {
 }
 
 /**
+ * Global authorization roles for platform access.
+ */
+export enum UserRole {
+  SUPER_ADMIN = "super_admin",
+  STAFF = "staff",
+  COMPANY_USER = "company_user"
+}
+
+/**
  * Generic identifier for persisted entities.
  */
 export type EntityId = string;

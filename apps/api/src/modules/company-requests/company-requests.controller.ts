@@ -9,7 +9,8 @@ import {
   Patch,
   Post,
   Query,
-  Res
+  Res,
+  UseGuards
 } from "@nestjs/common";
 import {
   companyRequestExportQuerySchema,
@@ -18,8 +19,12 @@ import {
   createCompanyRequestResponseSchema,
   reviewCompanyRequestResponseSchema
 } from "@minerales/contracts";
+import { UserRole } from "@minerales/types";
 import { gzipSync } from "node:zlib";
 import { CompanyRequestsService } from "./company-requests.service";
+import { Roles } from "../auth/decorators/roles.decorator";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { RolesGuard } from "../auth/guards/roles.guard";
 
 @Controller("company-requests")
 export class CompanyRequestsController {
@@ -33,6 +38,8 @@ export class CompanyRequestsController {
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.STAFF)
   async listRequests(
     @Query("status") status?: string,
     @Query("search") search?: string,
@@ -54,6 +61,8 @@ export class CompanyRequestsController {
 
   @Get("export.csv")
   @Header("Content-Type", "text/csv; charset=utf-8")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.STAFF)
   async exportRequestsCsv(
     @Res({ passthrough: true })
     response: { setHeader: (name: string, value: string) => void },
@@ -86,6 +95,8 @@ export class CompanyRequestsController {
   }
 
   @Patch(":id/review")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.STAFF)
   async reviewRequest(@Param("id") id: string, @Body() payload: unknown) {
     const response = await this.companyRequestsService.reviewRequest(id, payload);
     return reviewCompanyRequestResponseSchema.parse(response);

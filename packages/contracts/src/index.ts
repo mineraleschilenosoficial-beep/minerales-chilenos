@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CompanyCategory, CompanyPlan, CompanyStatus } from "@minerales/types";
+import { CompanyCategory, CompanyPlan, CompanyStatus, UserRole } from "@minerales/types";
 
 /**
  * Category filter allowed for company listing queries.
@@ -175,6 +175,80 @@ export const reviewCompanyRequestResponseSchema = z.object({
 });
 
 /**
+ * Role schema for authorization payloads.
+ */
+export const userRoleSchema = z.nativeEnum(UserRole);
+
+/**
+ * Schema for login requests.
+ */
+export const authLoginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8).max(128)
+});
+
+/**
+ * Schema for self-registration requests.
+ */
+export const authRegisterSchema = z.object({
+  email: z.string().email(),
+  fullName: z.string().min(2).max(120),
+  password: z.string().min(8).max(128)
+});
+
+/**
+ * User profile schema returned by auth and admin endpoints.
+ */
+export const userProfileSchema = z.object({
+  id: z.string().min(1),
+  email: z.string().email(),
+  fullName: z.string().min(2).max(120),
+  isActive: z.boolean(),
+  roles: z.array(userRoleSchema).min(1),
+  createdAt: z.string()
+});
+
+/**
+ * Auth response schema containing access token and user profile.
+ */
+export const authResponseSchema = z.object({
+  accessToken: z.string().min(1),
+  user: userProfileSchema
+});
+
+/**
+ * User list response schema for admin operations.
+ */
+export const userListResponseSchema = z.object({
+  total: z.number().int().min(0),
+  items: z.array(userProfileSchema)
+});
+
+/**
+ * Schema for admin-created users.
+ */
+export const adminCreateUserSchema = z.object({
+  email: z.string().email(),
+  fullName: z.string().min(2).max(120),
+  password: z.string().min(8).max(128),
+  roles: z.array(userRoleSchema).min(1)
+});
+
+/**
+ * Schema for admin role updates.
+ */
+export const adminUpdateUserRolesSchema = z.object({
+  roles: z.array(userRoleSchema).min(1)
+});
+
+/**
+ * Schema for admin active status updates.
+ */
+export const adminUpdateUserActiveSchema = z.object({
+  isActive: z.boolean()
+});
+
+/**
  * Schema used in the admin panel to update a published company profile.
  */
 export const updateCompanySchema = z.object({
@@ -224,6 +298,41 @@ export type CompanyRequestListQuery = z.infer<typeof companyRequestListQuerySche
  * Type-safe company request export query payload.
  */
 export type CompanyRequestExportQuery = z.infer<typeof companyRequestExportQuerySchema>;
+
+/**
+ * Type-safe login payload.
+ */
+export type AuthLoginInput = z.infer<typeof authLoginSchema>;
+
+/**
+ * Type-safe registration payload.
+ */
+export type AuthRegisterInput = z.infer<typeof authRegisterSchema>;
+
+/**
+ * Type-safe authenticated user profile.
+ */
+export type UserProfile = z.infer<typeof userProfileSchema>;
+
+/**
+ * Type-safe auth response payload.
+ */
+export type AuthResponse = z.infer<typeof authResponseSchema>;
+
+/**
+ * Type-safe admin create-user payload.
+ */
+export type AdminCreateUserInput = z.infer<typeof adminCreateUserSchema>;
+
+/**
+ * Type-safe admin roles update payload.
+ */
+export type AdminUpdateUserRolesInput = z.infer<typeof adminUpdateUserRolesSchema>;
+
+/**
+ * Type-safe admin active update payload.
+ */
+export type AdminUpdateUserActiveInput = z.infer<typeof adminUpdateUserActiveSchema>;
 
 /**
  * Type-safe company model used by frontend and backend.
