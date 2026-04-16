@@ -1,5 +1,18 @@
 "use client";
 
+import {
+  Button,
+  Container,
+  Group,
+  Paper,
+  Select,
+  Stack,
+  Table,
+  Text,
+  TextInput,
+  Textarea,
+  Title
+} from "@mantine/core";
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CompanyCategory, CompanyPlan, CompanyStatus, UserRole } from "@minerales/types";
@@ -14,7 +27,6 @@ import { OperationsFeedback } from "@/modules/operations/operations-feedback";
 import { OperationsShell } from "@/modules/operations/operations-shell";
 import { useOperationFeedback } from "@/modules/operations/use-operation-feedback";
 import { useOperationsSession } from "@/modules/operations/use-operations-session";
-import styles from "./page.module.css";
 
 type CompanyDraft = {
   name: string;
@@ -56,7 +68,9 @@ export default function OperationsCompaniesPage() {
   const [totalPages, setTotalPages] = useState<number>(0);
   const [totalResults, setTotalResults] = useState<number>(0);
   const [pageSize] = useState<number>(20);
-  const [companies, setCompanies] = useState<Awaited<ReturnType<typeof fetchAdminCompanies>>["items"]>([]);
+  const [companies, setCompanies] = useState<Awaited<ReturnType<typeof fetchAdminCompanies>>["items"]>(
+    []
+  );
   const [draft, setDraft] = useState<CompanyDraft>(INITIAL_DRAFT);
   const [editingCompanyId, setEditingCompanyId] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -64,6 +78,38 @@ export default function OperationsCompaniesPage() {
   const hasFilterResetInitialized = useRef<boolean>(false);
   const { feedback, clearFeedback, setErrorFeedback, setSuccessFeedback } = useOperationFeedback();
   const t = directoryTranslations[locale];
+
+  const statusOptions = [
+    { value: "all", label: t.operationsCompaniesStatusAll },
+    { value: "active", label: t.operationsCompaniesStatusActive },
+    { value: "inactive", label: t.operationsCompaniesStatusInactive }
+  ];
+  const planOptions = [
+    { value: "all", label: t.operationsCompaniesStatusAll },
+    { value: CompanyPlan.FREE, label: t.plans.free },
+    { value: CompanyPlan.STANDARD, label: t.plans.standard },
+    { value: CompanyPlan.PREMIUM, label: t.plans.premium }
+  ];
+  const categoryOptions = [
+    { value: "all", label: t.operationsCompaniesStatusAll },
+    ...Object.entries(t.categories).map(([value, label]) => ({
+      value,
+      label
+    }))
+  ];
+  const draftCategoryOptions = Object.entries(t.categories).map(([value, label]) => ({
+    value,
+    label
+  }));
+  const draftPlanOptions = [
+    { value: CompanyPlan.FREE, label: t.plans.free },
+    { value: CompanyPlan.STANDARD, label: t.plans.standard },
+    { value: CompanyPlan.PREMIUM, label: t.plans.premium }
+  ];
+  const draftStatusOptions = [
+    { value: CompanyStatus.ACTIVE, label: t.operationsUsersActiveYes },
+    { value: CompanyStatus.INACTIVE, label: t.operationsUsersActiveNo }
+  ];
 
   const canManage =
     currentUser?.roles.includes(UserRole.SUPER_ADMIN) ||
@@ -91,10 +137,7 @@ export default function OperationsCompaniesPage() {
     ) {
       setPlan(planParam);
     }
-    if (
-      categoryParam &&
-      (Object.values(CompanyCategory) as string[]).includes(categoryParam)
-    ) {
+    if (categoryParam && (Object.values(CompanyCategory) as string[]).includes(categoryParam)) {
       setCategory(categoryParam as CompanyCategory);
     }
     if (pageParam) {
@@ -247,10 +290,10 @@ export default function OperationsCompaniesPage() {
   };
 
   return (
-    <div className={styles.page}>
-      <div className={styles.container}>
-        <h1 className={styles.title}>{t.operationsCompaniesTitle}</h1>
-        <p className={styles.subtitle}>{t.operationsCompaniesSubtitle}</p>
+    <Container size="lg" py="lg">
+      <Stack gap="sm">
+        <Title order={1}>{t.operationsCompaniesTitle}</Title>
+        <Text c="dimmed">{t.operationsCompaniesSubtitle}</Text>
 
         <OperationsShell locale={locale} setLocale={setLocale} onAuthChange={handleAuthChange}>
           {() => null}
@@ -259,214 +302,212 @@ export default function OperationsCompaniesPage() {
 
         {isAuthenticated && canManage ? (
           <>
-            <div className={styles.toolbar}>
-              <input
-                className={styles.input}
+            <Group align="end" gap="sm" wrap="wrap">
+              <TextInput
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder={t.operationsCompaniesSearchPlaceholder}
+                w={{ base: "100%", sm: 260 }}
               />
-              <select
-                className={styles.select}
+              <Select
                 value={status}
-                onChange={(event) => setStatus(event.target.value as typeof status)}
-              >
-                <option value="all">{t.operationsCompaniesStatusAll}</option>
-                <option value="active">{t.operationsCompaniesStatusActive}</option>
-                <option value="inactive">{t.operationsCompaniesStatusInactive}</option>
-              </select>
-              <select
-                className={styles.select}
+                onChange={(value) => {
+                  if (value === "all" || value === "active" || value === "inactive") {
+                    setStatus(value);
+                  }
+                }}
+                data={statusOptions}
+                label={t.operationsCompaniesStatusFilterLabel}
+                w={{ base: "100%", sm: 180 }}
+                allowDeselect={false}
+              />
+              <Select
                 value={plan}
-                onChange={(event) => setPlan(event.target.value as typeof plan)}
-              >
-                <option value="all">{t.operationsCompaniesStatusAll}</option>
-                <option value="free">{t.plans.free}</option>
-                <option value="standard">{t.plans.standard}</option>
-                <option value="premium">{t.plans.premium}</option>
-              </select>
-              <select
-                className={styles.select}
+                onChange={(value) => {
+                  if (value === "all" || value === "free" || value === "standard" || value === "premium") {
+                    setPlan(value);
+                  }
+                }}
+                data={planOptions}
+                label={t.operationsCompaniesPlanFilterLabel}
+                w={{ base: "100%", sm: 180 }}
+                allowDeselect={false}
+              />
+              <Select
                 value={category}
-                onChange={(event) => setCategory(event.target.value as typeof category)}
-              >
-                <option value="all">{t.operationsCompaniesStatusAll}</option>
-                {Object.entries(t.categories).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
+                onChange={(value) => {
+                  if (value === "all" || (value && (Object.values(CompanyCategory) as string[]).includes(value))) {
+                    setCategory(value as "all" | CompanyCategory);
+                  }
+                }}
+                data={categoryOptions}
+                label={t.formCategoryLabel}
+                w={{ base: "100%", sm: 240 }}
+                allowDeselect={false}
+              />
+            </Group>
 
-            <div className={styles.toolbar}>
-              <input
-                className={styles.input}
-                value={draft.name}
-                onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
-                placeholder={t.formNameLabel}
-              />
-              <input
-                className={styles.input}
-                value={draft.tagline}
-                onChange={(event) => setDraft((current) => ({ ...current, tagline: event.target.value }))}
-                placeholder={t.formTaglineLabel}
-              />
-              <input
-                className={styles.input}
-                value={draft.city}
-                onChange={(event) => setDraft((current) => ({ ...current, city: event.target.value }))}
-                placeholder={t.formCityLabel}
-              />
-              <input
-                className={styles.input}
-                value={draft.region}
-                onChange={(event) => setDraft((current) => ({ ...current, region: event.target.value }))}
-                placeholder={t.formRegionLabel}
-              />
-              <input
-                className={styles.input}
-                value={draft.phone}
-                onChange={(event) => setDraft((current) => ({ ...current, phone: event.target.value }))}
-                placeholder={t.formPhoneLabel}
-              />
-              <input
-                className={styles.input}
-                value={draft.website}
-                onChange={(event) => setDraft((current) => ({ ...current, website: event.target.value }))}
-                placeholder={t.formWebsiteLabel}
-              />
-              <select
-                className={styles.select}
-                value={draft.category}
-                onChange={(event) =>
-                  setDraft((current) => ({ ...current, category: event.target.value as CompanyCategory }))
-                }
-              >
-                {Object.entries(t.categories).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-              <select
-                className={styles.select}
-                value={draft.plan}
-                onChange={(event) =>
-                  setDraft((current) => ({ ...current, plan: event.target.value as CompanyPlan }))
-                }
-              >
-                <option value="free">{t.plans.free}</option>
-                <option value="standard">{t.plans.standard}</option>
-                <option value="premium">{t.plans.premium}</option>
-              </select>
-              <select
-                className={styles.select}
-                value={draft.status}
-                onChange={(event) =>
-                  setDraft((current) => ({ ...current, status: event.target.value as CompanyStatus }))
-                }
-              >
-                <option value="active">{t.operationsUsersActiveYes}</option>
-                <option value="inactive">{t.operationsUsersActiveNo}</option>
-              </select>
-              <input
-                className={styles.input}
-                value={draft.description}
-                onChange={(event) =>
-                  setDraft((current) => ({ ...current, description: event.target.value }))
-                }
-                placeholder={t.formDescriptionLabel}
-              />
-              <button
-                type="button"
-                className={styles.button}
-                onClick={() => void (editingCompanyId ? handleSave() : handleCreate())}
-              >
-                {editingCompanyId ? t.operationsCompaniesSaveAction : t.operationsCompaniesCreateAction}
-              </button>
-              {editingCompanyId ? (
-                <button
-                  type="button"
-                  className={styles.buttonSecondary}
-                  onClick={() => {
-                    setEditingCompanyId(null);
-                    setDraft(INITIAL_DRAFT);
-                  }}
-                >
-                  {t.operationsRejectCancelAction}
-                </button>
-              ) : null}
-            </div>
+            <Paper withBorder p="md">
+              <Stack gap="sm">
+                <Group grow align="end">
+                  <TextInput
+                    value={draft.name}
+                    onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
+                    label={t.formNameLabel}
+                  />
+                  <TextInput
+                    value={draft.tagline}
+                    onChange={(event) => setDraft((current) => ({ ...current, tagline: event.target.value }))}
+                    label={t.formTaglineLabel}
+                  />
+                </Group>
+                <Group grow align="end">
+                  <TextInput
+                    value={draft.city}
+                    onChange={(event) => setDraft((current) => ({ ...current, city: event.target.value }))}
+                    label={t.formCityLabel}
+                  />
+                  <TextInput
+                    value={draft.region}
+                    onChange={(event) => setDraft((current) => ({ ...current, region: event.target.value }))}
+                    label={t.formRegionLabel}
+                  />
+                  <TextInput
+                    value={draft.phone}
+                    onChange={(event) => setDraft((current) => ({ ...current, phone: event.target.value }))}
+                    label={t.formPhoneLabel}
+                  />
+                </Group>
+                <Group grow align="end">
+                  <TextInput
+                    value={draft.website}
+                    onChange={(event) => setDraft((current) => ({ ...current, website: event.target.value }))}
+                    label={t.formWebsiteLabel}
+                  />
+                  <Select
+                    value={draft.category}
+                    onChange={(value) => {
+                      if (value && (Object.values(CompanyCategory) as string[]).includes(value)) {
+                        setDraft((current) => ({ ...current, category: value as CompanyCategory }));
+                      }
+                    }}
+                    data={draftCategoryOptions}
+                    label={t.formCategoryLabel}
+                    allowDeselect={false}
+                  />
+                  <Select
+                    value={draft.plan}
+                    onChange={(value) => {
+                      if (value === "free" || value === "standard" || value === "premium") {
+                        setDraft((current) => ({ ...current, plan: value as CompanyPlan }));
+                      }
+                    }}
+                    data={draftPlanOptions}
+                    label={t.operationsCompaniesPlanFilterLabel}
+                    allowDeselect={false}
+                  />
+                  <Select
+                    value={draft.status}
+                    onChange={(value) => {
+                      if (value === "active" || value === "inactive") {
+                        setDraft((current) => ({ ...current, status: value as CompanyStatus }));
+                      }
+                    }}
+                    data={draftStatusOptions}
+                    label={t.operationsCompaniesStatusFilterLabel}
+                    allowDeselect={false}
+                  />
+                </Group>
+                <Textarea
+                  value={draft.description}
+                  onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))}
+                  label={t.formDescriptionLabel}
+                  minRows={3}
+                />
+                <Group gap="xs">
+                  <Button onClick={() => void (editingCompanyId ? handleSave() : handleCreate())} loading={loading}>
+                    {editingCompanyId ? t.operationsCompaniesSaveAction : t.operationsCompaniesCreateAction}
+                  </Button>
+                  {editingCompanyId ? (
+                    <Button
+                      variant="default"
+                      onClick={() => {
+                        setEditingCompanyId(null);
+                        setDraft(INITIAL_DRAFT);
+                      }}
+                    >
+                      {t.operationsRejectCancelAction}
+                    </Button>
+                  ) : null}
+                </Group>
+              </Stack>
+            </Paper>
 
-            {loading ? <div>{t.statsLoadingValue}</div> : null}
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>{t.operationsUsersTableName}</th>
-                  <th>{t.operationsCompaniesStatusFilterLabel}</th>
-                  <th>{t.operationsCompaniesPlanFilterLabel}</th>
-                  <th>{t.operationsApplyAction}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {companies.map((company) => (
-                  <tr key={company.id}>
-                    <td data-label={t.operationsUsersTableName}>{company.name}</td>
-                    <td data-label={t.operationsCompaniesStatusFilterLabel}>{company.status}</td>
-                    <td data-label={t.operationsCompaniesPlanFilterLabel}>{company.plan}</td>
-                    <td data-label={t.operationsApplyAction}>
-                      <div className={styles.toolbar}>
-                        <button
-                          type="button"
-                          className={styles.buttonSecondary}
-                          onClick={() => startEdit(company)}
-                        >
-                          {t.operationsEditAction}
-                        </button>
-                        {canDelete ? (
-                          <button
-                            type="button"
-                            className={styles.buttonSecondary}
-                            onClick={() => void handleDelete(company.id)}
-                          >
-                            {t.operationsCompaniesDeleteAction}
-                          </button>
-                        ) : null}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className={styles.toolbar}>
-              <button
-                type="button"
-                className={styles.buttonSecondary}
+            {loading ? <Text>{t.statsLoadingValue}</Text> : null}
+            <Table.ScrollContainer minWidth={780}>
+              <Table striped highlightOnHover withTableBorder>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>{t.operationsUsersTableName}</Table.Th>
+                    <Table.Th>{t.operationsCompaniesStatusFilterLabel}</Table.Th>
+                    <Table.Th>{t.operationsCompaniesPlanFilterLabel}</Table.Th>
+                    <Table.Th>{t.operationsApplyAction}</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {companies.map((company) => (
+                    <Table.Tr key={company.id}>
+                      <Table.Td>{company.name}</Table.Td>
+                      <Table.Td>{company.status}</Table.Td>
+                      <Table.Td>{company.plan}</Table.Td>
+                      <Table.Td>
+                        <Group gap="xs" wrap="wrap">
+                          <Button variant="light" size="xs" onClick={() => startEdit(company)}>
+                            {t.operationsEditAction}
+                          </Button>
+                          {canDelete ? (
+                            <Button
+                              variant="light"
+                              color="red"
+                              size="xs"
+                              onClick={() => void handleDelete(company.id)}
+                            >
+                              {t.operationsCompaniesDeleteAction}
+                            </Button>
+                          ) : null}
+                        </Group>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
+            <Group gap="sm" mt="xs" wrap="wrap">
+              <Button
+                variant="default"
                 onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                 disabled={loading || currentPage <= 1}
               >
                 {t.operationsPaginationPrev}
-              </button>
-              <span>
+              </Button>
+              <Text>
                 {t.operationsPaginationPage} {totalPages === 0 ? 0 : currentPage}/{totalPages}
-              </span>
-              <span>
+              </Text>
+              <Text>
                 {t.operationsTotalResultsLabel}: {totalResults}
-              </span>
-              <button
-                type="button"
-                className={styles.buttonSecondary}
+              </Text>
+              <Button
+                variant="default"
                 onClick={() => setCurrentPage((page) => Math.min(totalPages || 1, page + 1))}
                 disabled={loading || totalPages === 0 || currentPage >= totalPages}
               >
                 {t.operationsPaginationNext}
-              </button>
-            </div>
+              </Button>
+            </Group>
           </>
         ) : null}
-        {isAuthenticated && !canManage ? <div>{t.operationsUsersNoAccess}</div> : null}
-      </div>
-    </div>
+        {isAuthenticated && !canManage ? <Text>{t.operationsUsersNoAccess}</Text> : null}
+      </Stack>
+    </Container>
   );
 }
