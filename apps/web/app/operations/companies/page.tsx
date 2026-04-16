@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CompanyCategory, CompanyPlan, CompanyStatus, UserRole } from "@minerales/types";
 import {
   createAdminCompany,
@@ -43,6 +43,8 @@ const INITIAL_DRAFT: CompanyDraft = {
 };
 
 export default function OperationsCompaniesPage() {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const { locale, setLocale, isAuthenticated, currentUser, handleAuthChange } =
     useOperationsSession();
@@ -54,6 +56,7 @@ export default function OperationsCompaniesPage() {
   const [draft, setDraft] = useState<CompanyDraft>(INITIAL_DRAFT);
   const [editingCompanyId, setEditingCompanyId] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [filtersHydrated, setFiltersHydrated] = useState<boolean>(false);
   const { feedback, clearFeedback, setErrorFeedback, setSuccessFeedback } = useOperationFeedback();
   const t = directoryTranslations[locale];
 
@@ -63,14 +66,58 @@ export default function OperationsCompaniesPage() {
   const canDelete = currentUser?.roles.includes(UserRole.SUPER_ADMIN) ?? false;
 
   useEffect(() => {
+    const searchParam = searchParams.get("search");
+    const statusParam = searchParams.get("status");
+    const planParam = searchParams.get("plan");
     const categoryParam = searchParams.get("category");
+
+    if (searchParam) {
+      setSearch(searchParam);
+    }
+    if (statusParam === "all" || statusParam === "active" || statusParam === "inactive") {
+      setStatus(statusParam);
+    }
+    if (
+      planParam === "all" ||
+      planParam === "free" ||
+      planParam === "standard" ||
+      planParam === "premium"
+    ) {
+      setPlan(planParam);
+    }
     if (
       categoryParam &&
       (Object.values(CompanyCategory) as string[]).includes(categoryParam)
     ) {
       setCategory(categoryParam as CompanyCategory);
     }
+
+    setFiltersHydrated(true);
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!filtersHydrated) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams();
+    if (search.trim().length > 0) {
+      nextParams.set("search", search.trim());
+    }
+    if (status !== "all") {
+      nextParams.set("status", status);
+    }
+    if (plan !== "all") {
+      nextParams.set("plan", plan);
+    }
+    if (category !== "all") {
+      nextParams.set("category", category);
+    }
+
+    const nextQuery = nextParams.toString();
+    const targetUrl = nextQuery.length > 0 ? `${pathname}?${nextQuery}` : pathname;
+    router.replace(targetUrl, { scroll: false });
+  }, [category, filtersHydrated, pathname, plan, router, search, status]);
 
   const loadCompanies = async () => {
     setLoading(true);
@@ -92,11 +139,11 @@ export default function OperationsCompaniesPage() {
   };
 
   useEffect(() => {
-    if (!isAuthenticated || !canManage) {
+    if (!isAuthenticated || !canManage || !filtersHydrated) {
       return;
     }
     void loadCompanies();
-  }, [isAuthenticated, canManage, search, status, plan, category]);
+  }, [isAuthenticated, canManage, search, status, plan, category, filtersHydrated]);
 
   const handleCreate = async () => {
     clearFeedback();
@@ -193,16 +240,16 @@ export default function OperationsCompaniesPage() {
                 value={status}
                 onChange={(event) => setStatus(event.target.value as typeof status)}
               >
-                <option value="all">all</option>
-                <option value="active">active</option>
-                <option value="inactive">inactive</option>
+                <option value="all">{t.operationsCompaniesStatusAll}</option>
+                <option value="active">{t.operationsCompaniesStatusActive}</option>
+                <option value="inactive">{t.operationsCompaniesStatusInactive}</option>
               </select>
               <select
                 className={styles.select}
                 value={plan}
                 onChange={(event) => setPlan(event.target.value as typeof plan)}
               >
-                <option value="all">all</option>
+                <option value="all">{t.operationsCompaniesStatusAll}</option>
                 <option value="free">{t.plans.free}</option>
                 <option value="standard">{t.plans.standard}</option>
                 <option value="premium">{t.plans.premium}</option>
@@ -212,7 +259,7 @@ export default function OperationsCompaniesPage() {
                 value={category}
                 onChange={(event) => setCategory(event.target.value as typeof category)}
               >
-                <option value="all">all</option>
+                <option value="all">{t.operationsCompaniesStatusAll}</option>
                 {Object.entries(t.categories).map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}

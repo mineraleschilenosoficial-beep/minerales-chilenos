@@ -71,6 +71,9 @@ type DirectoryTranslation = {
   operationsCompaniesSaveAction: string;
   operationsCompaniesStatusFilterLabel: string;
   operationsCompaniesPlanFilterLabel: string;
+  operationsCompaniesStatusAll: string;
+  operationsCompaniesStatusActive: string;
+  operationsCompaniesStatusInactive: string;
   operationsCompaniesSearchPlaceholder: string;
   operationsCompaniesLoadError: string;
   operationsCompaniesCreateSuccess: string;
@@ -226,6 +229,9 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsCompaniesSaveAction: "Save",
     operationsCompaniesStatusFilterLabel: "Status",
     operationsCompaniesPlanFilterLabel: "Plan",
+    operationsCompaniesStatusAll: "All",
+    operationsCompaniesStatusActive: "Active",
+    operationsCompaniesStatusInactive: "Inactive",
     operationsCompaniesSearchPlaceholder: "Search companies",
     operationsCompaniesLoadError: "Unable to load companies.",
     operationsCompaniesCreateSuccess: "Company created successfully.",
@@ -393,6 +399,9 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsCompaniesSaveAction: "Guardar",
     operationsCompaniesStatusFilterLabel: "Estado",
     operationsCompaniesPlanFilterLabel: "Plan",
+    operationsCompaniesStatusAll: "Todos",
+    operationsCompaniesStatusActive: "Activas",
+    operationsCompaniesStatusInactive: "Inactivas",
     operationsCompaniesSearchPlaceholder: "Buscar empresas",
     operationsCompaniesLoadError: "No se pudo cargar empresas.",
     operationsCompaniesCreateSuccess: "Empresa creada correctamente.",
