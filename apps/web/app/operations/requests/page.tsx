@@ -275,6 +275,10 @@ export default function OperationsRequestsPage() {
     status: ReviewCompanyRequestInput["status"],
     reviewNotes: string
   ) => {
+    if (!canOperateRequests) {
+      return;
+    }
+
     const draft = reviewDrafts[requestId];
     if (!draft && reviewNotes.length === 0) {
       return;
@@ -315,6 +319,10 @@ export default function OperationsRequestsPage() {
   };
 
   const handleExportCsv = async () => {
+    if (!canOperateRequests) {
+      return;
+    }
+
     setExporting(true);
     clearFeedback();
     try {
