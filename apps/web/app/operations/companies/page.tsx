@@ -49,6 +49,7 @@ export default function OperationsCompaniesPage() {
   const [plan, setPlan] = useState<"all" | "free" | "standard" | "premium">("all");
   const [companies, setCompanies] = useState<Awaited<ReturnType<typeof fetchAdminCompanies>>["items"]>([]);
   const [draft, setDraft] = useState<CompanyDraft>(INITIAL_DRAFT);
+  const [editingCompanyId, setEditingCompanyId] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const { feedback, clearFeedback, setErrorFeedback, setSuccessFeedback } = useOperationFeedback();
   const t = directoryTranslations[locale];
@@ -97,10 +98,14 @@ export default function OperationsCompaniesPage() {
     }
   };
 
-  const handleSave = async (companyId: string) => {
+  const handleSave = async () => {
+    if (!editingCompanyId) {
+      return;
+    }
+
     clearFeedback();
     try {
-      await updateAdminCompany(companyId, {
+      await updateAdminCompany(editingCompanyId, {
         name: draft.name,
         tagline: draft.tagline,
         description: draft.description,
@@ -113,6 +118,8 @@ export default function OperationsCompaniesPage() {
         status: draft.status
       });
       setSuccessFeedback(t.operationsCompaniesUpdateSuccess);
+      setEditingCompanyId(null);
+      setDraft(INITIAL_DRAFT);
       await loadCompanies();
     } catch {
       setErrorFeedback(t.operationsErrorFeedback);
@@ -128,6 +135,22 @@ export default function OperationsCompaniesPage() {
     } catch {
       setErrorFeedback(t.operationsErrorFeedback);
     }
+  };
+
+  const startEdit = (company: Awaited<ReturnType<typeof fetchAdminCompanies>>["items"][number]) => {
+    setEditingCompanyId(company.id);
+    setDraft({
+      name: company.name,
+      tagline: company.tagline,
+      description: company.description,
+      city: company.city,
+      region: company.region,
+      phone: company.phone,
+      website: company.website ?? "",
+      category: company.category,
+      plan: company.plan,
+      status: company.status
+    });
   };
 
   return (
@@ -202,9 +225,25 @@ export default function OperationsCompaniesPage() {
                 onChange={(event) => setDraft((current) => ({ ...current, phone: event.target.value }))}
                 placeholder={t.formPhoneLabel}
               />
-              <button type="button" className={styles.button} onClick={() => void handleCreate()}>
-                {t.operationsCompaniesCreateAction}
+              <button
+                type="button"
+                className={styles.button}
+                onClick={() => void (editingCompanyId ? handleSave() : handleCreate())}
+              >
+                {editingCompanyId ? t.operationsCompaniesSaveAction : t.operationsCompaniesCreateAction}
               </button>
+              {editingCompanyId ? (
+                <button
+                  type="button"
+                  className={styles.buttonSecondary}
+                  onClick={() => {
+                    setEditingCompanyId(null);
+                    setDraft(INITIAL_DRAFT);
+                  }}
+                >
+                  {t.operationsRejectCancelAction}
+                </button>
+              ) : null}
             </div>
 
             {loading ? <div>{t.statsLoadingValue}</div> : null}
@@ -228,9 +267,9 @@ export default function OperationsCompaniesPage() {
                         <button
                           type="button"
                           className={styles.buttonSecondary}
-                          onClick={() => void handleSave(company.id)}
+                          onClick={() => startEdit(company)}
                         >
-                          {t.operationsCompaniesSaveAction}
+                          {t.operationsEditAction}
                         </button>
                         <button
                           type="button"

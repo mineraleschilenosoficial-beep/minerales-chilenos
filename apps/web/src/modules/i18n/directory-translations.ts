@@ -63,6 +63,7 @@ type DirectoryTranslation = {
   operationsCompaniesTitle: string;
   operationsCompaniesSubtitle: string;
   operationsCompaniesCreateAction: string;
+  operationsEditAction: string;
   operationsCompaniesDeleteAction: string;
   operationsCompaniesSaveAction: string;
   operationsCompaniesStatusFilterLabel: string;
@@ -214,6 +215,7 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsCompaniesTitle: "Company Management",
     operationsCompaniesSubtitle: "Create, edit and remove published companies.",
     operationsCompaniesCreateAction: "Create company",
+    operationsEditAction: "Edit",
     operationsCompaniesDeleteAction: "Delete",
     operationsCompaniesSaveAction: "Save",
     operationsCompaniesStatusFilterLabel: "Status",
@@ -377,6 +379,7 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsCompaniesTitle: "Gestion de Empresas",
     operationsCompaniesSubtitle: "Crea, edita y elimina empresas publicadas.",
     operationsCompaniesCreateAction: "Crear empresa",
+    operationsEditAction: "Editar",
     operationsCompaniesDeleteAction: "Eliminar",
     operationsCompaniesSaveAction: "Guardar",
     operationsCompaniesStatusFilterLabel: "Estado",
