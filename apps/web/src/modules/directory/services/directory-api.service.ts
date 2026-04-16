@@ -1,8 +1,10 @@
 import {
   companyListResponseSchema,
+  companyMetricsSchema,
   companySchema,
   createCompanyRequestSchema,
-  type Company
+  type Company,
+  type CompanyMetrics
 } from "@minerales/contracts";
 import type { RequestFormState } from "../models/directory.types";
 
@@ -11,6 +13,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const DIRECTORY_API_ERRORS = {
   FETCH_COMPANIES_FAILED: "FETCH_COMPANIES_FAILED",
   FETCH_COMPANY_DETAILS_FAILED: "FETCH_COMPANY_DETAILS_FAILED",
+  FETCH_COMPANY_METRICS_FAILED: "FETCH_COMPANY_METRICS_FAILED",
   SUBMIT_COMPANY_REQUEST_FAILED: "SUBMIT_COMPANY_REQUEST_FAILED"
 } as const;
 
@@ -51,6 +54,19 @@ export async function fetchCompanyById(id: string): Promise<Company> {
 
   const payload = await response.json();
   return companySchema.parse(payload);
+}
+
+/**
+ * Fetches aggregate metrics for directory insights.
+ */
+export async function fetchCompanyMetrics(): Promise<CompanyMetrics> {
+  const response = await fetch(new URL("/companies/metrics", API_BASE_URL));
+  if (!response.ok) {
+    throw new Error(DIRECTORY_API_ERRORS.FETCH_COMPANY_METRICS_FAILED);
+  }
+
+  const payload = await response.json();
+  return companyMetricsSchema.parse(payload);
 }
 
 /**

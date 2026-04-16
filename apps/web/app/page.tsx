@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createCompanyRequestSchema, type Company } from "@minerales/contracts";
+import { createCompanyRequestSchema, type Company, type CompanyMetrics } from "@minerales/contracts";
 import { CompanyCategory, CompanyPlan } from "@minerales/types";
 import {
   initialRequestFormState,
@@ -13,6 +13,7 @@ import {
 } from "@/modules/i18n/directory-translations";
 import {
   fetchCompanies,
+  fetchCompanyMetrics,
   fetchCompanyById,
   submitCompanyRequest
 } from "@/modules/directory/services/directory-api.service";
@@ -21,6 +22,8 @@ import styles from "./page.module.css";
 export default function HomePage() {
   const [locale, setLocale] = useState<SupportedLocale>("en");
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [metrics, setMetrics] = useState<CompanyMetrics | null>(null);
+  const [loadingMetrics, setLoadingMetrics] = useState<boolean>(true);
   const [loading, setLoading] = useState<boolean>(true);
   const [search, setSearch] = useState<string>("");
   const [category, setCategory] = useState<CompanyCategory | "all">("all");
@@ -54,9 +57,45 @@ export default function HomePage() {
     };
   }, [search, category]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const run = async () => {
+      setLoadingMetrics(true);
+      try {
+        const metricsPayload = await fetchCompanyMetrics();
+        if (isMounted) {
+          setMetrics(metricsPayload);
+        }
+      } catch {
+        if (isMounted) {
+          setMetrics(null);
+        }
+      } finally {
+        if (isMounted) {
+          setLoadingMetrics(false);
+        }
+      }
+    };
+
+    void run();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const categoriesCount = useMemo(() => {
+    if (metrics) {
+      return metrics.totalCategories;
+    }
+
     return new Set(companies.map((company) => company.category)).size;
-  }, [companies]);
+  }, [companies, metrics]);
+
+  const publishedSuppliersCount = metrics?.totalCompanies ?? companies.length;
+  const premiumSuppliersCount = metrics?.byPlan[CompanyPlan.PREMIUM] ?? 0;
+  const topCategory = metrics?.byCategory[0]?.category;
 
   const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -123,11 +162,31 @@ export default function HomePage() {
         <div className={styles.stats}>
           <div className={styles.statCard}>
             <div className={styles.statLabel}>{t.statsPublishedSuppliers}</div>
-            <div className={styles.statValue}>{loading ? "..." : companies.length}</div>
+            <div className={styles.statValue}>
+              {loading || loadingMetrics ? t.statsLoadingValue : publishedSuppliersCount}
+            </div>
           </div>
           <div className={styles.statCard}>
             <div className={styles.statLabel}>{t.statsActiveCategories}</div>
-            <div className={styles.statValue}>{loading ? "..." : categoriesCount}</div>
+            <div className={styles.statValue}>
+              {loading || loadingMetrics ? t.statsLoadingValue : categoriesCount}
+            </div>
+          </div>
+          <div className={styles.statCard}>
+            <div className={styles.statLabel}>{t.statsPremiumSuppliers}</div>
+            <div className={styles.statValue}>
+              {loadingMetrics ? t.statsLoadingValue : premiumSuppliersCount}
+            </div>
+          </div>
+          <div className={styles.statCard}>
+            <div className={styles.statLabel}>{t.statsTopCategory}</div>
+            <div className={styles.statValue}>
+              {loadingMetrics
+                ? t.statsLoadingValue
+                : topCategory
+                  ? t.categories[topCategory]
+                  : t.statsNotAvailable}
+            </div>
           </div>
         </div>
       </section>

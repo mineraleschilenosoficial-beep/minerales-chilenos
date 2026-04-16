@@ -34,6 +34,25 @@ export const companyListResponseSchema = z.object({
 });
 
 /**
+ * Aggregated metrics response for directory dashboards.
+ */
+export const companyMetricsSchema = z.object({
+  totalCompanies: z.number().int().min(0),
+  totalCategories: z.number().int().min(0),
+  byPlan: z.object({
+    [CompanyPlan.FREE]: z.number().int().min(0),
+    [CompanyPlan.STANDARD]: z.number().int().min(0),
+    [CompanyPlan.PREMIUM]: z.number().int().min(0)
+  }),
+  byCategory: z.array(
+    z.object({
+      category: z.nativeEnum(CompanyCategory),
+      total: z.number().int().min(0)
+    })
+  )
+});
+
+/**
  * Schema used by public forms and admin APIs to create supplier requests.
  */
 export const createCompanyRequestSchema = z.object({
@@ -97,3 +116,8 @@ export type Company = z.infer<typeof companySchema>;
  * Type-safe company listing response.
  */
 export type CompanyListResponse = z.infer<typeof companyListResponseSchema>;
+
+/**
+ * Type-safe company metrics payload.
+ */
+export type CompanyMetrics = z.infer<typeof companyMetricsSchema>;

@@ -12,6 +12,10 @@ type DirectoryTranslation = {
   heroSubtitle: string;
   statsPublishedSuppliers: string;
   statsActiveCategories: string;
+  statsPremiumSuppliers: string;
+  statsTopCategory: string;
+  statsNotAvailable: string;
+  statsLoadingValue: string;
   directoryTitle: string;
   searchPlaceholder: string;
   allCategoriesOption: string;
@@ -52,6 +56,10 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
       "Search companies by category, compare supplier profiles, and submit your company for publication in the directory.",
     statsPublishedSuppliers: "Published Suppliers",
     statsActiveCategories: "Active Categories",
+    statsPremiumSuppliers: "Premium Suppliers",
+    statsTopCategory: "Top Category",
+    statsNotAvailable: "N/A",
+    statsLoadingValue: "...",
     directoryTitle: "Supplier Directory",
     searchPlaceholder: "Search by company, city, or tagline",
     allCategoriesOption: "All categories",
@@ -103,6 +111,10 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
       "Busca empresas por categoria, compara perfiles de proveedores y envia tu empresa para publicacion en el directorio.",
     statsPublishedSuppliers: "Proveedores Publicados",
     statsActiveCategories: "Categorias Activas",
+    statsPremiumSuppliers: "Proveedores Premium",
+    statsTopCategory: "Categoria Principal",
+    statsNotAvailable: "N/D",
+    statsLoadingValue: "...",
     directoryTitle: "Directorio de Proveedores",
     searchPlaceholder: "Buscar por empresa, ciudad o descripcion",
     allCategoriesOption: "Todas las categorias",
