@@ -1,14 +1,16 @@
 "use client";
 
+import { Alert } from "@mantine/core";
 import type { OperationFeedback } from "./use-operation-feedback";
-import styles from "./operations-feedback.module.css";
 
 type OperationsFeedbackProps = {
   feedback: OperationFeedback | null;
 };
 
 /**
- * Shared feedback renderer for operations screens.
+ * @description Renders shared operation feedback using Mantine alert styles.
+ * @param feedback Nullable feedback payload.
+ * @returns Alert component when feedback exists.
  */
 export function OperationsFeedback({ feedback }: OperationsFeedbackProps) {
   if (!feedback) {
@@ -16,8 +18,8 @@ export function OperationsFeedback({ feedback }: OperationsFeedbackProps) {
   }
 
   return (
-    <p className={`${styles.feedback} ${feedback.isError ? styles.error : styles.success}`}>
+    <Alert color={feedback.isError ? "red" : "green"} variant="light">
       {feedback.message}
-    </p>
+    </Alert>
   );
 }

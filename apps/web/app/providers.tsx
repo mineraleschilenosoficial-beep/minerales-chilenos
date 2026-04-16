@@ -8,11 +8,27 @@ type AppProvidersProps = {
 };
 
 const appTheme = createTheme({
-  primaryColor: "yellow"
+  primaryColor: "yellow",
+  defaultRadius: "md",
+  fontFamily: "Inter, system-ui, -apple-system, sans-serif",
+  components: {
+    Button: {
+      defaultProps: {
+        radius: "md"
+      }
+    },
+    Paper: {
+      defaultProps: {
+        radius: "md"
+      }
+    }
+  }
 });
 
 /**
- * Registers global client-side providers for the web app.
+ * @description Registers global client-side providers and shared Mantine theme.
+ * @param children App subtree rendered within provider boundaries.
+ * @returns React tree wrapped by MantineProvider.
  */
 export function AppProviders({ children }: AppProvidersProps) {
   return (
