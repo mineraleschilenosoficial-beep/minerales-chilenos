@@ -110,6 +110,15 @@ export default function OperationsCompaniesPage() {
     { value: CompanyStatus.ACTIVE, label: t.operationsUsersActiveYes },
     { value: CompanyStatus.INACTIVE, label: t.operationsUsersActiveNo }
   ];
+  const companyStatusLabels: Record<CompanyStatus, string> = {
+    [CompanyStatus.ACTIVE]: t.operationsCompaniesStatusActive,
+    [CompanyStatus.INACTIVE]: t.operationsCompaniesStatusInactive
+  };
+  const companyPlanLabels: Record<CompanyPlan, string> = {
+    [CompanyPlan.FREE]: t.plans.free,
+    [CompanyPlan.STANDARD]: t.plans.standard,
+    [CompanyPlan.PREMIUM]: t.plans.premium
+  };
 
   const canManage =
     currentUser?.roles.includes(UserRole.SUPER_ADMIN) ||
@@ -456,8 +465,8 @@ export default function OperationsCompaniesPage() {
                   {companies.map((company) => (
                     <Table.Tr key={company.id}>
                       <Table.Td>{company.name}</Table.Td>
-                      <Table.Td>{company.status}</Table.Td>
-                      <Table.Td>{company.plan}</Table.Td>
+                      <Table.Td>{companyStatusLabels[company.status]}</Table.Td>
+                      <Table.Td>{companyPlanLabels[company.plan]}</Table.Td>
                       <Table.Td>
                         <Group gap="xs" wrap="wrap">
                           <Button variant="light" size="xs" onClick={() => startEdit(company)}>

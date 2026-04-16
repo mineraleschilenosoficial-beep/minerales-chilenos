@@ -27,6 +27,12 @@ export default function OperationsDashboardPage() {
   const [data, setData] = useState<Awaited<ReturnType<typeof fetchAdminDashboard>> | null>(null);
   const { feedback, clearFeedback, setErrorFeedback } = useOperationFeedback();
   const t = directoryTranslations[locale];
+  const requestStatusLabels = {
+    pending: t.operationsStatusPending,
+    under_review: t.operationsStatusUnderReview,
+    approved: t.operationsStatusApproved,
+    rejected: t.operationsStatusRejected
+  };
 
   const toWhatsAppLink = (phone: string, companyName: string): string => {
     const digits = phone.replace(/\D/g, "");
@@ -158,7 +164,7 @@ export default function OperationsDashboardPage() {
                       <Table.Tr key={request.id}>
                         <Table.Td>{request.name}</Table.Td>
                         <Table.Td>{request.email}</Table.Td>
-                        <Table.Td>{request.status}</Table.Td>
+                        <Table.Td>{requestStatusLabels[request.status]}</Table.Td>
                         <Table.Td>
                           <Group gap="xs" wrap="wrap">
                             <Button
