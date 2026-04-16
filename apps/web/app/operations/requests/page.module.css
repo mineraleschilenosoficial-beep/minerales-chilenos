@@ -73,6 +73,11 @@
   gap: 10px;
 }
 
+.requestCardHighlighted {
+  border-color: var(--mc-color-accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--mc-color-accent) 35%, transparent);
+}
+
 .requestTitle {
   margin: 0;
   font-size: 18px;

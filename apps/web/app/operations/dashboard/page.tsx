@@ -103,7 +103,7 @@ export default function OperationsDashboardPage() {
                       <td>
                         <div className={styles.actions}>
                           <Link
-                            href={`/operations/requests?search=${encodeURIComponent(request.name)}`}
+                            href={`/operations/requests?search=${encodeURIComponent(request.name)}&requestId=${request.id}`}
                             className={styles.actionLink}
                           >
                             {t.operationsDashboardOpenRequestAction}

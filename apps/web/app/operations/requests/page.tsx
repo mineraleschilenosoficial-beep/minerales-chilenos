@@ -62,6 +62,7 @@ export default function OperationsRequestsPage() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(0);
   const [totalResults, setTotalResults] = useState<number>(0);
+  const [highlightedRequestId, setHighlightedRequestId] = useState<string>("");
   const [pageSize] = useState<number>(8);
   const [requests, setRequests] = useState<CompanyRequest[]>([]);
   const [reviewDrafts, setReviewDrafts] = useState<Record<string, RequestReviewDraft>>({});
@@ -90,6 +91,7 @@ export default function OperationsRequestsPage() {
     const orderParam = searchParams.get("createdAtOrder");
     const searchParam = searchParams.get("search");
     const pageParam = searchParams.get("page");
+    const requestIdParam = searchParams.get("requestId");
 
     if (
       statusParam === "pending" ||
@@ -116,6 +118,12 @@ export default function OperationsRequestsPage() {
       }
     }
 
+    if (requestIdParam && requestIdParam.length > 0) {
+      setHighlightedRequestId(requestIdParam);
+    } else {
+      setHighlightedRequestId("");
+    }
+
     setFiltersHydrated(true);
   }, [searchParams]);
 
@@ -137,11 +145,23 @@ export default function OperationsRequestsPage() {
     if (currentPage > 1) {
       nextParams.set("page", String(currentPage));
     }
+    if (highlightedRequestId.length > 0) {
+      nextParams.set("requestId", highlightedRequestId);
+    }
 
     const nextQuery = nextParams.toString();
     const targetUrl = nextQuery.length > 0 ? `${pathname}?${nextQuery}` : pathname;
     router.replace(targetUrl, { scroll: false });
-  }, [createdAtOrder, currentPage, filtersHydrated, pathname, router, searchQuery, statusFilter]);
+  }, [
+    createdAtOrder,
+    currentPage,
+    filtersHydrated,
+    highlightedRequestId,
+    pathname,
+    router,
+    searchQuery,
+    statusFilter
+  ]);
 
   const loadRequests = useCallback(async () => {
     if (!isAuthenticated || !canOperateRequests) {
@@ -363,7 +383,10 @@ export default function OperationsRequestsPage() {
                 const isApplying = applyingRequestId === request.id;
 
                 return (
-                  <article key={request.id} className={styles.requestCard}>
+                  <article
+                    key={request.id}
+                    className={`${styles.requestCard} ${request.id === highlightedRequestId ? styles.requestCardHighlighted : ""}`}
+                  >
                     <h2 className={styles.requestTitle}>{request.name}</h2>
                     <div className={styles.requestMeta}>
                       <span>{request.email}</span>
