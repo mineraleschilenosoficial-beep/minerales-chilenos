@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Alert, Button, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Button, Group } from "@mantine/core";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { UserProfile } from "@minerales/contracts";
@@ -9,7 +9,6 @@ import {
   AUTH_SESSION_INVALID_EVENT,
   fetchCurrentOperator,
   hasOperatorSession,
-  loginOperator,
   logoutOperator
 } from "@/modules/directory/services/directory-api.service";
 import { directoryTranslations, type SupportedLocale } from "@/modules/i18n/directory-translations";
@@ -29,9 +28,6 @@ type OperationsShellProps = {
  */
 export function OperationsShell({ locale, setLocale, onAuthChange }: OperationsShellProps) {
   const pathname = usePathname();
-  const [authEmail, setAuthEmail] = useState<string>("");
-  const [authPassword, setAuthPassword] = useState<string>("");
-  const [authLoading, setAuthLoading] = useState<boolean>(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(hasOperatorSession());
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [authErrorMessage, setAuthErrorMessage] = useState<string>("");
@@ -72,23 +68,6 @@ export function OperationsShell({ locale, setLocale, onAuthChange }: OperationsS
       window.removeEventListener(AUTH_SESSION_INVALID_EVENT, handleSessionInvalid);
     };
   }, [t.operationsAuthSessionExpired]);
-
-  const handleLogin = async () => {
-    setAuthLoading(true);
-    setAuthErrorMessage("");
-    try {
-      await loginOperator(authEmail, authPassword);
-      const me = await fetchCurrentOperator();
-      setCurrentUser(me);
-      setIsAuthenticated(true);
-      setAuthPassword("");
-      setAuthErrorMessage("");
-    } catch {
-      setAuthErrorMessage(t.operationsAuthLoginError);
-    } finally {
-      setAuthLoading(false);
-    }
-  };
 
   const handleLogout = () => {
     logoutOperator();
@@ -161,35 +140,18 @@ export function OperationsShell({ locale, setLocale, onAuthChange }: OperationsS
       </Group>
 
       {!isAuthenticated ? (
-        <Paper withBorder p="md" mb="md">
-          <Stack gap="sm">
-            <Title order={4}>{t.operationsAuthTitle}</Title>
-            <Text size="sm" c="dimmed">
-              {t.operationsAuthSubtitle}
-            </Text>
-            <TextInput
-              label={t.operationsAuthEmailLabel}
-              id="ops-auth-email"
-              type="email"
-              value={authEmail}
-              onChange={(event) => setAuthEmail(event.target.value)}
-            />
-            <PasswordInput
-              label={t.operationsAuthPasswordLabel}
-              id="ops-auth-password"
-              value={authPassword}
-              onChange={(event) => setAuthPassword(event.target.value)}
-            />
-            <Button loading={authLoading} onClick={() => void handleLogin()}>
-              {t.operationsAuthLoginAction}
-            </Button>
-            {authErrorMessage.length > 0 ? (
-              <Alert color="red" variant="light">
-                {authErrorMessage}
-              </Alert>
-            ) : null}
-          </Stack>
-        </Paper>
+        <Alert color="yellow" variant="light" mb="md">
+          {t.operationsAuthLoginPageHint}{" "}
+          <Button size="xs" variant="subtle" component={Link} href="/operations/login">
+            {t.operationsAuthGoToLogin}
+          </Button>
+        </Alert>
+      ) : null}
+
+      {authErrorMessage.length > 0 ? (
+        <Alert color="red" variant="light" mb="md">
+          {authErrorMessage}
+        </Alert>
       ) : null}
     </>
   );

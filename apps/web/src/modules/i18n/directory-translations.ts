@@ -15,6 +15,7 @@ type DirectoryTranslation = {
   localeSwitcherLabel: string;
   localeEnglish: string;
   localeSpanish: string;
+  adminAccessAction: string;
   themeSwitcherLabel: string;
   themeLight: string;
   themeDark: string;
@@ -57,6 +58,9 @@ type DirectoryTranslation = {
   operationsAuthLogoutAction: string;
   operationsAuthLoginError: string;
   operationsAuthSessionExpired: string;
+  operationsAuthLoginPageHint: string;
+  operationsAuthGoToLogin: string;
+  operationsAuthBackToDirectory: string;
   operationsNoAccess: string;
   operationsNavDashboard: string;
   operationsNavCompanies: string;
@@ -174,6 +178,7 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     localeSwitcherLabel: "Language",
     localeEnglish: "EN",
     localeSpanish: "ES",
+    adminAccessAction: "Admin Access",
     themeSwitcherLabel: "Theme",
     themeLight: "Light",
     themeDark: "Dark",
@@ -217,6 +222,9 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsAuthLogoutAction: "Sign out",
     operationsAuthLoginError: "Invalid credentials or inactive user.",
     operationsAuthSessionExpired: "Your session expired. Please sign in again.",
+    operationsAuthLoginPageHint: "Sign in from the dedicated admin access page.",
+    operationsAuthGoToLogin: "Go to login",
+    operationsAuthBackToDirectory: "Back to directory",
     operationsNoAccess: "Your account does not have permission for this section.",
     operationsNavDashboard: "Dashboard",
     operationsNavCompanies: "Companies",
@@ -347,6 +355,7 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     localeSwitcherLabel: "Idioma",
     localeEnglish: "EN",
     localeSpanish: "ES",
+    adminAccessAction: "Acceso Admin",
     themeSwitcherLabel: "Tema",
     themeLight: "Claro",
     themeDark: "Oscuro",
@@ -390,6 +399,9 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsAuthLogoutAction: "Salir",
     operationsAuthLoginError: "Credenciales invalidas o usuario inactivo.",
     operationsAuthSessionExpired: "Tu sesion expiro. Ingresa nuevamente.",
+    operationsAuthLoginPageHint: "Ingresa desde la pantalla dedicada de acceso admin.",
+    operationsAuthGoToLogin: "Ir a login",
+    operationsAuthBackToDirectory: "Volver al directorio",
     operationsNoAccess: "Tu cuenta no tiene permisos para esta seccion.",
     operationsNavDashboard: "Dashboard",
     operationsNavCompanies: "Empresas",

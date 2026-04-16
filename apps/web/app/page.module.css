@@ -21,11 +21,43 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
 }
 
 .brand {
+  font-size: 22px;
+  line-height: 1;
+  color: var(--mc-color-accent);
+}
+
+.brandTagline {
+  color: var(--mc-color-text-muted);
+  font-size: 11px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logoIcon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  color: var(--mc-color-accent-contrast);
+  background: linear-gradient(135deg, var(--mc-color-accent), #b87333);
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.4px;
+  letter-spacing: 1px;
+}
+
+.logoText {
+  display: grid;
+  gap: 2px;
 }
 
 .hero {
@@ -37,6 +69,7 @@
 .heroTitle {
   font-size: clamp(28px, 5vw, 48px);
   margin: 0 0 12px;
+  line-height: 0.95;
 }
 
 .heroSubtitle {
@@ -172,6 +205,7 @@
   padding: 6px 8px;
   font-size: 12px;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .form {

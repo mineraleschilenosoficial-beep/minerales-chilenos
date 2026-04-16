@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { createCompanyRequestSchema, type Company, type CompanyMetrics } from "@minerales/contracts";
 import { CompanyCategory, CompanyPlan } from "@minerales/types";
 import {
@@ -20,7 +21,7 @@ import {
 import styles from "./page.module.css";
 
 export default function HomePage() {
-  const [locale, setLocale] = useState<SupportedLocale>("en");
+  const [locale, setLocale] = useState<SupportedLocale>("es");
   const [companies, setCompanies] = useState<Company[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize] = useState<number>(6);
@@ -148,9 +149,17 @@ export default function HomePage() {
     <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.headerInner}>
-          <div className={styles.brand}>{t.brandName}</div>
-          <div>{t.brandTagline}</div>
+          <div className={styles.logo}>
+            <div className={styles.logoIcon}>MC</div>
+            <div className={styles.logoText}>
+              <div className={styles.brand}>{t.brandName}</div>
+              <div className={styles.brandTagline}>{t.brandTagline}</div>
+            </div>
+          </div>
           <div>
+            <Link href="/operations/login" className={styles.linkButton}>
+              {t.adminAccessAction}
+            </Link>
             <span className={styles.formLabel}>{t.localeSwitcherLabel} </span>
             <button
               type="button"

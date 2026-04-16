@@ -9,17 +9,22 @@ type AppProvidersProps = {
 
 const appTheme = createTheme({
   primaryColor: "yellow",
-  defaultRadius: "md",
-  fontFamily: "Inter, system-ui, -apple-system, sans-serif",
+  defaultRadius: "sm",
+  fontFamily: "Barlow, system-ui, -apple-system, sans-serif",
+  headings: {
+    fontFamily: "Bebas Neue, Barlow, system-ui, sans-serif",
+    fontWeight: "400"
+  },
   components: {
     Button: {
       defaultProps: {
-        radius: "md"
+        radius: "sm"
       }
     },
     Paper: {
       defaultProps: {
-        radius: "md"
+        radius: "sm",
+        bg: "var(--mc-color-surface-1)"
       }
     }
   }

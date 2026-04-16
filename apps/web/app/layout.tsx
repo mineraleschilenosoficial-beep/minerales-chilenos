@@ -15,7 +15,7 @@ type RootLayoutProps = {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en" data-theme="dark">
+    <html lang="es" data-theme="dark">
       <body>
         <AppProviders>{children}</AppProviders>
       </body>

@@ -11,7 +11,7 @@ const OPERATIONS_LOCALE_STORAGE_KEY = "mc.operations.locale";
  * @returns Session state plus locale setter and auth change handler for operations pages.
  */
 export function useOperationsSession() {
-  const [locale, setLocale] = useState<SupportedLocale>("en");
+  const [locale, setLocale] = useState<SupportedLocale>("es");
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
 

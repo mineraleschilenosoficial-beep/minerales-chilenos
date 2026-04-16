@@ -1,5 +1,8 @@
+@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@300;400;500;600;700&display=swap");
+
 :root {
-  --mc-font-family: Inter, system-ui, -apple-system, sans-serif;
+  --mc-font-family: "Barlow", system-ui, -apple-system, sans-serif;
+  --mc-font-display: "Bebas Neue", "Barlow", system-ui, sans-serif;
 
   --mc-color-bg: #f6f7f9;
   --mc-color-surface-1: #ffffff;
@@ -50,6 +53,10 @@ body {
   padding: 0;
   min-height: 100%;
   background: var(--mc-color-bg);
+  background-image:
+    radial-gradient(ellipse 60% 40% at 80% 20%, rgba(201, 168, 76, 0.12), transparent 70%),
+    radial-gradient(ellipse 40% 30% at 20% 80%, rgba(184, 115, 51, 0.1), transparent 65%),
+    linear-gradient(180deg, var(--mc-color-surface-2) 0%, var(--mc-color-bg) 100%);
   color: var(--mc-color-text-primary);
   font-family: var(--mc-font-family);
 }
@@ -58,4 +65,11 @@ body {
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--mc-font-display);
+  letter-spacing: 0.8px;
 }
