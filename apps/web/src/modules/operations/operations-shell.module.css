@@ -28,3 +28,13 @@
   gap: 10px;
   margin-bottom: 14px;
 }
+
+@media (max-width: 640px) {
+  .nav {
+    align-items: stretch;
+  }
+
+  .link {
+    text-align: center;
+  }
+}
