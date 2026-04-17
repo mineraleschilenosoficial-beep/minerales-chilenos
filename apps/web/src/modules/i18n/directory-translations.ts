@@ -180,6 +180,8 @@ type DirectoryTranslation = {
   operationsCanonicalLocationPending: string;
   operationsLocationMatchLabel: string;
   operationsLocationMismatchLabel: string;
+  operationsShowReviewPanelAction: string;
+  operationsHideReviewPanelAction: string;
   operationsRejectConfirmTitle: string;
   operationsRejectConfirmMessage: string;
   operationsRejectConfirmAction: string;
@@ -420,6 +422,8 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsCanonicalLocationPending: "Not selected yet.",
     operationsLocationMatchLabel: "Canonical match",
     operationsLocationMismatchLabel: "Canonical differs",
+    operationsShowReviewPanelAction: "Review details",
+    operationsHideReviewPanelAction: "Hide review",
     operationsRejectConfirmTitle: "Confirm rejection",
     operationsRejectConfirmMessage:
       "This request will be marked as rejected. You can include notes for traceability.",
@@ -672,6 +676,8 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsCanonicalLocationPending: "Aun no seleccionada.",
     operationsLocationMatchLabel: "Canonica coincide",
     operationsLocationMismatchLabel: "Canonica distinta",
+    operationsShowReviewPanelAction: "Ver revision",
+    operationsHideReviewPanelAction: "Ocultar revision",
     operationsRejectConfirmTitle: "Confirmar rechazo",
     operationsRejectConfirmMessage:
       "Esta solicitud quedara marcada como rechazada. Puedes incluir notas para trazabilidad.",

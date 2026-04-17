@@ -113,6 +113,7 @@ export default function OperationsRequestsPage() {
   const [exporting, setExporting] = useState<boolean>(false);
   const [applyingRequestId, setApplyingRequestId] = useState<string | null>(null);
   const [rejectConfirmation, setRejectConfirmation] = useState<RejectConfirmationState | null>(null);
+  const [expandedRequestId, setExpandedRequestId] = useState<string | null>(null);
   const [filtersHydrated, setFiltersHydrated] = useState<boolean>(false);
   const hasFilterResetInitialized = useRef<boolean>(false);
   const loadSequenceRef = useRef<number>(0);
@@ -551,6 +552,7 @@ export default function OperationsRequestsPage() {
                   communeId: ""
                 };
                 const isApplying = applyingRequestId === request.id;
+                const isExpanded = expandedRequestId === request.id;
                 const selectedRegionName =
                   regions.find((region) => region.code === draft.regionCode)?.name ?? "";
                 const selectedCommuneName =
@@ -613,145 +615,159 @@ export default function OperationsRequestsPage() {
                         </Text>
                       </Stack>
 
-                      <Select
-                        value={draft.status}
-                        onChange={(value) =>
-                          setReviewDrafts((currentDrafts) => ({
-                            ...currentDrafts,
-                            [request.id]: {
-                              ...draft,
-                              status:
-                                value === "under_review" || value === "approved" || value === "rejected"
-                                  ? value
-                                  : draft.status
-                            }
-                          }))
-                        }
-                        data={reviewStatusOptions}
-                        label={t.operationsStatusLabel}
-                        allowDeselect={false}
-                      />
-
-                      <Textarea
-                        rows={3}
-                        value={draft.reviewNotes}
-                        onChange={(event) => {
-                          setReviewDrafts((currentDrafts) => ({
-                            ...currentDrafts,
-                            [request.id]: {
-                              ...draft,
-                              reviewNotes: event.target.value
-                            }
-                          }));
-                          setReviewNoteErrors((current) => ({ ...current, [request.id]: undefined }));
-                        }}
-                        label={t.operationsNotesLabel}
-                        error={reviewNoteErrors[request.id]}
-                      />
-                      <Group grow align="end">
-                        <Select
-                          value={draft.regionCode}
-                          onChange={(value) => {
-                            const nextRegionCode = value ?? "";
-                            setReviewDrafts((currentDrafts) => ({
-                              ...currentDrafts,
-                              [request.id]: {
-                                ...draft,
-                                regionCode: nextRegionCode,
-                                communeId: ""
-                              }
-                            }));
-                            if (nextRegionCode.length > 0) {
-                              void ensureCommunesForRegion(nextRegionCode);
-                            }
-                          }}
-                          data={[
-                            { value: "", label: t.formRegionSelectPlaceholder },
-                            ...regions.map((region) => ({ value: region.code, label: region.name }))
-                          ]}
-                          label={t.formRegionLabel}
-                          allowDeselect={false}
-                        />
-                        <Select
-                          value={draft.communeId}
-                          onChange={(value) =>
-                            setReviewDrafts((currentDrafts) => ({
-                              ...currentDrafts,
-                              [request.id]: {
-                                ...draft,
-                                communeId: value ?? ""
-                              }
-                            }))
-                          }
-                          data={[
-                            { value: "", label: t.formCommuneSelectPlaceholder },
-                            ...(communesByRegion[draft.regionCode] ?? []).map((commune) => ({
-                              value: commune.id,
-                              label: commune.name
-                            }))
-                          ]}
-                          label={t.formCityLabel}
-                          disabled={!draft.regionCode}
-                          allowDeselect={false}
-                        />
-                      </Group>
                       <Stack gap={4}>
                         <Text size="xs" c="dimmed">
                           {t.operationsLatestReviewNotesLabel}
                         </Text>
                         <Text size="sm" c="dimmed">
-                        {request.reviewNotes && request.reviewNotes.trim().length > 0
-                          ? request.reviewNotes
-                          : t.operationsNoReviewNotes}
+                          {request.reviewNotes && request.reviewNotes.trim().length > 0
+                            ? request.reviewNotes
+                            : t.operationsNoReviewNotes}
                         </Text>
                       </Stack>
 
-                    <Group gap="xs" wrap="wrap">
-                      <Button
-                        variant="default"
-                        size="xs"
-                        disabled={isApplying}
-                        onClick={() => void executeReview(request.id, "under_review", draft.reviewNotes)}
-                      >
-                        {t.operationsStatusOptionUnderReview}
-                      </Button>
-                      <Button
-                        variant="default"
-                        size="xs"
-                        disabled={isApplying}
-                        onClick={() =>
-                          void executeReview(
-                            request.id,
-                            "approved",
-                            draft.reviewNotes,
-                            draft.regionCode,
-                            draft.communeId
-                          )
-                        }
-                      >
-                        {t.operationsStatusOptionApproved}
-                      </Button>
-                      <Button
-                        variant="default"
-                        size="xs"
-                        disabled={isApplying}
-                        onClick={() =>
-                          setRejectConfirmation({
-                            requestId: request.id,
-                            reviewNotes: draft.reviewNotes
-                          })
-                        }
-                      >
-                        {t.operationsStatusOptionRejected}
-                      </Button>
-                    </Group>
+                      <Group gap="xs" wrap="wrap">
+                        <Button
+                          variant="default"
+                          size="xs"
+                          onClick={() => setExpandedRequestId(isExpanded ? null : request.id)}
+                        >
+                          {isExpanded
+                            ? t.operationsHideReviewPanelAction
+                            : t.operationsShowReviewPanelAction}
+                        </Button>
+                        <Button
+                          variant="default"
+                          size="xs"
+                          disabled={isApplying}
+                          onClick={() => void executeReview(request.id, "under_review", draft.reviewNotes)}
+                        >
+                          {t.operationsStatusOptionUnderReview}
+                        </Button>
+                        <Button
+                          variant="default"
+                          size="xs"
+                          disabled={isApplying}
+                          onClick={() =>
+                            void executeReview(
+                              request.id,
+                              "approved",
+                              draft.reviewNotes,
+                              draft.regionCode,
+                              draft.communeId
+                            )
+                          }
+                        >
+                          {t.operationsStatusOptionApproved}
+                        </Button>
+                        <Button
+                          variant="default"
+                          size="xs"
+                          disabled={isApplying}
+                          onClick={() =>
+                            setRejectConfirmation({
+                              requestId: request.id,
+                              reviewNotes: draft.reviewNotes
+                            })
+                          }
+                        >
+                          {t.operationsStatusOptionRejected}
+                        </Button>
+                      </Group>
 
-                      <Button
-                        disabled={isApplying}
-                        onClick={() => void handleApplyReview(request.id)}
-                      >
-                        {isApplying ? t.operationsApplyingAction : t.operationsApplyAction}
-                      </Button>
+                      {isExpanded ? (
+                        <Stack gap="sm">
+                          <Select
+                            value={draft.status}
+                            onChange={(value) =>
+                              setReviewDrafts((currentDrafts) => ({
+                                ...currentDrafts,
+                                [request.id]: {
+                                  ...draft,
+                                  status:
+                                    value === "under_review" || value === "approved" || value === "rejected"
+                                      ? value
+                                      : draft.status
+                                }
+                              }))
+                            }
+                            data={reviewStatusOptions}
+                            label={t.operationsStatusLabel}
+                            allowDeselect={false}
+                          />
+
+                          <Textarea
+                            rows={3}
+                            value={draft.reviewNotes}
+                            onChange={(event) => {
+                              setReviewDrafts((currentDrafts) => ({
+                                ...currentDrafts,
+                                [request.id]: {
+                                  ...draft,
+                                  reviewNotes: event.target.value
+                                }
+                              }));
+                              setReviewNoteErrors((current) => ({ ...current, [request.id]: undefined }));
+                            }}
+                            label={t.operationsNotesLabel}
+                            error={reviewNoteErrors[request.id]}
+                          />
+                          <Group grow align="end">
+                            <Select
+                              value={draft.regionCode}
+                              onChange={(value) => {
+                                const nextRegionCode = value ?? "";
+                                setReviewDrafts((currentDrafts) => ({
+                                  ...currentDrafts,
+                                  [request.id]: {
+                                    ...draft,
+                                    regionCode: nextRegionCode,
+                                    communeId: ""
+                                  }
+                                }));
+                                if (nextRegionCode.length > 0) {
+                                  void ensureCommunesForRegion(nextRegionCode);
+                                }
+                              }}
+                              data={[
+                                { value: "", label: t.formRegionSelectPlaceholder },
+                                ...regions.map((region) => ({ value: region.code, label: region.name }))
+                              ]}
+                              label={t.formRegionLabel}
+                              allowDeselect={false}
+                            />
+                            <Select
+                              value={draft.communeId}
+                              onChange={(value) =>
+                                setReviewDrafts((currentDrafts) => ({
+                                  ...currentDrafts,
+                                  [request.id]: {
+                                    ...draft,
+                                    communeId: value ?? ""
+                                  }
+                                }))
+                              }
+                              data={[
+                                { value: "", label: t.formCommuneSelectPlaceholder },
+                                ...(communesByRegion[draft.regionCode] ?? []).map((commune) => ({
+                                  value: commune.id,
+                                  label: commune.name
+                                }))
+                              ]}
+                              label={t.formCityLabel}
+                              disabled={!draft.regionCode}
+                              allowDeselect={false}
+                            />
+                          </Group>
+
+                          <Button
+                            disabled={isApplying}
+                            onClick={() => void handleApplyReview(request.id)}
+                          >
+                            {isApplying ? t.operationsApplyingAction : t.operationsApplyAction}
+                          </Button>
+                        </Stack>
+                      ) : null}
                     </Stack>
                   </Paper>
                 );
