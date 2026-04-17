@@ -176,8 +176,8 @@ type DirectoryTranslation = {
   operationsLatestReviewNotesLabel: string;
   operationsNoReviewNotes: string;
   operationsRequestedLocationLabel: string;
-  operationsNormalizedLocationLabel: string;
-  operationsNormalizedLocationPending: string;
+  operationsCanonicalLocationLabel: string;
+  operationsCanonicalLocationPending: string;
   operationsLocationMatchLabel: string;
   operationsLocationMismatchLabel: string;
   operationsRejectConfirmTitle: string;
@@ -416,8 +416,8 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsLatestReviewNotesLabel: "Latest review notes",
     operationsNoReviewNotes: "No review notes yet.",
     operationsRequestedLocationLabel: "Requested location",
-    operationsNormalizedLocationLabel: "Canonical location",
-    operationsNormalizedLocationPending: "Not selected yet.",
+    operationsCanonicalLocationLabel: "Canonical location",
+    operationsCanonicalLocationPending: "Not selected yet.",
     operationsLocationMatchLabel: "Canonical match",
     operationsLocationMismatchLabel: "Canonical differs",
     operationsRejectConfirmTitle: "Confirm rejection",
@@ -668,8 +668,8 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsLatestReviewNotesLabel: "Ultimas notas de revision",
     operationsNoReviewNotes: "Sin notas de revision.",
     operationsRequestedLocationLabel: "Ubicacion solicitada",
-    operationsNormalizedLocationLabel: "Ubicacion canonica",
-    operationsNormalizedLocationPending: "Aun no seleccionada.",
+    operationsCanonicalLocationLabel: "Ubicacion canonica",
+    operationsCanonicalLocationPending: "Aun no seleccionada.",
     operationsLocationMatchLabel: "Canonica coincide",
     operationsLocationMismatchLabel: "Canonica distinta",
     operationsRejectConfirmTitle: "Confirmar rechazo",

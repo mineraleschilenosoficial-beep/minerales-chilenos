@@ -557,10 +557,10 @@ export default function OperationsRequestsPage() {
                   (communesByRegion[draft.regionCode] ?? []).find(
                     (commune) => commune.id === draft.communeId
                   )?.name ?? "";
-                const normalizedLocationLabel =
+                const canonicalLocationLabel =
                   selectedRegionName && selectedCommuneName
                     ? `${selectedCommuneName}, ${selectedRegionName}`
-                    : t.operationsNormalizedLocationPending;
+                    : t.operationsCanonicalLocationPending;
                 const isLocationSelectionComplete = selectedRegionName.length > 0 && selectedCommuneName.length > 0;
                 const isNormalizedLocationMatch =
                   isLocationSelectionComplete &&
@@ -592,7 +592,7 @@ export default function OperationsRequestsPage() {
                           {t.operationsRequestedLocationLabel}: {request.city}, {request.region}
                         </Text>
                         <Text size="sm" c="dimmed">
-                          {t.operationsNormalizedLocationLabel}: {normalizedLocationLabel}
+                          {t.operationsCanonicalLocationLabel}: {canonicalLocationLabel}
                         </Text>
                         {isLocationSelectionComplete ? (
                           <Badge

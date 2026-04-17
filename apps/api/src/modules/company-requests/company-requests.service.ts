@@ -291,7 +291,7 @@ export class CompanyRequestsService {
 
     if (parsedPayload.status === "approved") {
       const company = await this.upsertCompanyFromRequest(existingRequest, parsedPayload);
-      const normalizedCommune = await this.resolveApprovalCommune(existingRequest.cityText, parsedPayload);
+      const canonicalCommune = await this.resolveApprovalCommune(existingRequest.cityText, parsedPayload);
       await this.prisma.companyRequest.update({
         where: { id: requestId },
         data: {
@@ -299,9 +299,9 @@ export class CompanyRequestsService {
           reviewNotes: parsedPayload.reviewNotes,
           reviewedAt: new Date(),
           companyId: company.id,
-          communeId: normalizedCommune?.id ?? existingRequest.communeId,
-          cityText: normalizedCommune?.name ?? existingRequest.cityText,
-          regionText: normalizedCommune?.region.name ?? existingRequest.regionText
+          communeId: canonicalCommune?.id ?? existingRequest.communeId,
+          cityText: canonicalCommune?.name ?? existingRequest.cityText,
+          regionText: canonicalCommune?.region.name ?? existingRequest.regionText
         }
       });
 
