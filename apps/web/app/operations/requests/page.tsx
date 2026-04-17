@@ -88,6 +88,9 @@ export default function OperationsRequestsPage() {
   const searchParams = useSearchParams();
   const { locale, setLocale, isAuthenticated, currentUser, handleAuthChange } = useOperationsSession();
   const [statusFilter, setStatusFilter] = useState<CompanyRequest["status"] | "all">("all");
+  const [normalizationFilter, setNormalizationFilter] = useState<
+    "all" | "normalized" | "pending_normalization"
+  >("all");
   const [createdAtOrder, setCreatedAtOrder] = useState<"newest" | "oldest">("newest");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -161,6 +164,7 @@ export default function OperationsRequestsPage() {
 
   useEffect(() => {
     const statusParam = searchParams.get("status");
+    const normalizationParam = searchParams.get("normalizedLocation");
     const orderParam = searchParams.get("createdAtOrder");
     const searchParam = searchParams.get("search");
     const pageParam = searchParams.get("page");
@@ -176,6 +180,16 @@ export default function OperationsRequestsPage() {
       setStatusFilter(statusParam);
     } else {
       setStatusFilter("all");
+    }
+
+    if (
+      normalizationParam === "all" ||
+      normalizationParam === "normalized" ||
+      normalizationParam === "pending_normalization"
+    ) {
+      setNormalizationFilter(normalizationParam);
+    } else {
+      setNormalizationFilter("all");
     }
 
     if (orderParam === "newest" || orderParam === "oldest") {
@@ -219,6 +233,9 @@ export default function OperationsRequestsPage() {
     if (statusFilter !== "all") {
       nextParams.set("status", statusFilter);
     }
+    if (normalizationFilter !== "all") {
+      nextParams.set("normalizedLocation", normalizationFilter);
+    }
     if (createdAtOrder !== "newest") {
       nextParams.set("createdAtOrder", createdAtOrder);
     }
@@ -243,7 +260,8 @@ export default function OperationsRequestsPage() {
     pathname,
     router,
     searchQuery,
-    statusFilter
+    statusFilter,
+    normalizationFilter
   ]);
 
   const loadRequests = useCallback(async () => {
@@ -261,6 +279,7 @@ export default function OperationsRequestsPage() {
     try {
       const payload = await fetchCompanyRequests({
         status: statusFilter,
+        normalizedLocation: normalizationFilter,
         createdAtOrder,
         search: searchQuery,
         page: currentPage,
@@ -306,6 +325,7 @@ export default function OperationsRequestsPage() {
     pageSize,
     searchQuery,
     statusFilter,
+    normalizationFilter,
     canOperateRequests,
     t.operationsErrorFeedback
   ]);
@@ -335,7 +355,7 @@ export default function OperationsRequestsPage() {
       return;
     }
     setCurrentPage(1);
-  }, [createdAtOrder, filtersHydrated, searchQuery, statusFilter]);
+  }, [createdAtOrder, filtersHydrated, normalizationFilter, searchQuery, statusFilter]);
 
   const dateFormatter = useMemo(
     () =>
@@ -428,6 +448,7 @@ export default function OperationsRequestsPage() {
     try {
       await downloadCompanyRequestsCsv({
         status: statusFilter,
+        normalizedLocation: normalizationFilter,
         createdAtOrder,
         search: searchQuery
       });
@@ -493,6 +514,26 @@ export default function OperationsRequestsPage() {
                 { value: "rejected", label: t.operationsStatusRejected }
               ]}
               label={t.operationsFilterStatusLabel}
+              w={{ base: "100%", sm: 220 }}
+              allowDeselect={false}
+            />
+            <Select
+              value={normalizationFilter}
+              onChange={(value) => {
+                if (
+                  value === "all" ||
+                  value === "normalized" ||
+                  value === "pending_normalization"
+                ) {
+                  setNormalizationFilter(value);
+                }
+              }}
+              data={[
+                { value: "all", label: t.operationsFilterNormalizationAll },
+                { value: "normalized", label: t.operationsFilterNormalizationReady },
+                { value: "pending_normalization", label: t.operationsFilterNormalizationMissing }
+              ]}
+              label={t.operationsFilterNormalizationLabel}
               w={{ base: "100%", sm: 220 }}
               allowDeselect={false}
             />

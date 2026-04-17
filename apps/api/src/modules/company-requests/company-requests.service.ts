@@ -68,7 +68,13 @@ export class CompanyRequestsService {
    */
   async listRequests(query: CompanyRequestListQuery) {
     const parsedQuery = companyRequestListQuerySchema.parse(query);
-    const whereClause = this.buildRequestWhereClause(parsedQuery);
+    const whereClause = this.buildRequestWhereClause({
+      status: parsedQuery.status,
+      normalizedLocation:
+        ((parsedQuery as unknown as { normalizedLocation?: "all" | "normalized" | "pending_normalization" })
+          .normalizedLocation ?? "all"),
+      search: parsedQuery.search
+    });
     const orderBy = this.buildRequestOrderBy(parsedQuery.createdAtOrder);
 
     const total = await this.prisma.companyRequest.count({
@@ -108,7 +114,13 @@ export class CompanyRequestsService {
    */
   async exportRequestsCsv(query: CompanyRequestExportQuery): Promise<string> {
     const parsedQuery = companyRequestExportQuerySchema.parse(query);
-    const whereClause = this.buildRequestWhereClause(parsedQuery);
+    const whereClause = this.buildRequestWhereClause({
+      status: parsedQuery.status,
+      normalizedLocation:
+        ((parsedQuery as unknown as { normalizedLocation?: "all" | "normalized" | "pending_normalization" })
+          .normalizedLocation ?? "all"),
+      search: parsedQuery.search
+    });
     const orderBy = this.buildRequestOrderBy(parsedQuery.createdAtOrder);
 
     const requests = await this.prisma.companyRequest.findMany({
@@ -169,6 +181,7 @@ export class CompanyRequestsService {
 
   private buildRequestWhereClause(query: {
     status: CompanyRequestListQuery["status"];
+    normalizedLocation: "all" | "normalized" | "pending_normalization";
     search?: string;
   }) {
     const normalizedSearch = (query.search ?? "").trim();
@@ -179,6 +192,17 @@ export class CompanyRequestsService {
         : {
             status: this.toPrismaStatusFilter(query.status)
           }),
+      ...(query.normalizedLocation === "all"
+        ? {}
+        : query.normalizedLocation === "normalized"
+          ? {
+              normalizedCommuneId: {
+                not: null
+              }
+            }
+          : {
+              normalizedCommuneId: null
+            }),
       ...(normalizedSearch.length === 0
         ? {}
         : {

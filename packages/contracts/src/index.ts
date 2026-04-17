@@ -111,6 +111,7 @@ export const companyRequestListQuerySchema = z.object({
   status: z
     .union([z.literal("all"), companyRequestStatusSchema])
     .default("all"),
+  normalizedLocation: z.enum(["all", "normalized", "pending_normalization"]).default("all"),
   createdAtOrder: z.enum(["newest", "oldest"]).default("newest"),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(50).default(10)
@@ -124,6 +125,7 @@ export const companyRequestExportQuerySchema = z.object({
   status: z
     .union([z.literal("all"), companyRequestStatusSchema])
     .default("all"),
+  normalizedLocation: z.enum(["all", "normalized", "pending_normalization"]).default("all"),
   createdAtOrder: z.enum(["newest", "oldest"]).default("newest")
 });
 

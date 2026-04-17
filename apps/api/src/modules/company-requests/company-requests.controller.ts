@@ -42,6 +42,7 @@ export class CompanyRequestsController {
   @Roles(UserRole.SUPER_ADMIN, UserRole.STAFF)
   async listRequests(
     @Query("status") status?: string,
+    @Query("normalizedLocation") normalizedLocation?: string,
     @Query("search") search?: string,
     @Query("createdAtOrder") createdAtOrder?: string,
     @Query("page") page?: string,
@@ -49,6 +50,7 @@ export class CompanyRequestsController {
   ) {
     const parsedQuery = companyRequestListQuerySchema.parse({
       status: status ?? "all",
+      normalizedLocation: normalizedLocation ?? "all",
       search,
       createdAtOrder,
       page,
@@ -68,11 +70,13 @@ export class CompanyRequestsController {
     response: { setHeader: (name: string, value: string) => void },
     @Headers("accept-encoding") acceptEncoding?: string,
     @Query("status") status?: string,
+    @Query("normalizedLocation") normalizedLocation?: string,
     @Query("search") search?: string,
     @Query("createdAtOrder") createdAtOrder?: string
   ) {
     const parsedQuery = companyRequestExportQuerySchema.parse({
       status: status ?? "all",
+      normalizedLocation: normalizedLocation ?? "all",
       search,
       createdAtOrder
     });

@@ -72,6 +72,10 @@ type DirectoryTranslation = {
   operationsCsvFilePrefix: string;
   operationsFilterStatusLabel: string;
   operationsFilterStatusAll: string;
+  operationsFilterNormalizationLabel: string;
+  operationsFilterNormalizationAll: string;
+  operationsFilterNormalizationReady: string;
+  operationsFilterNormalizationMissing: string;
   operationsSortLabel: string;
   operationsSortNewest: string;
   operationsSortOldest: string;
@@ -309,6 +313,10 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsCsvFilePrefix: "company-requests",
     operationsFilterStatusLabel: "Filter status",
     operationsFilterStatusAll: "All statuses",
+    operationsFilterNormalizationLabel: "Normalization",
+    operationsFilterNormalizationAll: "All",
+    operationsFilterNormalizationReady: "Normalized",
+    operationsFilterNormalizationMissing: "Pending normalization",
     operationsSortLabel: "Sort by date",
     operationsSortNewest: "Newest first",
     operationsSortOldest: "Oldest first",
@@ -559,6 +567,10 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsCsvFilePrefix: "solicitudes-empresas",
     operationsFilterStatusLabel: "Filtrar estado",
     operationsFilterStatusAll: "Todos los estados",
+    operationsFilterNormalizationLabel: "Normalizacion",
+    operationsFilterNormalizationAll: "Todas",
+    operationsFilterNormalizationReady: "Normalizadas",
+    operationsFilterNormalizationMissing: "Pendientes de normalizar",
     operationsSortLabel: "Orden por fecha",
     operationsSortNewest: "Mas nuevas primero",
     operationsSortOldest: "Mas antiguas primero",
