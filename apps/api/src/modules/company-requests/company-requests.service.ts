@@ -95,9 +95,6 @@ export class CompanyRequestsService {
     });
     const whereClause = this.buildRequestWhereClause({
       status: parsedQuery.status,
-      normalizedLocation:
-        ((parsedQuery as unknown as { normalizedLocation?: "all" | "normalized" | "pending_normalization" })
-          .normalizedLocation ?? "all"),
       search: parsedQuery.search
     });
     const orderBy = this.buildRequestOrderBy(parsedQuery.createdAtOrder);
@@ -141,9 +138,6 @@ export class CompanyRequestsService {
     const parsedQuery = companyRequestExportQuerySchema.parse(query);
     const whereClause = this.buildRequestWhereClause({
       status: parsedQuery.status,
-      normalizedLocation:
-        ((parsedQuery as unknown as { normalizedLocation?: "all" | "normalized" | "pending_normalization" })
-          .normalizedLocation ?? "all"),
       search: parsedQuery.search
     });
     const orderBy = this.buildRequestOrderBy(parsedQuery.createdAtOrder);
@@ -197,24 +191,13 @@ export class CompanyRequestsService {
 
   private buildRequestWhereClause(query: {
     status: CompanyRequestListQuery["status"];
-    normalizedLocation: "all" | "normalized" | "pending_normalization";
     search?: string;
   }) {
     return {
       ...this.buildBaseRequestWhereClause({
         status: query.status,
         search: query.search
-      }),
-      ...(query.status === "all"
-        ? {}
-        : {}),
-      ...(query.normalizedLocation === "all"
-        ? {}
-        : query.normalizedLocation === "normalized"
-          ? {}
-          : {
-              id: "__no_pending_normalization__"
-            }),
+      })
     };
   }
 

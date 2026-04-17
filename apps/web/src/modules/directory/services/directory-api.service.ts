@@ -167,7 +167,6 @@ export async function submitCompanyRequest(formState: RequestFormState): Promise
 export async function fetchCompanyRequests(params?: {
   search?: string;
   status?: "all" | "pending" | "under_review" | "approved" | "rejected";
-  normalizedLocation?: "all" | "normalized" | "pending_normalization";
   createdAtOrder?: "newest" | "oldest";
   page?: number;
   pageSize?: number;
@@ -175,7 +174,6 @@ export async function fetchCompanyRequests(params?: {
   const parsedQuery = companyRequestListQuerySchema.parse({
     search: params?.search,
     status: params?.status ?? "all",
-    normalizedLocation: params?.normalizedLocation ?? "all",
     createdAtOrder: params?.createdAtOrder ?? "newest",
     page: params?.page ?? 1,
     pageSize: params?.pageSize ?? 10
@@ -186,12 +184,6 @@ export async function fetchCompanyRequests(params?: {
   }
   if (parsedQuery.status !== "all") {
     url.searchParams.set("status", parsedQuery.status);
-  }
-  const normalizedLocationFilter =
-    (parsedQuery as unknown as { normalizedLocation?: "all" | "normalized" | "pending_normalization" })
-      .normalizedLocation ?? "all";
-  if (normalizedLocationFilter !== "all") {
-    url.searchParams.set("normalizedLocation", normalizedLocationFilter);
   }
   url.searchParams.set("createdAtOrder", parsedQuery.createdAtOrder);
   url.searchParams.set("page", String(parsedQuery.page));
@@ -209,13 +201,11 @@ export async function fetchCompanyRequests(params?: {
 export async function downloadCompanyRequestsCsv(params?: {
   search?: string;
   status?: "all" | "pending" | "under_review" | "approved" | "rejected";
-  normalizedLocation?: "all" | "normalized" | "pending_normalization";
   createdAtOrder?: "newest" | "oldest";
 }): Promise<void> {
   const parsedQuery = companyRequestExportQuerySchema.parse({
     search: params?.search,
     status: params?.status ?? "all",
-    normalizedLocation: params?.normalizedLocation ?? "all",
     createdAtOrder: params?.createdAtOrder ?? "newest"
   });
 
@@ -225,12 +215,6 @@ export async function downloadCompanyRequestsCsv(params?: {
   }
   if (parsedQuery.status !== "all") {
     url.searchParams.set("status", parsedQuery.status);
-  }
-  const normalizedLocationExportFilter =
-    (parsedQuery as unknown as { normalizedLocation?: "all" | "normalized" | "pending_normalization" })
-      .normalizedLocation ?? "all";
-  if (normalizedLocationExportFilter !== "all") {
-    url.searchParams.set("normalizedLocation", normalizedLocationExportFilter);
   }
   url.searchParams.set("createdAtOrder", parsedQuery.createdAtOrder);
 
