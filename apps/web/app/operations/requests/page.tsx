@@ -331,6 +331,16 @@ export default function OperationsRequestsPage() {
   }, [loadRequests]);
 
   useEffect(() => {
+    if (!highlightedRequestId) {
+      return;
+    }
+    if (!requests.some((request) => request.id === highlightedRequestId)) {
+      return;
+    }
+    setExpandedRequestId(highlightedRequestId);
+  }, [highlightedRequestId, requests]);
+
+  useEffect(() => {
     const regionCodes = new Set(
       Object.values(reviewDrafts)
         .map((draft) => draft.regionCode)
