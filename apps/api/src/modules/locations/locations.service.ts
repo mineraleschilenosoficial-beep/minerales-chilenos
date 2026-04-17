@@ -96,4 +96,62 @@ export class LocationsService {
       }))
     };
   }
+
+  /**
+   * @description Returns operational health signals for canonical location catalog integrity.
+   * @returns Summary with active counts and inconsistency counters.
+   */
+  async getCatalogHealthSummary() {
+    const [activeCountries, activeRegions, activeCommunes, regionsUnderInactiveCountries, communesUnderInactiveParents] =
+      await Promise.all([
+        this.prisma.country.count({
+          where: { isActive: true }
+        }),
+        this.prisma.region.count({
+          where: { isActive: true }
+        }),
+        this.prisma.commune.count({
+          where: { isActive: true }
+        }),
+        this.prisma.region.count({
+          where: {
+            isActive: true,
+            country: {
+              isActive: false
+            }
+          }
+        }),
+        this.prisma.commune.count({
+          where: {
+            isActive: true,
+            OR: [
+              {
+                region: {
+                  isActive: false
+                }
+              },
+              {
+                region: {
+                  country: {
+                    isActive: false
+                  }
+                }
+              }
+            ]
+          }
+        })
+      ]);
+
+    const inconsistencies = regionsUnderInactiveCountries + communesUnderInactiveParents;
+
+    return {
+      status: inconsistencies === 0 ? "ok" : "degraded",
+      activeCountries,
+      activeRegions,
+      activeCommunes,
+      regionsUnderInactiveCountries,
+      communesUnderInactiveParents,
+      inconsistencies
+    };
+  }
 }
