@@ -148,8 +148,7 @@ export const companyRequestSchema = z.object({
   reviewNotes: z.string().max(2000).optional(),
   companyId: z.string().min(1).optional(),
   communeId: z.string().min(1).max(64),
-  normalizedRegionCode: z.string().min(2).max(16).optional(),
-  normalizedCommuneId: z.string().min(1).max(64).optional()
+  regionCode: z.string().min(2).max(16)
 });
 
 /**

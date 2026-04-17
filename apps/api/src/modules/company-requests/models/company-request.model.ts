@@ -14,6 +14,5 @@ export type CompanyRequestModel = Omit<CreateCompanyRequestInput, "requestedPlan
   reviewNotes?: string;
   companyId?: string;
   communeId: string;
-  normalizedRegionCode?: string;
-  normalizedCommuneId?: string;
+  regionCode: string;
 };

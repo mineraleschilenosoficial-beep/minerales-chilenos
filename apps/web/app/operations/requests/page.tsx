@@ -288,8 +288,8 @@ export default function OperationsRequestsPage() {
           nextDrafts[request.id] = existing ?? {
             status: getEditableStatus(request.status),
             reviewNotes: request.reviewNotes ?? "",
-            regionCode: request.normalizedRegionCode ?? "",
-            communeId: request.normalizedCommuneId ?? ""
+            regionCode: request.regionCode,
+            communeId: request.communeId
           };
         }
 

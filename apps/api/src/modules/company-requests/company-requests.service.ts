@@ -175,7 +175,7 @@ export class CompanyRequestsService {
       request.city,
       request.region,
       request.communeId,
-      request.normalizedRegionCode ?? "",
+      request.regionCode,
       request.status,
       request.category,
       request.requestedPlan,
@@ -622,8 +622,7 @@ export class CompanyRequestsService {
       reviewNotes: request.reviewNotes ?? undefined,
       companyId: request.companyId ?? undefined,
       communeId: request.communeId,
-      normalizedRegionCode: request.commune.region.code,
-      normalizedCommuneId: request.commune.id
+      regionCode: request.commune.region.code
     };
   }
 
