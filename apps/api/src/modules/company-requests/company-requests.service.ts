@@ -9,8 +9,23 @@ import {
   type ReviewCompanyRequestInput
 } from "@minerales/contracts";
 import { CompanyPlan } from "@minerales/types";
+import type { Prisma } from "@prisma/client";
 import { PrismaService } from "../../database/prisma.service";
 import type { CompanyRequestModel } from "./models/company-request.model";
+
+const COMPANY_REQUEST_INCLUDE = {
+  categories: {
+    include: {
+      category: true
+    }
+  },
+  requestedPlan: true,
+  commune: {
+    include: {
+      region: true
+    }
+  }
+} as const satisfies Prisma.CompanyRequestInclude;
 
 @Injectable()
 export class CompanyRequestsService {
@@ -93,36 +108,17 @@ export class CompanyRequestsService {
 
     const requests = await this.prisma.companyRequest.findMany({
       where: whereClause,
-      include: {
-        categories: {
-          include: {
-            category: true
-          }
-        },
-        requestedPlan: true
-      },
+      include: COMPANY_REQUEST_INCLUDE,
       orderBy,
       skip: (parsedQuery.page - 1) * parsedQuery.pageSize,
       take: parsedQuery.pageSize
     });
 
     const totalPages = total === 0 ? 0 : Math.ceil(total / parsedQuery.pageSize);
-    const [normalizedTotal, pendingTotal] = await Promise.all([
-      this.prisma.companyRequest.count({
-        where: {
-          ...baseWhereClause,
-          normalizedCommuneId: {
-            not: null
-          }
-        }
-      }),
-      this.prisma.companyRequest.count({
-        where: {
-          ...baseWhereClause,
-          normalizedCommuneId: null
-        }
-      })
-    ]);
+    const normalizedTotal = await this.prisma.companyRequest.count({
+      where: baseWhereClause
+    });
+    const pendingTotal = 0;
 
     return {
       total,
@@ -134,9 +130,7 @@ export class CompanyRequestsService {
         pending: pendingTotal,
         total: normalizedTotal + pendingTotal
       },
-      items: requests.map((request: Awaited<typeof requests>[number]) =>
-        this.mapRequest(request as Parameters<typeof this.mapRequest>[0])
-      )
+      items: requests.map((request: Awaited<typeof requests>[number]) => this.mapRequest(request))
     };
   }
 
@@ -156,20 +150,11 @@ export class CompanyRequestsService {
 
     const requests = await this.prisma.companyRequest.findMany({
       where: whereClause,
-      include: {
-        categories: {
-          include: {
-            category: true
-          }
-        },
-        requestedPlan: true
-      },
+      include: COMPANY_REQUEST_INCLUDE,
       orderBy
     });
 
-    const mappedRequests = requests.map((request: Awaited<typeof requests>[number]) =>
-      this.mapRequest(request as Parameters<typeof this.mapRequest>[0])
-    );
+    const mappedRequests = requests.map((request: Awaited<typeof requests>[number]) => this.mapRequest(request));
 
     const header = [
       "id",
@@ -178,8 +163,8 @@ export class CompanyRequestsService {
       "phone",
       "city",
       "region",
-      "normalizedRegionCode",
-      "normalizedCommuneId",
+      "communeId",
+      "regionCode",
       "status",
       "category",
       "requestedPlan",
@@ -195,8 +180,8 @@ export class CompanyRequestsService {
       request.phone,
       request.city,
       request.region,
+      request.communeId,
       request.normalizedRegionCode ?? "",
-      request.normalizedCommuneId ?? "",
       request.status,
       request.category,
       request.requestedPlan,
@@ -226,13 +211,9 @@ export class CompanyRequestsService {
       ...(query.normalizedLocation === "all"
         ? {}
         : query.normalizedLocation === "normalized"
-          ? {
-              normalizedCommuneId: {
-                not: null
-              }
-            }
+          ? {}
           : {
-              normalizedCommuneId: null
+              id: "__no_pending_normalization__"
             }),
     };
   }
@@ -335,8 +316,9 @@ export class CompanyRequestsService {
           reviewNotes: parsedPayload.reviewNotes,
           reviewedAt: new Date(),
           companyId: company.id,
-          normalizedRegionCode: normalizedCommune?.region.code ?? parsedPayload.regionCode ?? null,
-          normalizedCommuneId: normalizedCommune?.id ?? parsedPayload.communeId ?? null
+          communeId: normalizedCommune?.id ?? existingRequest.communeId,
+          cityText: normalizedCommune?.name ?? existingRequest.cityText,
+          regionText: normalizedCommune?.region.name ?? existingRequest.regionText
         }
       });
 
@@ -355,8 +337,13 @@ export class CompanyRequestsService {
         status: prismaStatus,
         reviewNotes: parsedPayload.reviewNotes,
         reviewedAt: new Date(),
-        normalizedRegionCode: selectedNormalization?.regionCode ?? null,
-        normalizedCommuneId: selectedNormalization?.communeId ?? null
+        ...(selectedNormalization
+          ? {
+              communeId: selectedNormalization.id,
+              cityText: selectedNormalization.name,
+              regionText: selectedNormalization.region.name
+            }
+          : {})
       }
     });
 
@@ -601,15 +588,7 @@ export class CompanyRequestsService {
       if (reviewPayload.regionCode && commune.region.code !== reviewPayload.regionCode) {
         throw new BadRequestException("Selected commune does not belong to selected region");
       }
-      return {
-        regionCode: commune.region.code,
-        communeId: commune.id
-      };
-    }
-    if (reviewPayload.regionCode) {
-      return {
-        regionCode: reviewPayload.regionCode
-      };
+      return commune;
     }
     return undefined;
   }
@@ -635,9 +614,8 @@ export class CompanyRequestsService {
     website: string | null;
     cityText: string;
     regionText: string;
+    commune: { id: string; region: { code: string } };
     communeId: string;
-    normalizedRegionCode: string | null;
-    normalizedCommuneId: string | null;
     status: string;
     reviewNotes: string | null;
     createdAt: Date;
@@ -661,8 +639,8 @@ export class CompanyRequestsService {
       reviewNotes: request.reviewNotes ?? undefined,
       companyId: request.companyId ?? undefined,
       communeId: request.communeId,
-      normalizedRegionCode: request.normalizedRegionCode ?? undefined,
-      normalizedCommuneId: request.normalizedCommuneId ?? undefined
+      normalizedRegionCode: request.commune.region.code,
+      normalizedCommuneId: request.commune.id
     };
   }
 
