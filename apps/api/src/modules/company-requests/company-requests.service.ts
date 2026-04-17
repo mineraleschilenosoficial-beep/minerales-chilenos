@@ -35,8 +35,13 @@ export class CompanyRequestsService {
       })
     ]);
 
-    if (!requestedPlan || !requestedCategory) {
-      throw new BadRequestException("Invalid plan or category for company request");
+    const selectedCommune = await this.prisma.commune.findUnique({
+      where: { id: parsedPayload.communeId },
+      include: { region: true }
+    });
+
+    if (!requestedPlan || !requestedCategory || !selectedCommune) {
+      throw new BadRequestException("Invalid plan, category, or commune for company request");
     }
 
     const createdRequest = await this.prisma.companyRequest.create({
@@ -48,8 +53,9 @@ export class CompanyRequestsService {
         contactEmail: parsedPayload.email,
         contactPhone: parsedPayload.phone,
         website: parsedPayload.website,
-        cityText: parsedPayload.city,
-        regionText: parsedPayload.region,
+        communeId: selectedCommune.id,
+        cityText: selectedCommune.name,
+        regionText: selectedCommune.region.name,
         requestedPlanId: requestedPlan.id,
         categories: {
           create: [{ categoryId: requestedCategory.id }]
@@ -391,13 +397,14 @@ export class CompanyRequestsService {
     description: string;
     contactPhone: string;
     website: string | null;
+    communeId: string | null;
     cityText: string;
     requestedPlanId: string;
     categories: Array<{ category: { id: string } }>;
   }, reviewPayload: ReviewCompanyRequestInput) {
     const companySlug = this.toSlug(request.companyName);
     const [commune, existingCompany] = await Promise.all([
-      this.resolveApprovalCommune(request.cityText, reviewPayload),
+      this.resolveApprovalCommune(request.cityText, reviewPayload, request.communeId ?? undefined),
       this.prisma.company.findUnique({
         where: { slug: companySlug }
       })
@@ -526,7 +533,8 @@ export class CompanyRequestsService {
 
   private async resolveApprovalCommune(
     cityText: string,
-    reviewPayload: ReviewCompanyRequestInput
+    reviewPayload: ReviewCompanyRequestInput,
+    fallbackCommuneId?: string
   ) {
     if (reviewPayload.communeId) {
       const commune = await this.prisma.commune.findUnique({
@@ -557,6 +565,16 @@ export class CompanyRequestsService {
       });
       if (communeInRegion) {
         return communeInRegion;
+      }
+    }
+
+    if (fallbackCommuneId) {
+      const fallbackCommune = await this.prisma.commune.findUnique({
+        where: { id: fallbackCommuneId },
+        include: { region: true }
+      });
+      if (fallbackCommune) {
+        return fallbackCommune;
       }
     }
 
@@ -617,6 +635,7 @@ export class CompanyRequestsService {
     website: string | null;
     cityText: string;
     regionText: string;
+    communeId: string | null;
     normalizedRegionCode: string | null;
     normalizedCommuneId: string | null;
     status: string;
@@ -641,6 +660,7 @@ export class CompanyRequestsService {
       status: this.toCompanyRequestStatus(request.status),
       reviewNotes: request.reviewNotes ?? undefined,
       companyId: request.companyId ?? undefined,
+      communeId: request.communeId ?? undefined,
       normalizedRegionCode: request.normalizedRegionCode ?? undefined,
       normalizedCommuneId: request.normalizedCommuneId ?? undefined
     };

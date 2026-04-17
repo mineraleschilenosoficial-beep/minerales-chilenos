@@ -74,6 +74,7 @@ export const createCompanyRequestSchema = z.object({
   name: z.string().min(2).max(160),
   tagline: z.string().min(2).max(240),
   description: z.string().min(10).max(2000),
+  communeId: z.string().min(1).max(64),
   city: z.string().min(2).max(80),
   region: z.string().min(2).max(80),
   phone: z.string().min(6).max(40),
@@ -148,6 +149,7 @@ export const companyRequestSchema = z.object({
   createdAt: z.string(),
   reviewNotes: z.string().max(2000).optional(),
   companyId: z.string().min(1).optional(),
+  communeId: z.string().min(1).max(64).optional(),
   normalizedRegionCode: z.string().min(2).max(16).optional(),
   normalizedCommuneId: z.string().min(1).max(64).optional()
 });

@@ -196,6 +196,10 @@ export default function HomePage() {
         }
 
         const fieldKey = pathKey as RequestFieldErrorKey;
+        if (fieldKey === "communeId") {
+          nextFormErrors.city = t.formErrorRequired;
+          continue;
+        }
         if (nextFormErrors[fieldKey]) {
           continue;
         }
@@ -490,7 +494,7 @@ export default function HomePage() {
                 setSelectedCountryCode(nextCountryCode);
                 setSelectedRegionCode("");
                 setSelectedCommuneId("");
-                setFormState((state) => ({ ...state, region: "", city: "" }));
+                setFormState((state) => ({ ...state, region: "", city: "", communeId: "" }));
                 setFormErrors((current) => ({ ...current, city: undefined, region: undefined }));
               }}
             >
@@ -516,7 +520,8 @@ export default function HomePage() {
                 setFormState((state) => ({
                   ...state,
                   region: nextRegion?.name ?? "",
-                  city: ""
+                  city: "",
+                  communeId: ""
                 }));
                 setFormErrors((current) => ({ ...current, city: undefined, region: undefined }));
               }}
@@ -541,7 +546,11 @@ export default function HomePage() {
                 const nextCommuneId = event.target.value;
                 const nextCommune = communes.find((commune) => commune.id === nextCommuneId);
                 setSelectedCommuneId(nextCommuneId);
-                setFormState((state) => ({ ...state, city: nextCommune?.name ?? "" }));
+                setFormState((state) => ({
+                  ...state,
+                  communeId: nextCommuneId,
+                  city: nextCommune?.name ?? ""
+                }));
                 setFormErrors((current) => ({ ...current, city: undefined }));
               }}
               disabled={!selectedRegionCode}

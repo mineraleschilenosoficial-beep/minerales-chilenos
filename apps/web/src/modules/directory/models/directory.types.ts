@@ -10,6 +10,7 @@ export type RequestFormState = {
   name: string;
   tagline: string;
   description: string;
+  communeId: string;
   city: string;
   region: string;
   phone: string;
@@ -23,6 +24,7 @@ export const initialRequestFormState: RequestFormState = {
   name: "",
   tagline: "",
   description: "",
+  communeId: "",
   city: "",
   region: "",
   phone: "",
