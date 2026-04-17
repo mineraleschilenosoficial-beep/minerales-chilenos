@@ -127,4 +127,55 @@ describe("CompanyRequestsService", () => {
     );
     expect(result).toEqual({ id: "req-1", status: "under_review" });
   });
+
+  it("approves request, publishes company, and returns companyId", async () => {
+    prisma.companyRequest.findUnique.mockResolvedValue({
+      id: "req-1",
+      companyName: "Minería Norte",
+      tagline: "Servicios mineros",
+      description: "Proveedor integral",
+      contactPhone: "+56912345678",
+      website: "https://minerianorte.cl",
+      cityText: "Antofagasta",
+      regionText: "Región de Antofagasta",
+      communeId: "comm-1",
+      requestedPlanId: "plan-1",
+      requestedPlan: { code: "FREE" },
+      categories: [{ category: { id: "cat-1", key: CompanyCategory.CONSULTING } }]
+    });
+    prisma.commune.findUnique.mockResolvedValue({
+      id: "comm-2",
+      name: "Calama",
+      region: { code: "CL-AN", name: "Región de Antofagasta" }
+    });
+    prisma.company.findUnique.mockResolvedValue(null);
+    prisma.company.create.mockResolvedValue({ id: "company-1" });
+    prisma.companyCategoryLink.upsert.mockResolvedValue({});
+    prisma.companyAddress.upsert.mockResolvedValue({});
+    prisma.companyContact.upsert.mockResolvedValue({});
+    prisma.companySubscription.findFirst.mockResolvedValue(null);
+    prisma.companySubscription.create.mockResolvedValue({});
+    prisma.companyRequest.update.mockResolvedValue({});
+
+    const result = await service.reviewRequest("req-1", {
+      status: "approved",
+      reviewNotes: "Aprobada",
+      regionCode: "CL-AN",
+      communeId: "comm-2"
+    });
+
+    expect(prisma.company.create).toHaveBeenCalled();
+    expect(prisma.companyAddress.upsert).toHaveBeenCalled();
+    expect(prisma.companyRequest.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "req-1" },
+        data: expect.objectContaining({
+          status: "APPROVED",
+          companyId: "company-1",
+          communeId: "comm-2"
+        })
+      })
+    );
+    expect(result).toEqual({ id: "req-1", status: "approved", companyId: "company-1" });
+  });
 });
