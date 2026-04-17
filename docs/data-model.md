@@ -21,7 +21,7 @@ This document describes the database model used by the API (`apps/api/prisma/sch
 - `Company`: canonical supplier entity (slug, legal/display names, status, verification score).
 - `Category`: reusable category catalog.
 - `CompanyCategoryLink`: many-to-many relation between companies and categories.
-- `Region` and `City`: normalized geographic catalog for Chilean coverage.
+- `Country`, `Region`, and `Commune`: canonical geographic catalog used by company addresses and requests.
 - `CompanyAddress`: one-to-many company addresses with typed address purpose.
 - `CompanyContact`: one-to-many company contacts (general, sales, support).
 
@@ -56,5 +56,5 @@ This document describes the database model used by the API (`apps/api/prisma/sch
 
 ## Notes
 
-- Prisma schema currently defines the structural baseline.
-- Next implementation step is wiring repositories/services from in-memory data to Prisma.
+- Location data is modeled canonically via foreign keys (`Country -> Region -> Commune`).
+- Request snapshots (`cityText`/`regionText`) remain for audit readability, while `communeId` is the relational source of truth.
