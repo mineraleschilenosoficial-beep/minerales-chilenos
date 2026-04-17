@@ -96,6 +96,15 @@ export default function OperationsRequestsPage() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(0);
   const [totalResults, setTotalResults] = useState<number>(0);
+  const [normalizationSummary, setNormalizationSummary] = useState<{
+    normalized: number;
+    pending: number;
+    total: number;
+  }>({
+    normalized: 0,
+    pending: 0,
+    total: 0
+  });
   const [highlightedRequestId, setHighlightedRequestId] = useState<string>("");
   const [pageSize] = useState<number>(8);
   const [requests, setRequests] = useState<CompanyRequest[]>([]);
@@ -155,19 +164,6 @@ export default function OperationsRequestsPage() {
     }),
     [t]
   );
-  const normalizationCounts = useMemo(() => {
-    let normalized = 0;
-    let pending = 0;
-    for (const request of requests) {
-      if (request.normalizedCommuneId) {
-        normalized += 1;
-      } else {
-        pending += 1;
-      }
-    }
-    return { normalized, pending };
-  }, [requests]);
-
   useEffect(() => {
     if (!isAuthenticated) {
       router.replace("/operations/login");
@@ -303,6 +299,7 @@ export default function OperationsRequestsPage() {
       setRequests(payload.items);
       setTotalPages(payload.totalPages);
       setTotalResults(payload.total);
+      setNormalizationSummary(payload.normalizationSummary);
       setReviewDrafts((currentDrafts) => {
         const nextDrafts: Record<string, RequestReviewDraft> = {};
         for (const request of payload.items) {
@@ -324,6 +321,11 @@ export default function OperationsRequestsPage() {
       setRequests([]);
       setTotalPages(0);
       setTotalResults(0);
+      setNormalizationSummary({
+        normalized: 0,
+        pending: 0,
+        total: 0
+      });
       setErrorFeedback(t.operationsErrorFeedback);
     } finally {
       if (currentSequence === loadSequenceRef.current) {
@@ -565,10 +567,10 @@ export default function OperationsRequestsPage() {
               allowDeselect={false}
             />
             <Badge variant="light" color="green">
-              {t.operationsNormalizationReadyCountLabel}: {normalizationCounts.normalized}
+              {t.operationsNormalizationReadyCountLabel}: {normalizationSummary.normalized}
             </Badge>
             <Badge variant="light" color="orange">
-              {t.operationsNormalizationPendingCountLabel}: {normalizationCounts.pending}
+              {t.operationsNormalizationPendingCountLabel}: {normalizationSummary.pending}
             </Badge>
           </Group>
         ) : null}

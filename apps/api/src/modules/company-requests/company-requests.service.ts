@@ -68,6 +68,10 @@ export class CompanyRequestsService {
    */
   async listRequests(query: CompanyRequestListQuery) {
     const parsedQuery = companyRequestListQuerySchema.parse(query);
+    const baseWhereClause = this.buildBaseRequestWhereClause({
+      status: parsedQuery.status,
+      search: parsedQuery.search
+    });
     const whereClause = this.buildRequestWhereClause({
       status: parsedQuery.status,
       normalizedLocation:
@@ -97,12 +101,33 @@ export class CompanyRequestsService {
     });
 
     const totalPages = total === 0 ? 0 : Math.ceil(total / parsedQuery.pageSize);
+    const [normalizedTotal, pendingTotal] = await Promise.all([
+      this.prisma.companyRequest.count({
+        where: {
+          ...baseWhereClause,
+          normalizedCommuneId: {
+            not: null
+          }
+        }
+      }),
+      this.prisma.companyRequest.count({
+        where: {
+          ...baseWhereClause,
+          normalizedCommuneId: null
+        }
+      })
+    ]);
 
     return {
       total,
       page: parsedQuery.page,
       pageSize: parsedQuery.pageSize,
       totalPages,
+      normalizationSummary: {
+        normalized: normalizedTotal,
+        pending: pendingTotal,
+        total: normalizedTotal + pendingTotal
+      },
       items: requests.map((request: Awaited<typeof requests>[number]) =>
         this.mapRequest(request as Parameters<typeof this.mapRequest>[0])
       )
@@ -184,14 +209,14 @@ export class CompanyRequestsService {
     normalizedLocation: "all" | "normalized" | "pending_normalization";
     search?: string;
   }) {
-    const normalizedSearch = (query.search ?? "").trim();
-
     return {
+      ...this.buildBaseRequestWhereClause({
+        status: query.status,
+        search: query.search
+      }),
       ...(query.status === "all"
         ? {}
-        : {
-            status: this.toPrismaStatusFilter(query.status)
-          }),
+        : {}),
       ...(query.normalizedLocation === "all"
         ? {}
         : query.normalizedLocation === "normalized"
@@ -203,6 +228,20 @@ export class CompanyRequestsService {
           : {
               normalizedCommuneId: null
             }),
+    };
+  }
+
+  private buildBaseRequestWhereClause(query: {
+    status: CompanyRequestListQuery["status"];
+    search?: string;
+  }) {
+    const normalizedSearch = (query.search ?? "").trim();
+    return {
+      ...(query.status === "all"
+        ? {}
+        : {
+            status: this.toPrismaStatusFilter(query.status)
+          }),
       ...(normalizedSearch.length === 0
         ? {}
         : {
