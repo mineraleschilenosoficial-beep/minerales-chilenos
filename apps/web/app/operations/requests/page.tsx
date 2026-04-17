@@ -93,12 +93,12 @@ export default function OperationsRequestsPage() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(0);
   const [totalResults, setTotalResults] = useState<number>(0);
-  const [normalizationSummary, setNormalizationSummary] = useState<{
-    normalized: number;
+  const [canonicalSummary, setCanonicalSummary] = useState<{
+    canonical: number;
     pending: number;
     total: number;
   }>({
-    normalized: 0,
+    canonical: 0,
     pending: 0,
     total: 0
   });
@@ -280,7 +280,7 @@ export default function OperationsRequestsPage() {
       setRequests(payload.items);
       setTotalPages(payload.totalPages);
       setTotalResults(payload.total);
-      setNormalizationSummary(payload.normalizationSummary);
+      setCanonicalSummary(payload.canonicalSummary);
       setReviewDrafts((currentDrafts) => {
         const nextDrafts: Record<string, RequestReviewDraft> = {};
         for (const request of payload.items) {
@@ -302,8 +302,8 @@ export default function OperationsRequestsPage() {
       setRequests([]);
       setTotalPages(0);
       setTotalResults(0);
-      setNormalizationSummary({
-        normalized: 0,
+      setCanonicalSummary({
+        canonical: 0,
         pending: 0,
         total: 0
       });
@@ -526,10 +526,10 @@ export default function OperationsRequestsPage() {
               allowDeselect={false}
             />
             <Badge variant="light" color="green">
-              {t.operationsNormalizationReadyCountLabel}: {normalizationSummary.normalized}
+              {t.operationsCanonicalReadyCountLabel}: {canonicalSummary.canonical}
             </Badge>
             <Badge variant="light" color="orange">
-              {t.operationsNormalizationPendingCountLabel}: {normalizationSummary.pending}
+              {t.operationsCanonicalPendingCountLabel}: {canonicalSummary.pending}
             </Badge>
           </Group>
         ) : null}

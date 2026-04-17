@@ -159,8 +159,8 @@ export const companyRequestListResponseSchema = z.object({
   page: z.number().int().min(1),
   pageSize: z.number().int().min(1),
   totalPages: z.number().int().min(0),
-  normalizationSummary: z.object({
-    normalized: z.number().int().min(0),
+  canonicalSummary: z.object({
+    canonical: z.number().int().min(0),
     pending: z.number().int().min(0),
     total: z.number().int().min(0)
   }),

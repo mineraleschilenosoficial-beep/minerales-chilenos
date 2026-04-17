@@ -112,7 +112,7 @@ export class CompanyRequestsService {
     });
 
     const totalPages = total === 0 ? 0 : Math.ceil(total / parsedQuery.pageSize);
-    const normalizedTotal = await this.prisma.companyRequest.count({
+    const canonicalTotal = await this.prisma.companyRequest.count({
       where: baseWhereClause
     });
     const pendingTotal = 0;
@@ -122,10 +122,10 @@ export class CompanyRequestsService {
       page: parsedQuery.page,
       pageSize: parsedQuery.pageSize,
       totalPages,
-      normalizationSummary: {
-        normalized: normalizedTotal,
+      canonicalSummary: {
+        canonical: canonicalTotal,
         pending: pendingTotal,
-        total: normalizedTotal + pendingTotal
+        total: canonicalTotal + pendingTotal
       },
       items: requests.map((request: Awaited<typeof requests>[number]) => this.mapRequest(request))
     };

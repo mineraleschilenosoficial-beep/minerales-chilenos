@@ -72,8 +72,8 @@ type DirectoryTranslation = {
   operationsCsvFilePrefix: string;
   operationsFilterStatusLabel: string;
   operationsFilterStatusAll: string;
-  operationsNormalizationReadyCountLabel: string;
-  operationsNormalizationPendingCountLabel: string;
+  operationsCanonicalReadyCountLabel: string;
+  operationsCanonicalPendingCountLabel: string;
   operationsSortLabel: string;
   operationsSortNewest: string;
   operationsSortOldest: string;
@@ -311,8 +311,8 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsCsvFilePrefix: "company-requests",
     operationsFilterStatusLabel: "Filter status",
     operationsFilterStatusAll: "All statuses",
-    operationsNormalizationReadyCountLabel: "Normalized in list",
-    operationsNormalizationPendingCountLabel: "Pending in list",
+    operationsCanonicalReadyCountLabel: "Canonical in list",
+    operationsCanonicalPendingCountLabel: "Pending in list",
     operationsSortLabel: "Sort by date",
     operationsSortNewest: "Newest first",
     operationsSortOldest: "Oldest first",
@@ -563,8 +563,8 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsCsvFilePrefix: "solicitudes-empresas",
     operationsFilterStatusLabel: "Filtrar estado",
     operationsFilterStatusAll: "Todos los estados",
-    operationsNormalizationReadyCountLabel: "Normalizadas en lista",
-    operationsNormalizationPendingCountLabel: "Pendientes en lista",
+    operationsCanonicalReadyCountLabel: "Canonicas en lista",
+    operationsCanonicalPendingCountLabel: "Pendientes en lista",
     operationsSortLabel: "Orden por fecha",
     operationsSortNewest: "Mas nuevas primero",
     operationsSortOldest: "Mas antiguas primero",
