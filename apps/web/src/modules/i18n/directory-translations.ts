@@ -72,10 +72,6 @@ type DirectoryTranslation = {
   operationsCsvFilePrefix: string;
   operationsFilterStatusLabel: string;
   operationsFilterStatusAll: string;
-  operationsFilterNormalizationLabel: string;
-  operationsFilterNormalizationAll: string;
-  operationsFilterNormalizationReady: string;
-  operationsFilterNormalizationMissing: string;
   operationsNormalizationReadyCountLabel: string;
   operationsNormalizationPendingCountLabel: string;
   operationsSortLabel: string;
@@ -315,10 +311,6 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsCsvFilePrefix: "company-requests",
     operationsFilterStatusLabel: "Filter status",
     operationsFilterStatusAll: "All statuses",
-    operationsFilterNormalizationLabel: "Normalization",
-    operationsFilterNormalizationAll: "All",
-    operationsFilterNormalizationReady: "Normalized",
-    operationsFilterNormalizationMissing: "Pending normalization",
     operationsNormalizationReadyCountLabel: "Normalized in list",
     operationsNormalizationPendingCountLabel: "Pending in list",
     operationsSortLabel: "Sort by date",
@@ -571,10 +563,6 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsCsvFilePrefix: "solicitudes-empresas",
     operationsFilterStatusLabel: "Filtrar estado",
     operationsFilterStatusAll: "Todos los estados",
-    operationsFilterNormalizationLabel: "Normalizacion",
-    operationsFilterNormalizationAll: "Todas",
-    operationsFilterNormalizationReady: "Normalizadas",
-    operationsFilterNormalizationMissing: "Pendientes de normalizar",
     operationsNormalizationReadyCountLabel: "Normalizadas en lista",
     operationsNormalizationPendingCountLabel: "Pendientes en lista",
     operationsSortLabel: "Orden por fecha",
