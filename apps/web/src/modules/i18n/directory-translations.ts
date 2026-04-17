@@ -76,6 +76,8 @@ type DirectoryTranslation = {
   operationsFilterNormalizationAll: string;
   operationsFilterNormalizationReady: string;
   operationsFilterNormalizationMissing: string;
+  operationsNormalizationReadyCountLabel: string;
+  operationsNormalizationPendingCountLabel: string;
   operationsSortLabel: string;
   operationsSortNewest: string;
   operationsSortOldest: string;
@@ -317,6 +319,8 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsFilterNormalizationAll: "All",
     operationsFilterNormalizationReady: "Normalized",
     operationsFilterNormalizationMissing: "Pending normalization",
+    operationsNormalizationReadyCountLabel: "Normalized in list",
+    operationsNormalizationPendingCountLabel: "Pending in list",
     operationsSortLabel: "Sort by date",
     operationsSortNewest: "Newest first",
     operationsSortOldest: "Oldest first",
@@ -571,6 +575,8 @@ export const directoryTranslations: Record<SupportedLocale, DirectoryTranslation
     operationsFilterNormalizationAll: "Todas",
     operationsFilterNormalizationReady: "Normalizadas",
     operationsFilterNormalizationMissing: "Pendientes de normalizar",
+    operationsNormalizationReadyCountLabel: "Normalizadas en lista",
+    operationsNormalizationPendingCountLabel: "Pendientes en lista",
     operationsSortLabel: "Orden por fecha",
     operationsSortNewest: "Mas nuevas primero",
     operationsSortOldest: "Mas antiguas primero",

@@ -155,6 +155,18 @@ export default function OperationsRequestsPage() {
     }),
     [t]
   );
+  const normalizationCounts = useMemo(() => {
+    let normalized = 0;
+    let pending = 0;
+    for (const request of requests) {
+      if (request.normalizedCommuneId) {
+        normalized += 1;
+      } else {
+        pending += 1;
+      }
+    }
+    return { normalized, pending };
+  }, [requests]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -552,6 +564,12 @@ export default function OperationsRequestsPage() {
               w={{ base: "100%", sm: 180 }}
               allowDeselect={false}
             />
+            <Badge variant="light" color="green">
+              {t.operationsNormalizationReadyCountLabel}: {normalizationCounts.normalized}
+            </Badge>
+            <Badge variant="light" color="orange">
+              {t.operationsNormalizationPendingCountLabel}: {normalizationCounts.pending}
+            </Badge>
           </Group>
         ) : null}
 
