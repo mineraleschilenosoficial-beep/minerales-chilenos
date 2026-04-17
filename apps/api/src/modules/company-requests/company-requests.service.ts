@@ -397,14 +397,14 @@ export class CompanyRequestsService {
     description: string;
     contactPhone: string;
     website: string | null;
-    communeId: string | null;
+    communeId: string;
     cityText: string;
     requestedPlanId: string;
     categories: Array<{ category: { id: string } }>;
   }, reviewPayload: ReviewCompanyRequestInput) {
     const companySlug = this.toSlug(request.companyName);
     const [commune, existingCompany] = await Promise.all([
-      this.resolveApprovalCommune(request.cityText, reviewPayload, request.communeId ?? undefined),
+      this.resolveApprovalCommune(request.cityText, reviewPayload, request.communeId),
       this.prisma.company.findUnique({
         where: { slug: companySlug }
       })
@@ -635,7 +635,7 @@ export class CompanyRequestsService {
     website: string | null;
     cityText: string;
     regionText: string;
-    communeId: string | null;
+    communeId: string;
     normalizedRegionCode: string | null;
     normalizedCommuneId: string | null;
     status: string;
@@ -660,7 +660,7 @@ export class CompanyRequestsService {
       status: this.toCompanyRequestStatus(request.status),
       reviewNotes: request.reviewNotes ?? undefined,
       companyId: request.companyId ?? undefined,
-      communeId: request.communeId ?? undefined,
+      communeId: request.communeId,
       normalizedRegionCode: request.normalizedRegionCode ?? undefined,
       normalizedCommuneId: request.normalizedCommuneId ?? undefined
     };

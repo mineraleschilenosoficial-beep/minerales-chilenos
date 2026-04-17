@@ -285,7 +285,7 @@ model CompanySubscription {
 model CompanyRequest {
   id                String                   @id @default(cuid())
   companyId         String?
-  communeId         String?
+  communeId         String
   normalizedCommuneId String?
   normalizedRegionCode String?
   requestedByUserId String?
@@ -306,7 +306,7 @@ model CompanyRequest {
   createdAt         DateTime                 @default(now())
   updatedAt         DateTime                 @updatedAt
   company           Company?                 @relation(fields: [companyId], references: [id], onDelete: SetNull)
-  commune           Commune?                 @relation("CompanyRequestCommune", fields: [communeId], references: [id], onDelete: SetNull)
+  commune           Commune                  @relation("CompanyRequestCommune", fields: [communeId], references: [id], onDelete: Restrict)
   normalizedCommune Commune?                @relation(fields: [normalizedCommuneId], references: [id], onDelete: SetNull)
   requestedByUser   User?                    @relation("CompanyRequestRequestedBy", fields: [requestedByUserId], references: [id], onDelete: SetNull)
   reviewedBy        User?                    @relation("CompanyRequestReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)

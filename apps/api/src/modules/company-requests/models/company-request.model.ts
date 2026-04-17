@@ -13,7 +13,7 @@ export type CompanyRequestModel = Omit<CreateCompanyRequestInput, "requestedPlan
   status: CompanyRequestStatus;
   reviewNotes?: string;
   companyId?: string;
-  communeId?: string;
+  communeId: string;
   normalizedRegionCode?: string;
   normalizedCommuneId?: string;
 };

@@ -149,7 +149,7 @@ export const companyRequestSchema = z.object({
   createdAt: z.string(),
   reviewNotes: z.string().max(2000).optional(),
   companyId: z.string().min(1).optional(),
-  communeId: z.string().min(1).max(64).optional(),
+  communeId: z.string().min(1).max(64),
   normalizedRegionCode: z.string().min(2).max(16).optional(),
   normalizedCommuneId: z.string().min(1).max(64).optional()
 });
