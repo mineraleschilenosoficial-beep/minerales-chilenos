@@ -18,7 +18,7 @@
       },
       {
         "name": "CORFO - Litio y Salares",
-        "url": "https://www.corfo.cl/sites/cpp/convocatorias/litio-y-salares",
+        "url": "https://www.corfo.gob.cl/sites/cpp/convocatorias/litio-y-salares",
         "note": "Convocatorias y antecedentes públicos de salares."
       }
     ]
@@ -193,7 +193,7 @@
         },
         {
           "n": "Informe CORFO Litio",
-          "url": "https://www.corfo.cl",
+          "url": "https://www.corfo.gob.cl/sites/cpp/convocatorias/litio-y-salares",
           "tipo": "Evaluacion"
         }
       ],
@@ -225,7 +225,7 @@
       "docs": [
         {
           "n": "Informe Exploratorio 2023",
-          "url": "https://www.sernageomin.cl",
+          "url": "https://www.sernageomin.cl/mineria-concesiones-mineras/",
           "tipo": "Tecnico"
         }
       ],
@@ -257,7 +257,7 @@
       "docs": [
         {
           "n": "Estudio Magnetico Aereo 2022",
-          "url": "https://www.sernageomin.cl",
+          "url": "https://portalgeomin.sernageomin.cl/",
           "tipo": "Tecnico"
         }
       ],
