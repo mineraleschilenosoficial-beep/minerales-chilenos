@@ -69,6 +69,52 @@
     }
   }
 
+  function addBaseTileLayer(targetMap) {
+    const providers = [
+      {
+        url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        opts: {
+          maxZoom: 19,
+          attribution: "&copy; OpenStreetMap"
+        }
+      },
+      {
+        url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+        opts: {
+          maxZoom: 19,
+          attribution: "&copy; OpenStreetMap &copy; CARTO"
+        }
+      },
+      {
+        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        opts: {
+          maxZoom: 19,
+          attribution: "Tiles &copy; Esri"
+        }
+      }
+    ];
+
+    let index = 0;
+    let layer = null;
+
+    const mount = () => {
+      if (layer) {
+        targetMap.removeLayer(layer);
+      }
+      const current = providers[index];
+      layer = L.tileLayer(current.url, current.opts);
+      layer.once("tileerror", () => {
+        if (index < providers.length - 1) {
+          index += 1;
+          mount();
+        }
+      });
+      layer.addTo(targetMap);
+    };
+
+    mount();
+  }
+
   let map = null;
   let cluster = null;
 
@@ -349,9 +395,7 @@
         ? L.markerClusterGroup({ maxClusterRadius: 48, showCoverageOnHover: false })
         : L.layerGroup();
       map.addLayer(cluster);
-      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-        maxZoom: 19
-      }).addTo(map);
+      addBaseTileLayer(map);
 
       const payload = await loadData();
       allItems = payload.items;
