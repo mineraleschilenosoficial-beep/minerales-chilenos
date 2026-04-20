@@ -188,7 +188,7 @@
 
   async function loadLinkHealth() {
     if (!els.healthBadge) return;
-    setHealthBadge("", "Fuentes: revisando...");
+    setHealthBadge("", "Fuentes: verificando...");
     try {
       const res = await fetch(`${LINK_REPORT_URL}?v=${Date.now()}`, { cache: "no-store" });
       if (!res.ok) throw new Error("report not available");
@@ -196,11 +196,11 @@
       const failed = Number(report.failed_count || 0);
       const warnings = Number(report.warning_count || 0);
       if (failed > 0) {
-        setHealthBadge("health-fail", `Fuentes: ${pluralize(failed, "fallo", "fallos")}`);
+        setHealthBadge("health-fail", `Fuentes: ${pluralize(failed, "error", "errores")}`);
       } else if (warnings > 0) {
         setHealthBadge("health-warn", `Fuentes: ${pluralize(warnings, "advertencia", "advertencias")}`);
       } else {
-        setHealthBadge("health-ok", "Fuentes: OK");
+        setHealthBadge("health-ok", "Fuentes: verificadas");
       }
     } catch {
       setHealthBadge("health-warn", "Fuentes: sin reporte");
@@ -464,8 +464,8 @@
     document.body.classList.add(`mobile-sheet-${nextState}`);
     const isOpen = nextState !== "collapsed";
     els.btnMobilePanel.setAttribute("aria-expanded", isOpen ? "true" : "false");
-    els.btnMobilePanel.textContent = isOpen ? "Cerrar panel" : "Panel";
-    els.btnMobilePanel.setAttribute("aria-label", isOpen ? "Cerrar panel de filtros" : "Abrir panel de filtros");
+    els.btnMobilePanel.textContent = isOpen ? "Cerrar filtros" : "Filtros";
+    els.btnMobilePanel.setAttribute("aria-label", isOpen ? "Cerrar filtros" : "Abrir filtros");
     if (nextState === "full" && document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
