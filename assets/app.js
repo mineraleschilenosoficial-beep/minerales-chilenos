@@ -4,19 +4,73 @@
   const CACHE_KEY = cfg.CACHE_KEY || "mineraleschilenos:data:v1";
   const CACHE_TTL_MS = cfg.CACHE_TTL_MS || 1000 * 60 * 60 * 6;
 
-  if (!window.L) {
-    throw new Error("Leaflet no pudo cargarse. Revisa conexion o bloqueo de CDN.");
+  const LEAFLET_JS = [
+    "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js",
+    "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"
+  ];
+  const LEAFLET_CSS = [
+    "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css",
+    "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
+  ];
+  const CLUSTER_JS = [
+    "https://unpkg.com/leaflet.markercluster@1.5.0/dist/leaflet.markercluster.js",
+    "https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.0/dist/leaflet.markercluster.js"
+  ];
+  const CLUSTER_CSS = [
+    "https://unpkg.com/leaflet.markercluster@1.5.0/dist/MarkerCluster.css",
+    "https://unpkg.com/leaflet.markercluster@1.5.0/dist/MarkerCluster.Default.css",
+    "https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.0/dist/MarkerCluster.css",
+    "https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.0/dist/MarkerCluster.Default.css"
+  ];
+
+  function injectStyle(href) {
+    if (document.querySelector(`link[href="${href}"]`)) return;
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = href;
+    document.head.appendChild(link);
   }
 
-  const map = L.map("map", { center: [-30.5, -70.2], zoom: 5 });
-  const cluster = (typeof L.markerClusterGroup === "function")
-    ? L.markerClusterGroup({ maxClusterRadius: 48, showCoverageOnHover: false })
-    : L.layerGroup();
-  map.addLayer(cluster);
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = src;
+      s.async = true;
+      s.onload = () => resolve(true);
+      s.onerror = () => reject(new Error(`No se pudo cargar script: ${src}`));
+      document.head.appendChild(s);
+    });
+  }
 
-  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-    maxZoom: 19
-  }).addTo(map);
+  async function ensureLeaflet() {
+    LEAFLET_CSS.forEach(injectStyle);
+    if (!window.L) {
+      for (const src of LEAFLET_JS) {
+        try {
+          await loadScript(src);
+          if (window.L) break;
+        } catch {}
+      }
+    }
+    if (!window.L) {
+      throw new Error("Leaflet no pudo cargarse desde CDN.");
+    }
+  }
+
+  async function ensureCluster() {
+    CLUSTER_CSS.forEach(injectStyle);
+    if (typeof L.markerClusterGroup !== "function") {
+      for (const src of CLUSTER_JS) {
+        try {
+          await loadScript(src);
+          if (typeof L.markerClusterGroup === "function") break;
+        } catch {}
+      }
+    }
+  }
+
+  let map = null;
+  let cluster = null;
 
   let allItems = [];
   let filtered = [];
@@ -288,6 +342,17 @@
   async function bootstrap() {
     wireUi();
     try {
+      await ensureLeaflet();
+      await ensureCluster();
+      map = L.map("map", { center: [-30.5, -70.2], zoom: 5 });
+      cluster = (typeof L.markerClusterGroup === "function")
+        ? L.markerClusterGroup({ maxClusterRadius: 48, showCoverageOnHover: false })
+        : L.layerGroup();
+      map.addLayer(cluster);
+      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+        maxZoom: 19
+      }).addTo(map);
+
       const payload = await loadData();
       allItems = payload.items;
       window.__dataUpdatedAt = payload.meta && payload.meta.updatedAt;
@@ -300,8 +365,10 @@
       setTopKpis(payload.meta || {}, allItems);
       applyFilters();
       fitToFiltered();
+      setTimeout(() => map.invalidateSize(), 100);
+      window.addEventListener("resize", () => map.invalidateSize());
     } catch (error) {
-      els.status.textContent = "No fue posible cargar la informacion. Revisa data/yacimientos.json.";
+      els.status.textContent = "No fue posible cargar mapa o datos. Revisa conexion/CDN y data/yacimientos.json.";
       console.error(error);
     }
   }
