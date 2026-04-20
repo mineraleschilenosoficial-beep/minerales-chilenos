@@ -19,10 +19,14 @@
   <div id="app">
     <header>
       <div class="logo"><span class="dot"></span>MineralesChilenos.cl</div>
+      <button id="btn-mobile-panel" class="mobile-panel-btn" type="button" aria-controls="sidebar" aria-expanded="false">
+        Panel
+      </button>
       <div class="top-kpis" id="topKpis"></div>
     </header>
 
-    <aside>
+    <aside id="sidebar">
+      <div class="sheet-grab" aria-hidden="true"></div>
       <section class="panel">
         <h2>Filtros</h2>
         <div class="field">

@@ -54,6 +54,7 @@
     btnLibres: document.getElementById("btn-libres"),
     btnReset: document.getElementById("btn-reset"),
     btnFit: document.getElementById("btn-fit"),
+    btnMobilePanel: document.getElementById("btn-mobile-panel"),
     modal: document.getElementById("detail-modal"),
     modalTitle: document.getElementById("modal-title"),
     modalContent: document.getElementById("modal-content"),
@@ -348,6 +349,14 @@
 
     els.btnFit.addEventListener("click", fitToFiltered);
     els.modalClose.addEventListener("click", closeModal);
+
+    if (els.btnMobilePanel) {
+      els.btnMobilePanel.addEventListener("click", () => {
+        const isOpen = document.body.classList.toggle("mobile-panel-open");
+        els.btnMobilePanel.setAttribute("aria-expanded", isOpen ? "true" : "false");
+        els.btnMobilePanel.textContent = isOpen ? "Cerrar panel" : "Panel";
+      });
+    }
   }
 
   function initMap() {

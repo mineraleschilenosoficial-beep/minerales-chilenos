@@ -50,6 +50,10 @@ header {
   z-index: 1200;
 }
 
+.mobile-panel-btn {
+  display: none;
+}
+
 .logo {
   font-family: "Bebas Neue", sans-serif;
   letter-spacing: 1.7px;
@@ -86,7 +90,7 @@ header {
   color: var(--muted);
 }
 
-aside {
+#sidebar {
   grid-area: sidebar;
   border-right: 1px solid var(--line);
   background: linear-gradient(180deg, #141414, #101010);
@@ -95,6 +99,15 @@ aside {
   display: grid;
   gap: 14px;
   align-content: start;
+}
+
+.sheet-grab {
+  display: none;
+  width: 42px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.28);
+  margin: 2px auto 4px;
 }
 
 .panel {
@@ -147,7 +160,8 @@ button {
   background: #1a1a1a;
   color: var(--text);
   border-radius: 10px;
-  padding: 10px 12px;
+  padding: 11px 12px;
+  min-height: 44px;
   font-weight: 600;
   cursor: pointer;
   transition: .2s ease;
@@ -344,19 +358,103 @@ button:hover {
   :root { --sidebar-w: 100%; }
   #app {
     grid-template-columns: 1fr;
-    grid-template-rows: var(--header-h) auto 1fr;
+    grid-template-rows: var(--header-h) 1fr;
     grid-template-areas:
       "header"
-      "sidebar"
       "map";
   }
-  aside {
+
+  .mobile-panel-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+    margin-right: 8px;
+    font-size: 13px;
+    min-height: 38px;
+    padding: 8px 12px;
+  }
+
+  .top-kpis {
+    display: none;
+  }
+
+  #sidebar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1300;
     border-right: none;
-    border-bottom: 1px solid var(--line);
-    max-height: 42vh;
+    border-top: 1px solid var(--line);
+    border-radius: 16px 16px 0 0;
+    max-height: 68vh;
+    transform: translateY(calc(100% - 54px));
+    transition: transform 0.25s ease;
+    box-shadow: 0 -14px 30px rgba(0, 0, 0, 0.45);
+    padding-top: 8px;
   }
+
+  body.mobile-panel-open #sidebar {
+    transform: translateY(0);
+  }
+
+  .sheet-grab {
+    display: block;
+  }
+
   #map {
-    height: 58vh;
+    height: calc(100vh - var(--header-h));
   }
-  .top-kpis { display: none; }
+
+  #list {
+    max-height: 32vh;
+  }
+
+  .legend {
+    bottom: 68px;
+    width: min(240px, calc(100vw - 24px));
+    padding: 10px;
+  }
+}
+
+@media (max-width: 560px) {
+  :root { --header-h: 62px; }
+
+  header {
+    padding: 0 10px;
+  }
+
+  .logo {
+    font-size: 22px;
+    letter-spacing: 1px;
+    gap: 6px;
+  }
+
+  .panel {
+    padding: 12px;
+    border-radius: 12px;
+  }
+
+  .field input,
+  .field select {
+    min-height: 42px;
+    font-size: 15px;
+  }
+
+  .row button {
+    flex: 1 1 calc(50% - 8px);
+  }
+
+  .row #btn-fit {
+    flex-basis: 100%;
+  }
+
+  .modal-title {
+    font-size: 26px;
+  }
+
+  .modal-body {
+    padding: 14px 14px 20px;
+  }
 }
