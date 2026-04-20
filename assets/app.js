@@ -652,7 +652,7 @@
       initMap();
     } catch (mapError) {
       mapEnabled = false;
-      showMapUnavailableNotice("Puedes navegar los datos desde el panel lateral. Revisa conexión o restricciones de CDN para habilitar el mapa.");
+      showMapUnavailableNotice("Puedes navegar los datos desde el panel lateral. Revisa la conexión o restricciones de CDN para habilitar el mapa.");
       console.error(mapError);
     }
 
@@ -675,7 +675,7 @@
       if (!mapEnabled) {
         els.status.textContent = "Mapa no disponible. Mostrando datos en modo listado.";
       } else if (window.__dataOrigin === "fallback") {
-        els.status.textContent = "No se pudo cargar data remota. Mostrando dataset de respaldo local.";
+        els.status.textContent = "No se pudieron cargar datos remotos. Mostrando respaldo local.";
       }
     } catch (dataError) {
       els.status.textContent = "No fue posible cargar datos. Verifica data/yacimientos.json.";
