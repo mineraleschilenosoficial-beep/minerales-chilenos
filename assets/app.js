@@ -3,6 +3,7 @@
   const DATA_URL = cfg.DATA_URL || "./data/yacimientos.json";
   const CACHE_KEY = cfg.CACHE_KEY || "mineraleschilenos:data:v1";
   const CACHE_TTL_MS = cfg.CACHE_TTL_MS || 1000 * 60 * 60 * 6;
+  const MOBILE_SHEET_KEY = "mineraleschilenos:mobile-sheet-state";
 
   const FALLBACK_DATASET = {
     meta: {
@@ -42,6 +43,7 @@
   let filtered = [];
   let onlyLibres = false;
   let mobileSheetState = "collapsed";
+  let mobileSheetStateInitialized = false;
   const markerById = new Map();
 
   const els = {
@@ -385,6 +387,22 @@
     return window.matchMedia("(max-width: 980px)").matches;
   }
 
+  function loadPersistedMobileSheetState() {
+    try {
+      const saved = localStorage.getItem(MOBILE_SHEET_KEY);
+      if (saved === "collapsed" || saved === "half" || saved === "full") {
+        return saved;
+      }
+    } catch {}
+    return "collapsed";
+  }
+
+  function persistMobileSheetState(state) {
+    try {
+      localStorage.setItem(MOBILE_SHEET_KEY, state);
+    } catch {}
+  }
+
   function setMobileSheetState(nextState) {
     if (!els.btnMobilePanel) return;
     mobileSheetState = nextState;
@@ -397,6 +415,9 @@
     els.btnMobilePanel.setAttribute("aria-label", isOpen ? "Cerrar panel de filtros" : "Abrir panel de filtros");
     if (nextState === "full" && document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
+    }
+    if (isMobileViewport()) {
+      persistMobileSheetState(nextState);
     }
     if (mapEnabled && map) {
       setTimeout(() => map.invalidateSize(), 120);
@@ -534,6 +555,10 @@
 
     const syncMobileSheet = () => {
       if (isMobileViewport()) {
+        if (!mobileSheetStateInitialized) {
+          mobileSheetState = loadPersistedMobileSheetState();
+          mobileSheetStateInitialized = true;
+        }
         setMobileSheetState(mobileSheetState || "collapsed");
       } else {
         document.body.classList.remove("mobile-sheet-collapsed", "mobile-sheet-half", "mobile-sheet-full");
