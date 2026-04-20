@@ -3,6 +3,7 @@
   const DATA_URL = cfg.DATA_URL || "./data/yacimientos.json";
   const CACHE_KEY = cfg.CACHE_KEY || "mineraleschilenos:data:v1";
   const CACHE_TTL_MS = cfg.CACHE_TTL_MS || 1000 * 60 * 60 * 6;
+
   const FALLBACK_DATASET = {
     meta: {
       updatedAt: new Date().toISOString(),
@@ -33,119 +34,8 @@
     ]
   };
 
-  const LEAFLET_JS = [
-    "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js",
-    "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"
-  ];
-  const LEAFLET_CSS = [
-    "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css",
-    "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
-  ];
-  const CLUSTER_JS = [
-    "https://unpkg.com/leaflet.markercluster@1.5.0/dist/leaflet.markercluster.js",
-    "https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.0/dist/leaflet.markercluster.js"
-  ];
-  const CLUSTER_CSS = [
-    "https://unpkg.com/leaflet.markercluster@1.5.0/dist/MarkerCluster.css",
-    "https://unpkg.com/leaflet.markercluster@1.5.0/dist/MarkerCluster.Default.css",
-    "https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.0/dist/MarkerCluster.css",
-    "https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.0/dist/MarkerCluster.Default.css"
-  ];
-
-  function injectStyle(href) {
-    if (document.querySelector(`link[href="${href}"]`)) return;
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = href;
-    document.head.appendChild(link);
-  }
-
-  function loadScript(src) {
-    return new Promise((resolve, reject) => {
-      const s = document.createElement("script");
-      s.src = src;
-      s.async = true;
-      s.onload = () => resolve(true);
-      s.onerror = () => reject(new Error(`No se pudo cargar script: ${src}`));
-      document.head.appendChild(s);
-    });
-  }
-
-  async function ensureLeaflet() {
-    LEAFLET_CSS.forEach(injectStyle);
-    if (!window.L) {
-      for (const src of LEAFLET_JS) {
-        try {
-          await loadScript(src);
-          if (window.L) break;
-        } catch {}
-      }
-    }
-    if (!window.L) {
-      throw new Error("Leaflet no pudo cargarse desde CDN.");
-    }
-  }
-
-  async function ensureCluster() {
-    CLUSTER_CSS.forEach(injectStyle);
-    if (typeof L.markerClusterGroup !== "function") {
-      for (const src of CLUSTER_JS) {
-        try {
-          await loadScript(src);
-          if (typeof L.markerClusterGroup === "function") break;
-        } catch {}
-      }
-    }
-  }
-
-  function addBaseTileLayer(targetMap) {
-    const providers = [
-      {
-        url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-        opts: {
-          maxZoom: 19,
-          attribution: "&copy; OpenStreetMap"
-        }
-      },
-      {
-        url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-        opts: {
-          maxZoom: 19,
-          attribution: "&copy; OpenStreetMap &copy; CARTO"
-        }
-      },
-      {
-        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        opts: {
-          maxZoom: 19,
-          attribution: "Tiles &copy; Esri"
-        }
-      }
-    ];
-
-    let index = 0;
-    let layer = null;
-
-    const mount = () => {
-      if (layer) {
-        targetMap.removeLayer(layer);
-      }
-      const current = providers[index];
-      layer = L.tileLayer(current.url, current.opts);
-      layer.once("tileerror", () => {
-        if (index < providers.length - 1) {
-          index += 1;
-          mount();
-        }
-      });
-      layer.addTo(targetMap);
-    };
-
-    mount();
-  }
-
   let map = null;
-  let cluster = null;
+  let markerLayer = null;
   let mapEnabled = false;
 
   let allItems = [];
@@ -193,30 +83,91 @@
     return dt.toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" });
   }
 
+  function saveCache(payload) {
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), payload }));
+    } catch {}
+  }
+
+  function loadFreshCache() {
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      if (!raw) return null;
+      const obj = JSON.parse(raw);
+      if (!obj || !obj.ts || !obj.payload) return null;
+      if ((Date.now() - obj.ts) > CACHE_TTL_MS) return null;
+      return obj.payload;
+    } catch {
+      return null;
+    }
+  }
+
+  function loadAnyCache() {
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      if (!raw) return null;
+      const obj = JSON.parse(raw);
+      if (!obj || !obj.payload) return null;
+      return obj.payload;
+    } catch {
+      return null;
+    }
+  }
+
+  async function loadData() {
+    const freshCache = loadFreshCache();
+    if (freshCache && Array.isArray(freshCache.items)) {
+      window.__dataOrigin = "cache";
+      return freshCache;
+    }
+
+    const candidates = [DATA_URL, "./data/yacimientos.json", "/data/yacimientos.json"];
+    for (const url of candidates) {
+      try {
+        const res = await fetch(`${url}?v=${Date.now()}`, { cache: "no-store" });
+        if (!res.ok) continue;
+        const json = await res.json();
+        if (!json || !Array.isArray(json.items)) continue;
+        saveCache(json);
+        window.__dataOrigin = "remote";
+        return json;
+      } catch {}
+    }
+
+    const staleCache = loadAnyCache();
+    if (staleCache && Array.isArray(staleCache.items)) {
+      window.__dataOrigin = "cache-stale";
+      return staleCache;
+    }
+
+    window.__dataOrigin = "fallback";
+    return FALLBACK_DATASET;
+  }
+
   function setTopKpis(meta, items) {
     const libres = items.filter((x) => x.libre).length;
     const activos = items.length - libres;
-    const html = [
+    els.topKpis.innerHTML = [
       `<div class="kpi">${items.length} puntos</div>`,
       `<div class="kpi">${activos} activos</div>`,
       `<div class="kpi">${libres} disponibles</div>`,
       `<div class="kpi">Actualizado: ${formatDate(meta && meta.updatedAt)}</div>`
     ].join("");
-    els.topKpis.innerHTML = html;
   }
 
-  function setStatus(origin, totalShown, totalAll, updatedAt) {
-    const label = origin === "cache" ? "cache local" : "fuente remota";
-    els.status.textContent = `Mostrando ${totalShown} de ${totalAll}. Fuente: ${label}. Ultima actualizacion: ${formatDate(updatedAt)}.`;
+  function setStatus(origin, shown, total, updatedAt) {
+    const source = origin === "cache" ? "cache local"
+      : origin === "cache-stale" ? "cache local (desactualizada)"
+      : origin === "fallback" ? "respaldo local"
+      : "fuente remota";
+    els.status.textContent = `Mostrando ${shown} de ${total}. Fuente: ${source}. Ultima actualizacion: ${formatDate(updatedAt)}.`;
   }
 
   function fillSelect(selectEl, values, placeholder) {
     const options = [`<option value="">${placeholder}</option>`];
-    Array.from(values)
-      .sort((a, b) => a.localeCompare(b))
-      .forEach((v) => {
-        options.push(`<option value="${v}">${v}</option>`);
-      });
+    Array.from(values).sort((a, b) => a.localeCompare(b)).forEach((v) => {
+      options.push(`<option value="${v}">${v}</option>`);
+    });
     selectEl.innerHTML = options.join("");
   }
 
@@ -226,12 +177,7 @@
       `<span>${symbolFor(item)}</span>`,
       "</div>"
     ].join("");
-    const icon = L.divIcon({
-      html,
-      className: "",
-      iconSize: [36, 36],
-      iconAnchor: [18, 36]
-    });
+    const icon = L.divIcon({ html, className: "", iconSize: [36, 36], iconAnchor: [18, 36] });
     const marker = L.marker([item.lat, item.lng], { icon });
     marker.on("click", () => openDetail(item));
     return marker;
@@ -258,32 +204,22 @@
         const id = Number(node.getAttribute("data-id"));
         const item = filtered.find((it) => it.id === id);
         if (!item) return;
+
         if (!mapEnabled || !map) {
           openDetail(item);
           return;
         }
+
         const marker = markerById.get(id);
         if (!marker) {
           openDetail(item);
           return;
         }
+
         map.flyTo([item.lat, item.lng], Math.max(7, map.getZoom()), { duration: 0.45 });
         marker.fire("click");
       });
     });
-  }
-
-  function showMapUnavailableNotice(message) {
-    const mapEl = document.getElementById("map");
-    if (!mapEl) return;
-    mapEl.innerHTML = [
-      '<div style="height:100%;display:grid;place-items:center;padding:18px;">',
-      '<div style="max-width:520px;text-align:center;border:1px solid rgba(255,255,255,.14);background:#141414;border-radius:14px;padding:18px;">',
-      '<div style="font-weight:700;margin-bottom:8px;">Mapa no disponible en este entorno</div>',
-      `<div style="color:#b8b8b8;font-size:14px;line-height:1.45;">${message}</div>`,
-      "</div>",
-      "</div>"
-    ].join("");
   }
 
   function applyFilters() {
@@ -302,13 +238,13 @@
       return haystack.includes(q);
     });
 
-    if (mapEnabled && cluster) {
-      cluster.clearLayers();
+    if (mapEnabled && markerLayer) {
+      markerLayer.clearLayers();
       markerById.clear();
       filtered.forEach((x) => {
         const marker = buildMarker(x);
         markerById.set(x.id, marker);
-        cluster.addLayer(marker);
+        markerLayer.addLayer(marker);
       });
     }
 
@@ -322,68 +258,17 @@
     map.fitBounds(bounds.pad(0.25), { animate: true, duration: 0.55 });
   }
 
-  function saveCache(payload) {
-    try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), payload }));
-    } catch {}
-  }
-
-  function loadCache() {
-    try {
-      const raw = localStorage.getItem(CACHE_KEY);
-      if (!raw) return null;
-      const obj = JSON.parse(raw);
-      if (!obj || !obj.ts || !obj.payload) return null;
-      if ((Date.now() - obj.ts) > CACHE_TTL_MS) return null;
-      return obj.payload;
-    } catch {
-      return null;
-    }
-  }
-
-  function loadAnyCache() {
-    try {
-      const raw = localStorage.getItem(CACHE_KEY);
-      if (!raw) return null;
-      const obj = JSON.parse(raw);
-      if (!obj || !obj.payload) return null;
-      return obj.payload;
-    } catch {
-      return null;
-    }
-  }
-
-  async function loadData() {
-    const cache = loadCache();
-    if (cache && Array.isArray(cache.items)) {
-      window.__dataOrigin = "cache";
-      return cache;
-    }
-    const candidateUrls = [
-      DATA_URL,
-      "./data/yacimientos.json",
-      "/data/yacimientos.json"
-    ];
-    for (const url of candidateUrls) {
-      try {
-        const res = await fetch(`${url}?v=${Date.now()}`, { cache: "no-store" });
-        if (!res.ok) continue;
-        const json = await res.json();
-        if (!json || !Array.isArray(json.items)) continue;
-        saveCache(json);
-        window.__dataOrigin = "remote";
-        return json;
-      } catch {}
-    }
-
-    const staleCache = loadAnyCache();
-    if (staleCache && Array.isArray(staleCache.items)) {
-      window.__dataOrigin = "cache-stale";
-      return staleCache;
-    }
-
-    window.__dataOrigin = "fallback";
-    return FALLBACK_DATASET;
+  function showMapUnavailableNotice(message) {
+    const mapEl = document.getElementById("map");
+    if (!mapEl) return;
+    mapEl.innerHTML = [
+      '<div style="height:100%;display:grid;place-items:center;padding:18px;">',
+      '<div style="max-width:520px;text-align:center;border:1px solid rgba(255,255,255,.14);background:#141414;border-radius:14px;padding:18px;">',
+      '<div style="font-weight:700;margin-bottom:8px;">Mapa no disponible en este entorno</div>',
+      `<div style="color:#b8b8b8;font-size:14px;line-height:1.45;">${message}</div>`,
+      "</div>",
+      "</div>"
+    ].join("");
   }
 
   function openDetail(item) {
@@ -402,9 +287,7 @@
     ].join("") : "";
 
     const docs = Array.isArray(item.docs)
-      ? item.docs.map((d) => {
-          return `<a class="link-btn" style="margin-right:8px;background:#2b2b2b;color:#fff;border:1px solid var(--line)" href="${d.url}" target="_blank" rel="noreferrer">${d.n}</a>`;
-        }).join("")
+      ? item.docs.map((d) => `<a class="link-btn" style="margin-right:8px;background:#2b2b2b;color:#fff;border:1px solid var(--line)" href="${d.url}" target="_blank" rel="noreferrer">${d.n}</a>`).join("")
       : "";
 
     const webBtn = (item.web && item.web !== "#")
@@ -467,57 +350,63 @@
     els.modalClose.addEventListener("click", closeModal);
   }
 
+  function initMap() {
+    if (!window.L) {
+      throw new Error("Leaflet no esta disponible.");
+    }
+
+    map = L.map("map", { center: [-30.5, -70.2], zoom: 5 });
+    markerLayer = (typeof L.markerClusterGroup === "function")
+      ? L.markerClusterGroup({ maxClusterRadius: 48, showCoverageOnHover: false })
+      : L.layerGroup();
+    map.addLayer(markerLayer);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap"
+    }).addTo(map);
+
+    mapEnabled = true;
+    setTimeout(() => map.invalidateSize(), 100);
+    window.addEventListener("resize", () => map.invalidateSize());
+  }
+
   async function bootstrap() {
     wireUi();
     els.status.textContent = "Inicializando visualizador...";
-    try {
-      await ensureLeaflet();
-      await ensureCluster();
-      map = L.map("map", { center: [-30.5, -70.2], zoom: 5 });
-      cluster = (typeof L.markerClusterGroup === "function")
-        ? L.markerClusterGroup({ maxClusterRadius: 48, showCoverageOnHover: false })
-        : L.layerGroup();
-      map.addLayer(cluster);
-      addBaseTileLayer(map);
-      mapEnabled = true;
 
+    try {
+      initMap();
+    } catch (mapError) {
+      mapEnabled = false;
+      showMapUnavailableNotice("Puedes navegar los datos desde el panel lateral. Revisa conexion o restricciones de CDN para habilitar el mapa.");
+      console.error(mapError);
+    }
+
+    try {
       const payload = await loadData();
       allItems = payload.items;
       window.__dataUpdatedAt = payload.meta && payload.meta.updatedAt;
+
       const minerals = new Set(allItems.flatMap((x) => x.mineral || []));
       const regions = new Set(allItems.map((x) => x.region).filter(Boolean));
       const tipos = new Set(allItems.map((x) => x.tipo).filter(Boolean));
+
       fillSelect(els.mineral, minerals, "Todos");
       fillSelect(els.region, regions, "Todas");
       fillSelect(els.tipo, tipos, "Todos");
       setTopKpis(payload.meta || {}, allItems);
       applyFilters();
       fitToFiltered();
-      setTimeout(() => map.invalidateSize(), 100);
-      window.addEventListener("resize", () => map.invalidateSize());
-      if (window.__dataOrigin === "fallback") {
+
+      if (!mapEnabled) {
+        els.status.textContent = "Mapa no disponible. Mostrando datos en modo listado.";
+      } else if (window.__dataOrigin === "fallback") {
         els.status.textContent = "No se pudo cargar data remota. Mostrando dataset de respaldo local.";
       }
-    } catch (error) {
-      console.error(error);
-      mapEnabled = false;
-      showMapUnavailableNotice("Puedes navegar los datos desde el panel lateral. Revisa conexion o restricciones de CDN para habilitar el mapa.");
-      try {
-        const payload = await loadData();
-        allItems = payload.items;
-        window.__dataUpdatedAt = payload.meta && payload.meta.updatedAt;
-        const minerals = new Set(allItems.flatMap((x) => x.mineral || []));
-        const regions = new Set(allItems.map((x) => x.region).filter(Boolean));
-        const tipos = new Set(allItems.map((x) => x.tipo).filter(Boolean));
-        fillSelect(els.mineral, minerals, "Todos");
-        fillSelect(els.region, regions, "Todas");
-        fillSelect(els.tipo, tipos, "Todos");
-        setTopKpis(payload.meta || {}, allItems);
-        applyFilters();
-        els.status.textContent = "Mapa no disponible. Mostrando datos en modo listado.";
-      } catch {
-        els.status.textContent = "No fue posible cargar mapa ni datos. Verifica data/yacimientos.json.";
-      }
+    } catch (dataError) {
+      els.status.textContent = "No fue posible cargar datos. Verifica data/yacimientos.json.";
+      console.error(dataError);
     }
   }
 
