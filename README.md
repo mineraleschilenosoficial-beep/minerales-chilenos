@@ -50,3 +50,44 @@ El sitio carga datos desde `data/yacimientos.json` y usa cache local temporal de
 4. GitHub Pages publica automáticamente.
 
 Esto permite actualizar contenido sin tocar lógica de UI.
+
+## Verificación de enlaces
+
+Audita enlaces externos de:
+
+- `index.html` (CDN/fuentes/scripts)
+- `data/yacimientos.json` (`web` y `docs.url`)
+
+Ejecutar:
+
+```bash
+python3 scripts/link_audit.py
+```
+
+Resultado:
+
+- `reports/link-check-report.json`
+
+Notas:
+
+- Los enlaces de `preconnect` se marcan como `skipped` porque no están pensados para responder `200`.
+- Códigos `401/403` se consideran "existentes pero restringidos".
+
+## Actualización diaria automática
+
+Se incluyó workflow de GitHub Actions:
+
+- `.github/workflows/daily-data-refresh.yml`
+
+Qué hace diariamente:
+
+1. Ejecuta `scripts/daily_refresh.py`.
+2. Ejecuta `scripts/link_audit.py`.
+3. Si hay cambios, hace commit y push automático.
+
+Opcional (fuente remota de datos):
+
+- Define el secreto `DATA_JSON_SOURCE_URL` con una URL JSON pública que entregue:
+  - `{ "meta": {...}, "items": [...] }`
+
+Si no defines ese secreto, se mantiene `items` local y solo se actualizan metadatos de verificación.

@@ -1,0 +1,41 @@
+name: Daily Data Refresh
+
+on:
+  schedule:
+    - cron: "20 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Refresh data
+        env:
+          DATA_JSON_SOURCE_URL: ${{ secrets.DATA_JSON_SOURCE_URL }}
+        run: python scripts/daily_refresh.py
+
+      - name: Audit links
+        run: python scripts/link_audit.py
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/yacimientos.json reports/link-check-report.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "chore: daily data refresh and link audit"
+          git push

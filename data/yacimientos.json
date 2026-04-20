@@ -2,13 +2,17 @@
   "meta": {
     "updatedAt": "2026-04-20T15:55:00.000Z",
     "version": 1,
-    "source": "MineralesChilenos frontend dataset"
+    "source": "MineralesChilenos frontend dataset",
+    "lastVerifiedAt": "2026-04-20T20:51:04.032774+00:00",
+    "refreshMode": "local-only"
   },
   "items": [
     {
       "id": 1,
       "nombre": "Chuquicamata",
-      "mineral": ["cobre"],
+      "mineral": [
+        "cobre"
+      ],
       "lat": -22.3167,
       "lng": -68.9167,
       "region": "Antofagasta",
@@ -29,7 +33,9 @@
     {
       "id": 2,
       "nombre": "Escondida",
-      "mineral": ["cobre"],
+      "mineral": [
+        "cobre"
+      ],
       "lat": -24.2833,
       "lng": -69.0667,
       "region": "Antofagasta",
@@ -50,7 +56,9 @@
     {
       "id": 3,
       "nombre": "El Teniente",
-      "mineral": ["cobre"],
+      "mineral": [
+        "cobre"
+      ],
       "lat": -34.0833,
       "lng": -70.35,
       "region": "O'Higgins",
@@ -71,7 +79,9 @@
     {
       "id": 5,
       "nombre": "Collahuasi",
-      "mineral": ["cobre"],
+      "mineral": [
+        "cobre"
+      ],
       "lat": -20.9833,
       "lng": -68.7,
       "region": "Tarapaca",
@@ -92,7 +102,9 @@
     {
       "id": 11,
       "nombre": "Salar de Atacama (SQM)",
-      "mineral": ["litio"],
+      "mineral": [
+        "litio"
+      ],
       "lat": -23.55,
       "lng": -68.25,
       "region": "Antofagasta",
@@ -113,7 +125,9 @@
     {
       "id": 12,
       "nombre": "Salar de Atacama (Albemarle)",
-      "mineral": ["litio"],
+      "mineral": [
+        "litio"
+      ],
       "lat": -23.65,
       "lng": -68.3,
       "region": "Antofagasta",
@@ -134,7 +148,9 @@
     {
       "id": 14,
       "nombre": "Salar de Pedernales",
-      "mineral": ["litio"],
+      "mineral": [
+        "litio"
+      ],
       "lat": -26.3,
       "lng": -69.2,
       "region": "Atacama",
@@ -169,7 +185,9 @@
     {
       "id": 15,
       "nombre": "Salar de Punta Negra",
-      "mineral": ["litio"],
+      "mineral": [
+        "litio"
+      ],
       "lat": -24.55,
       "lng": -68.55,
       "region": "Antofagasta",
@@ -199,7 +217,9 @@
     {
       "id": 22,
       "nombre": "Prospecto Cerro Iman",
-      "mineral": ["hierro"],
+      "mineral": [
+        "hierro"
+      ],
       "lat": -29.2,
       "lng": -70.8,
       "region": "Coquimbo",
