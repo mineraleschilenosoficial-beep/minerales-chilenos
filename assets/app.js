@@ -146,6 +146,7 @@
 
   let map = null;
   let cluster = null;
+  let mapEnabled = false;
 
   let allItems = [];
   let filtered = [];
@@ -257,12 +258,32 @@
         const id = Number(node.getAttribute("data-id"));
         const item = filtered.find((it) => it.id === id);
         if (!item) return;
+        if (!mapEnabled || !map) {
+          openDetail(item);
+          return;
+        }
         const marker = markerById.get(id);
-        if (!marker) return;
+        if (!marker) {
+          openDetail(item);
+          return;
+        }
         map.flyTo([item.lat, item.lng], Math.max(7, map.getZoom()), { duration: 0.45 });
         marker.fire("click");
       });
     });
+  }
+
+  function showMapUnavailableNotice(message) {
+    const mapEl = document.getElementById("map");
+    if (!mapEl) return;
+    mapEl.innerHTML = [
+      '<div style="height:100%;display:grid;place-items:center;padding:18px;">',
+      '<div style="max-width:520px;text-align:center;border:1px solid rgba(255,255,255,.14);background:#141414;border-radius:14px;padding:18px;">',
+      '<div style="font-weight:700;margin-bottom:8px;">Mapa no disponible en este entorno</div>',
+      `<div style="color:#b8b8b8;font-size:14px;line-height:1.45;">${message}</div>`,
+      "</div>",
+      "</div>"
+    ].join("");
   }
 
   function applyFilters() {
@@ -281,20 +302,22 @@
       return haystack.includes(q);
     });
 
-    cluster.clearLayers();
-    markerById.clear();
-    filtered.forEach((x) => {
-      const marker = buildMarker(x);
-      markerById.set(x.id, marker);
-      cluster.addLayer(marker);
-    });
+    if (mapEnabled && cluster) {
+      cluster.clearLayers();
+      markerById.clear();
+      filtered.forEach((x) => {
+        const marker = buildMarker(x);
+        markerById.set(x.id, marker);
+        cluster.addLayer(marker);
+      });
+    }
 
     renderList();
     setStatus(window.__dataOrigin || "remote", filtered.length, allItems.length, window.__dataUpdatedAt || null);
   }
 
   function fitToFiltered() {
-    if (!filtered.length) return;
+    if (!mapEnabled || !map || !filtered.length) return;
     const bounds = L.latLngBounds(filtered.map((x) => [x.lat, x.lng]));
     map.fitBounds(bounds.pad(0.25), { animate: true, duration: 0.55 });
   }
@@ -446,6 +469,7 @@
 
   async function bootstrap() {
     wireUi();
+    els.status.textContent = "Inicializando visualizador...";
     try {
       await ensureLeaflet();
       await ensureCluster();
@@ -455,6 +479,7 @@
         : L.layerGroup();
       map.addLayer(cluster);
       addBaseTileLayer(map);
+      mapEnabled = true;
 
       const payload = await loadData();
       allItems = payload.items;
@@ -474,8 +499,25 @@
         els.status.textContent = "No se pudo cargar data remota. Mostrando dataset de respaldo local.";
       }
     } catch (error) {
-      els.status.textContent = "No fue posible cargar mapa o datos. Revisa conexion/CDN y data/yacimientos.json.";
       console.error(error);
+      mapEnabled = false;
+      showMapUnavailableNotice("Puedes navegar los datos desde el panel lateral. Revisa conexion o restricciones de CDN para habilitar el mapa.");
+      try {
+        const payload = await loadData();
+        allItems = payload.items;
+        window.__dataUpdatedAt = payload.meta && payload.meta.updatedAt;
+        const minerals = new Set(allItems.flatMap((x) => x.mineral || []));
+        const regions = new Set(allItems.map((x) => x.region).filter(Boolean));
+        const tipos = new Set(allItems.map((x) => x.tipo).filter(Boolean));
+        fillSelect(els.mineral, minerals, "Todos");
+        fillSelect(els.region, regions, "Todas");
+        fillSelect(els.tipo, tipos, "Todos");
+        setTopKpis(payload.meta || {}, allItems);
+        applyFilters();
+        els.status.textContent = "Mapa no disponible. Mostrando datos en modo listado.";
+      } catch {
+        els.status.textContent = "No fue posible cargar mapa ni datos. Verifica data/yacimientos.json.";
+      }
     }
   }
 
