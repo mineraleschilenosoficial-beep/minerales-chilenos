@@ -182,6 +182,10 @@
     els.healthBadge.textContent = text;
   }
 
+  function pluralize(value, singular, plural) {
+    return `${value} ${value === 1 ? singular : plural}`;
+  }
+
   async function loadLinkHealth() {
     if (!els.healthBadge) return;
     setHealthBadge("", "Fuentes: revisando...");
@@ -192,9 +196,9 @@
       const failed = Number(report.failed_count || 0);
       const warnings = Number(report.warning_count || 0);
       if (failed > 0) {
-        setHealthBadge("health-fail", `Fuentes: ${failed} fallo(s)`);
+        setHealthBadge("health-fail", `Fuentes: ${pluralize(failed, "fallo", "fallos")}`);
       } else if (warnings > 0) {
-        setHealthBadge("health-warn", `Fuentes: ${warnings} warning(s)`);
+        setHealthBadge("health-warn", `Fuentes: ${pluralize(warnings, "advertencia", "advertencias")}`);
       } else {
         setHealthBadge("health-ok", "Fuentes: OK");
       }
@@ -234,7 +238,7 @@
 
   function renderList() {
     if (!filtered.length) {
-      els.list.innerHTML = '<div class="item"><div class="item-title">Sin resultados</div><div class="item-meta">Ajusta filtros o limpia busqueda.</div></div>';
+      els.list.innerHTML = '<div class="item"><div class="item-title">Sin resultados</div><div class="item-meta">Ajusta filtros o limpia búsqueda.</div></div>';
       return;
     }
 
@@ -675,10 +679,10 @@
       if (!mapEnabled) {
         els.status.textContent = "Mapa no disponible. Mostrando datos en modo listado.";
       } else if (window.__dataOrigin === "fallback") {
-        els.status.textContent = "No se pudieron cargar datos remotos. Mostrando respaldo local.";
+        els.status.textContent = "No se pudieron cargar los datos remotos. Mostrando respaldo local.";
       }
     } catch (dataError) {
-      els.status.textContent = "No fue posible cargar datos. Verifica data/yacimientos.json.";
+      els.status.textContent = "No fue posible cargar los datos. Verifica data/yacimientos.json.";
       console.error(dataError);
     }
   }
