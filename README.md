@@ -4,7 +4,10 @@ Sitio estático frontend de `MineralesChilenos.cl`, listo para publicar en GitHu
 
 ## Archivos principales
 
-- `index.html`: aplicación principal (mapa interactivo + modal de detalle).
+- `index.html`: composición de UI y carga de recursos.
+- `assets/site.css`: estilos y responsive.
+- `assets/app.js`: lógica de mapa, filtros, modal y cache local.
+- `assets/config.js`: configuración central (data URL y cache).
 - `CNAME`: dominio personalizado (`www.mineraleschilenos.cl`).
 - `data/yacimientos.json`: fuente de datos editable del mapa (sin backend).
 - `404.html`: página de error para navegación rota.
