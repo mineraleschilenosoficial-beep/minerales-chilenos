@@ -66,6 +66,7 @@
     mobileBackdrop: document.getElementById("mobile-backdrop"),
     mapContainer: document.getElementById("map"),
     modal: document.getElementById("detail-modal"),
+    detailBackdrop: document.getElementById("detail-backdrop"),
     modalTitle: document.getElementById("modal-title"),
     modalContent: document.getElementById("modal-content"),
     modalClose: document.getElementById("btn-close-modal")
@@ -396,33 +397,39 @@
       ? `<a class="link-btn" href="${item.web}" target="_blank" rel="noreferrer">Ver pagina corporativa</a>`
       : "";
 
-    els.modalContent.innerHTML = [
-      `<div style="color:var(--gold);margin-bottom:10px">${item.tipo} · ${item.region}</div>`,
-      `<div style="margin-bottom:12px">${mineralPills}</div>`,
-      '<div class="card">',
+    const operationHtml = [
       `Empresa: <strong>${item.empresa || "Disponible para concesion"}</strong><br>`,
       `Superficie: <strong>${item.sup || "-"}</strong><br>`,
       `Altitud: <strong>${item.alt || "-"}</strong><br>`,
-      `Produccion: <strong>${item.prod || "-"}</strong>`,
-      "</div>",
-      '<div class="card">',
+      `Produccion: <strong>${item.prod || "-"}</strong>`
+    ].join("");
+
+    const marketHtml = [
       `Dotacion: <strong>${item.dotacion || "-"}</strong><br>`,
       `Sueldos promedio: <strong>${item.sueldos_promedio || "-"}</strong><br>`,
       `Ingresos anuales: <strong>${item.ingresos || "-"}</strong><br>`,
-      `Contrataciones futuras: <strong>${item.contrataciones_futuras || "-"}</strong>`,
-      "</div>",
+      `Contrataciones futuras: <strong>${item.contrataciones_futuras || "-"}</strong>`
+    ].join("");
+
+    els.modalContent.innerHTML = [
+      `<div style="color:var(--gold);margin-bottom:10px">${item.tipo} · ${item.region}</div>`,
+      `<div style="margin-bottom:12px">${mineralPills}</div>`,
+      `<details class="detail-group" open><summary>Resumen de operacion</summary><div class="detail-group-body">${operationHtml}</div></details>`,
+      `<details class="detail-group"><summary>Mercado laboral y economico</summary><div class="detail-group-body">${marketHtml}</div></details>`,
       freeSection,
-      `<div class="card">${item.noticias || "Sin novedades por ahora."}</div>`,
-      sourcesHtml ? `<div class="card"><strong>Fuentes del pin</strong><div id="pin-source-links" style="display:grid;gap:8px;margin-top:8px;">${sourcesHtml}</div></div>` : "",
-      docs ? `<div style="margin-bottom:10px">${docs}</div>` : "",
+      `<details class="detail-group"><summary>Notas y noticias</summary><div class="detail-group-body">${item.noticias || "Sin novedades por ahora."}</div></details>`,
+      sourcesHtml ? `<details class="detail-group" open><summary>Fuentes del pin</summary><div class="detail-group-body"><div id="pin-source-links" style="display:grid;gap:8px;">${sourcesHtml}</div></div></details>` : "",
+      docs ? `<details class="detail-group"><summary>Documentos tecnicos</summary><div class="detail-group-body">${docs}</div></details>` : "",
       webBtn
     ].join("");
 
     els.modal.classList.add("open");
+    document.body.classList.add("detail-open");
   }
 
   function closeModal() {
     els.modal.classList.remove("open");
+    document.body.classList.remove("detail-open");
   }
 
   function isMobileViewport() {
@@ -569,6 +576,9 @@
 
     els.btnFit.addEventListener("click", fitToFiltered);
     els.modalClose.addEventListener("click", closeModal);
+    if (els.detailBackdrop) {
+      els.detailBackdrop.addEventListener("click", closeModal);
+    }
 
     if (els.btnMobilePanel) {
       els.btnMobilePanel.addEventListener("click", () => {

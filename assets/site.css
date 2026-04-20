@@ -322,18 +322,36 @@ button:hover {
 
 #detail-modal {
   position: fixed;
-  inset: auto 0 -100% 0;
+  top: calc(var(--header-h) + 10px);
+  right: 10px;
+  bottom: 10px;
+  width: min(430px, calc(100vw - 20px));
   z-index: 1400;
   background: #1c1c1c;
-  border-radius: 18px 18px 0 0;
-  box-shadow: 0 -12px 36px rgba(0, 0, 0, 0.65);
-  transition: bottom .33s ease;
-  max-height: 88vh;
+  border-radius: 16px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65);
+  transform: translateX(110%);
+  transition: transform .28s cubic-bezier(0.22, 1, 0.36, 1);
   overflow-y: auto;
-  border-top: 1px solid var(--line);
+  border: 1px solid var(--line);
 }
 
-#detail-modal.open { bottom: 0; }
+#detail-modal.open { transform: translateX(0); }
+
+#detail-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1390;
+  background: rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease;
+}
+
+body.detail-open #detail-backdrop {
+  opacity: 1;
+  pointer-events: auto;
+}
 
 .modal-header {
   position: sticky;
@@ -376,6 +394,39 @@ button:hover {
   line-height: 1.55;
 }
 
+.detail-group {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #242424;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.detail-group > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 12px 14px;
+  font-weight: 700;
+  font-size: 13px;
+  color: #efefef;
+  border-bottom: 1px solid transparent;
+}
+
+.detail-group > summary::-webkit-details-marker {
+  display: none;
+}
+
+.detail-group[open] > summary {
+  border-bottom-color: var(--line);
+}
+
+.detail-group-body {
+  padding: 12px 14px;
+  line-height: 1.5;
+  color: #d7d7d7;
+  font-size: 14px;
+}
+
 .link-btn {
   display: inline-block;
   text-decoration: none;
@@ -412,6 +463,29 @@ button:hover {
 }
 
 @media (max-width: 980px) {
+  #detail-modal {
+    inset: auto 0 -100% 0;
+    width: auto;
+    top: auto;
+    right: 0;
+    bottom: auto;
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -12px 36px rgba(0, 0, 0, 0.65);
+    transform: none;
+    transition: bottom .33s ease;
+    max-height: 88vh;
+    border: 0;
+    border-top: 1px solid var(--line);
+  }
+
+  #detail-modal.open {
+    bottom: 0;
+  }
+
+  #detail-backdrop {
+    z-index: 1380;
+  }
+
   :root { --sidebar-w: 100%; }
   #app {
     grid-template-columns: 1fr;
