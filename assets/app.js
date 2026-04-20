@@ -172,7 +172,7 @@
       : origin === "cache-stale" ? "cache local (desactualizada)"
       : origin === "fallback" ? "respaldo local"
       : "fuente remota";
-    els.status.textContent = `Mostrando ${shown} de ${total}. Fuente: ${source}. Ultima actualizacion: ${formatDate(updatedAt)}.`;
+    els.status.textContent = `Mostrando ${shown} de ${total}. Fuente: ${source}. Última actualización: ${formatDate(updatedAt)}.`;
   }
 
   function setHealthBadge(statusClass, text) {
@@ -287,7 +287,7 @@
     const q = els.q.value.trim();
     if (q) chips.push(`<span class="mchip">Buscar: ${escapeHtml(q)}</span>`);
     if (els.mineral.value) chips.push(`<span class="mchip">Mineral: ${escapeHtml(els.mineral.value)}</span>`);
-    if (els.region.value) chips.push(`<span class="mchip">Region: ${escapeHtml(els.region.value)}</span>`);
+    if (els.region.value) chips.push(`<span class="mchip">Región: ${escapeHtml(els.region.value)}</span>`);
     if (els.tipo.value) chips.push(`<span class="mchip">Tipo: ${escapeHtml(els.tipo.value)}</span>`);
     if (onlyLibres) chips.push(`<span class="mchip">Solo disponibles</span>`);
 
@@ -371,7 +371,7 @@
 
     const freeSection = item.libre ? [
       '<div class="card" style="border-color:rgba(45,122,79,0.45);background:rgba(45,122,79,0.2)">',
-      "<strong>Concesion disponible</strong><br>",
+      "<strong>Concesión disponible</strong><br>",
       `Potencial: ${item.potencial || "-"}<br>`,
       `Profundidad: ${item.prof || "-"}<br>`,
       `Ultimo estudio: ${(item.estudioFecha || "-")} ${(item.estudioFuente ? "· " + item.estudioFuente : "")}`,
@@ -394,11 +394,11 @@
       .join("");
 
     const webBtn = (item.web && item.web !== "#")
-      ? `<a class="link-btn" href="${item.web}" target="_blank" rel="noreferrer">Ver pagina corporativa</a>`
+      ? `<a class="link-btn" href="${item.web}" target="_blank" rel="noreferrer">Ver página corporativa</a>`
       : "";
 
     const operationHtml = [
-      `Empresa: <strong>${item.empresa || "Disponible para concesion"}</strong><br>`,
+      `Empresa: <strong>${item.empresa || "Disponible para concesión"}</strong><br>`,
       `Superficie: <strong>${item.sup || "-"}</strong><br>`,
       `Altitud: <strong>${item.alt || "-"}</strong><br>`,
       `Produccion: <strong>${item.prod || "-"}</strong>`
@@ -414,12 +414,12 @@
     els.modalContent.innerHTML = [
       `<div style="color:var(--gold);margin-bottom:10px">${item.tipo} · ${item.region}</div>`,
       `<div style="margin-bottom:12px">${mineralPills}</div>`,
-      `<details class="detail-group" open><summary>Resumen de operacion</summary><div class="detail-group-body">${operationHtml}</div></details>`,
-      `<details class="detail-group"><summary>Mercado laboral y economico</summary><div class="detail-group-body">${marketHtml}</div></details>`,
+      `<details class="detail-group" open><summary>Resumen de operación</summary><div class="detail-group-body">${operationHtml}</div></details>`,
+      `<details class="detail-group"><summary>Mercado laboral y económico</summary><div class="detail-group-body">${marketHtml}</div></details>`,
       freeSection,
       `<details class="detail-group"><summary>Notas y noticias</summary><div class="detail-group-body">${item.noticias || "Sin novedades por ahora."}</div></details>`,
       sourcesHtml ? `<details class="detail-group" open><summary>Fuentes del pin</summary><div class="detail-group-body"><div id="pin-source-links" style="display:grid;gap:8px;">${sourcesHtml}</div></div></details>` : "",
-      docs ? `<details class="detail-group"><summary>Documentos tecnicos</summary><div class="detail-group-body">${docs}</div></details>` : "",
+      docs ? `<details class="detail-group"><summary>Documentos técnicos</summary><div class="detail-group-body">${docs}</div></details>` : "",
       webBtn
     ].join("");
 
@@ -624,7 +624,7 @@
 
   function initMap() {
     if (!window.L) {
-      throw new Error("Leaflet no esta disponible.");
+      throw new Error("Leaflet no está disponible.");
     }
 
     map = L.map("map", { center: [-30.5, -70.2], zoom: 5, maxZoom: 19 });
@@ -652,7 +652,7 @@
       initMap();
     } catch (mapError) {
       mapEnabled = false;
-      showMapUnavailableNotice("Puedes navegar los datos desde el panel lateral. Revisa conexion o restricciones de CDN para habilitar el mapa.");
+      showMapUnavailableNotice("Puedes navegar los datos desde el panel lateral. Revisa conexión o restricciones de CDN para habilitar el mapa.");
       console.error(mapError);
     }
 

@@ -43,7 +43,7 @@
       "ingresos": "USD 8.500 millones",
       "inversiones": "USD 1.800 millones",
       "contrataciones_futuras": "350 en 2026",
-      "noticias": "Transicion a mina subterranea en marcha.",
+      "noticias": "Transición a mina subterránea en marcha.",
       "web": "https://www.codelco.com",
       "libre": false,
       "sources": [
@@ -148,7 +148,7 @@
       "ingresos": "USD 5.200 millones",
       "inversiones": "USD 2.000 millones",
       "contrataciones_futuras": "400 en 2026",
-      "noticias": "Expansion en altura.",
+      "noticias": "Expansión en altura.",
       "web": "https://www.collahuasi.cl",
       "libre": false,
       "sources": [
@@ -218,7 +218,7 @@
       "ingresos": "USD 1.400 millones",
       "inversiones": "USD 800 millones",
       "contrataciones_futuras": "150 en 2026",
-      "noticias": "Expansion en curso.",
+      "noticias": "Expansión en curso.",
       "web": "https://www.albemarle.com",
       "libre": false,
       "sources": [
@@ -243,7 +243,7 @@
       "lat": -26.3,
       "lng": -69.2,
       "region": "Atacama",
-      "tipo": "Concesion disponible",
+      "tipo": "Concesión disponible",
       "libre": true,
       "sup": "88.000 ha",
       "alt": "3.400 msnm",
@@ -256,7 +256,7 @@
       "ingresos": "-",
       "inversiones": "-",
       "contrataciones_futuras": "-",
-      "noticias": "Estudios tecnicos completos disponibles.",
+      "noticias": "Estudios técnicos completos disponibles.",
       "docs": [
         {
           "n": "USGS Mineral Commodity Summary 2025 - Lithium",
@@ -292,7 +292,7 @@
       "lat": -24.55,
       "lng": -68.55,
       "region": "Antofagasta",
-      "tipo": "Concesion disponible",
+      "tipo": "Concesión disponible",
       "libre": true,
       "sup": "31.000 ha",
       "alt": "3.600 msnm",
@@ -336,7 +336,7 @@
       "lat": -29.2,
       "lng": -70.8,
       "region": "Coquimbo",
-      "tipo": "Concesion disponible",
+      "tipo": "Concesión disponible",
       "libre": true,
       "sup": "9.500 ha",
       "alt": "1.800 msnm",
@@ -349,7 +349,7 @@
       "ingresos": "-",
       "inversiones": "-",
       "contrataciones_futuras": "-",
-      "noticias": "Estudio magnetico aereo disponible.",
+      "noticias": "Estudio magnético aéreo disponible.",
       "docs": [
         {
           "n": "USGS Mineral Commodity Summary 2024 - Iron Ore",
