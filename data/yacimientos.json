@@ -7,14 +7,14 @@
     "refreshMode": "local-only",
     "sources": [
       {
-        "name": "Catastro Minero Nacional (SERNAGEOMIN)",
-        "url": "https://www.sernageomin.cl/mineria-concesiones-mineras/",
-        "note": "Página oficial del proceso de concesiones mineras."
+        "name": "LeyChile - Código de Minería (BCN)",
+        "url": "https://www.bcn.cl/leychile/navegar?idNorma=29626",
+        "note": "Marco legal vigente de concesiones y propiedad minera."
       },
       {
-        "name": "Concesiones Mineras (SERNAGEOMIN)",
-        "url": "https://www.sernageomin.cl/mineria-concesiones-mineras/",
-        "note": "Marco oficial para concesiones y trámites."
+        "name": "LeyChile - Ley Orgánica SERNAGEOMIN (BCN)",
+        "url": "https://www.bcn.cl/leychile/navegar?idNorma=22170",
+        "note": "Norma institucional vinculada a fiscalización minera."
       },
       {
         "name": "CORFO - Litio y Salares",
@@ -272,9 +272,9 @@
       "web": "#",
       "sources": [
         {
-          "name": "SERNAGEOMIN - Concesiones Mineras",
-          "url": "https://www.sernageomin.cl/mineria-concesiones-mineras/",
-          "note": "Marco oficial de concesiones."
+          "name": "LeyChile - Código de Minería (BCN)",
+          "url": "https://www.bcn.cl/leychile/navegar?idNorma=29626",
+          "note": "Base normativa para concesiones mineras."
         },
         {
           "name": "CORFO - Convocatorias",
@@ -316,9 +316,9 @@
       "web": "#",
       "sources": [
         {
-          "name": "SERNAGEOMIN - Concesiones Mineras",
-          "url": "https://www.sernageomin.cl/mineria-concesiones-mineras/",
-          "note": "Procedimiento oficial vigente."
+          "name": "LeyChile - Código de Minería (BCN)",
+          "url": "https://www.bcn.cl/leychile/navegar?idNorma=29626",
+          "note": "Base normativa para concesiones mineras."
         },
         {
           "name": "CORFO - Convocatorias",
@@ -360,9 +360,9 @@
       "web": "#",
       "sources": [
         {
-          "name": "SERNAGEOMIN - Concesiones Mineras",
-          "url": "https://www.sernageomin.cl/mineria-concesiones-mineras/",
-          "note": "Marco oficial y requisitos."
+          "name": "LeyChile - Código de Minería (BCN)",
+          "url": "https://www.bcn.cl/leychile/navegar?idNorma=29626",
+          "note": "Base normativa para concesiones mineras."
         },
         {
           "name": "USGS - Iron ore reference",
