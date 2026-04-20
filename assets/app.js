@@ -4,8 +4,14 @@
   const CACHE_KEY = cfg.CACHE_KEY || "mineraleschilenos:data:v1";
   const CACHE_TTL_MS = cfg.CACHE_TTL_MS || 1000 * 60 * 60 * 6;
 
+  if (!window.L) {
+    throw new Error("Leaflet no pudo cargarse. Revisa conexion o bloqueo de CDN.");
+  }
+
   const map = L.map("map", { center: [-30.5, -70.2], zoom: 5 });
-  const cluster = L.markerClusterGroup({ maxClusterRadius: 48, showCoverageOnHover: false });
+  const cluster = (typeof L.markerClusterGroup === "function")
+    ? L.markerClusterGroup({ maxClusterRadius: 48, showCoverageOnHover: false })
+    : L.layerGroup();
   map.addLayer(cluster);
 
   L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {

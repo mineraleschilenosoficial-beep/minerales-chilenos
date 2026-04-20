@@ -209,6 +209,7 @@ button:hover {
   grid-area: map;
   width: 100%;
   height: calc(100vh - var(--header-h));
+  background: #101010;
 }
 
 .legend {
