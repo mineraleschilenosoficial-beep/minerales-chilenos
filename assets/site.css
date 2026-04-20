@@ -446,7 +446,15 @@ button:hover {
     padding-top: 8px;
   }
 
-  body.mobile-panel-open #sidebar {
+  body.mobile-sheet-collapsed #sidebar {
+    transform: translateY(calc(100% - 54px));
+  }
+
+  body.mobile-sheet-half #sidebar {
+    transform: translateY(42%);
+  }
+
+  body.mobile-sheet-full #sidebar {
     transform: translateY(0);
   }
 
@@ -461,7 +469,8 @@ button:hover {
     transition: opacity 0.2s ease;
   }
 
-  body.mobile-panel-open #mobile-backdrop {
+  body.mobile-sheet-half #mobile-backdrop,
+  body.mobile-sheet-full #mobile-backdrop {
     opacity: 1;
     pointer-events: auto;
   }

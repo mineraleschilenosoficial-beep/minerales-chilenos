@@ -41,6 +41,7 @@
   let allItems = [];
   let filtered = [];
   let onlyLibres = false;
+  let mobileSheetState = "collapsed";
   const markerById = new Map();
 
   const els = {
@@ -384,14 +385,22 @@
     return window.matchMedia("(max-width: 980px)").matches;
   }
 
-  function setMobilePanelOpen(isOpen) {
+  function setMobileSheetState(nextState) {
     if (!els.btnMobilePanel) return;
-    document.body.classList.toggle("mobile-panel-open", isOpen);
+    mobileSheetState = nextState;
+    const classes = ["mobile-sheet-collapsed", "mobile-sheet-half", "mobile-sheet-full"];
+    document.body.classList.remove(...classes);
+    document.body.classList.add(`mobile-sheet-${nextState}`);
+    const isOpen = nextState !== "collapsed";
     els.btnMobilePanel.setAttribute("aria-expanded", isOpen ? "true" : "false");
     els.btnMobilePanel.textContent = isOpen ? "Cerrar panel" : "Panel";
     if (mapEnabled && map) {
       setTimeout(() => map.invalidateSize(), 120);
     }
+  }
+
+  function setMobilePanelOpen(isOpen) {
+    setMobileSheetState(isOpen ? "half" : "collapsed");
   }
 
   function bindMobileSheetGestures() {
@@ -416,11 +425,19 @@
       if (!startY) return;
       const delta = event.clientY - startY;
       if (!moved) {
-        setMobilePanelOpen(!document.body.classList.contains("mobile-panel-open"));
-      } else if (delta > 30) {
-        setMobilePanelOpen(false);
-      } else if (delta < -30) {
-        setMobilePanelOpen(true);
+        setMobileSheetState(mobileSheetState === "collapsed" ? "half" : "collapsed");
+      } else if (delta > 35) {
+        if (mobileSheetState === "full") {
+          setMobileSheetState("half");
+        } else {
+          setMobileSheetState("collapsed");
+        }
+      } else if (delta < -35) {
+        if (mobileSheetState === "collapsed") {
+          setMobileSheetState("half");
+        } else {
+          setMobileSheetState("full");
+        }
       }
       startY = 0;
       moved = false;
@@ -456,7 +473,7 @@
 
     if (els.btnMobilePanel) {
       els.btnMobilePanel.addEventListener("click", () => {
-        setMobilePanelOpen(!document.body.classList.contains("mobile-panel-open"));
+        setMobileSheetState(mobileSheetState === "collapsed" ? "half" : "collapsed");
       });
     }
 
@@ -474,10 +491,20 @@
 
     window.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
-        setMobilePanelOpen(false);
+        setMobileSheetState("collapsed");
         closeModal();
       }
     });
+
+    const syncMobileSheet = () => {
+      if (isMobileViewport()) {
+        setMobileSheetState(mobileSheetState || "collapsed");
+      } else {
+        document.body.classList.remove("mobile-sheet-collapsed", "mobile-sheet-half", "mobile-sheet-full");
+      }
+    };
+    window.addEventListener("resize", syncMobileSheet);
+    syncMobileSheet();
 
     bindMobileSheetGestures();
   }
