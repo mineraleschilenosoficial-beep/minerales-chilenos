@@ -411,10 +411,18 @@
     if (!els.sheetGrab) return;
     let startY = 0;
     let moved = false;
+    let startTs = 0;
+    let lastY = 0;
+    let lastTs = 0;
+    let velocityY = 0;
 
     els.sheetGrab.addEventListener("pointerdown", (event) => {
       startY = event.clientY;
       moved = false;
+      startTs = performance.now();
+      lastY = event.clientY;
+      lastTs = startTs;
+      velocityY = 0;
     });
 
     els.sheetGrab.addEventListener("pointermove", (event) => {
@@ -423,20 +431,30 @@
       if (Math.abs(delta) > 10) {
         moved = true;
       }
+      const now = performance.now();
+      const dt = Math.max(1, now - lastTs);
+      const dy = event.clientY - lastY;
+      velocityY = dy / dt;
+      lastY = event.clientY;
+      lastTs = now;
     });
 
     const handlePointerEnd = (event) => {
       if (!startY) return;
       const delta = event.clientY - startY;
+      const elapsed = Math.max(1, performance.now() - startTs);
+      const fastDown = velocityY > 0.75 || (delta > 42 && elapsed < 220);
+      const fastUp = velocityY < -0.75 || (delta < -42 && elapsed < 220);
+
       if (!moved) {
         setMobileSheetState(mobileSheetState === "collapsed" ? "half" : "collapsed");
-      } else if (delta > 28) {
+      } else if (fastDown || delta > 28) {
         if (mobileSheetState === "full") {
           setMobileSheetState("half");
         } else {
           setMobileSheetState("collapsed");
         }
-      } else if (delta < -28) {
+      } else if (fastUp || delta < -28) {
         if (mobileSheetState === "collapsed") {
           setMobileSheetState("half");
         } else {
@@ -445,12 +463,20 @@
       }
       startY = 0;
       moved = false;
+      startTs = 0;
+      lastY = 0;
+      lastTs = 0;
+      velocityY = 0;
     };
 
     els.sheetGrab.addEventListener("pointerup", handlePointerEnd);
     els.sheetGrab.addEventListener("pointercancel", () => {
       startY = 0;
       moved = false;
+      startTs = 0;
+      lastY = 0;
+      lastTs = 0;
+      velocityY = 0;
     });
   }
 
