@@ -7,7 +7,7 @@ Sitio estático frontend de `MineralesChilenos.cl`, listo para publicar en GitHu
 - `index.html`: composición de UI y carga de recursos.
 - `assets/site.css`: estilos y responsive.
 - `assets/app.js`: lógica de mapa, filtros, modal y cache local.
-- `assets/config.js`: configuración central (data URL y cache).
+- `assets/config.js`: configuración central (data URL, cache y GTM).
 - `CNAME`: dominio personalizado (`www.mineraleschilenos.cl`).
 - `data/yacimientos.json`: fuente de datos editable del mapa (sin backend).
 - `404.html`: página de error para navegación rota.
@@ -31,6 +31,20 @@ Ejemplo con Python:
 ```bash
 python3 -m http.server 8080
 ```
+
+## Google Tag Manager (GTM)
+
+1. Abre `assets/config.js`.
+2. Define tu contenedor real:
+
+```js
+GTM_ID: "GTM-XXXXXXX"
+```
+
+Con eso, el sitio carga automáticamente:
+
+- script de GTM (`gtm.js`) en `<head>`,
+- fallback `<noscript>` con `iframe` en `<body>`.
 
 ## Actualización automática (frontend-only)
 

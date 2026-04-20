@@ -2,6 +2,7 @@
   const cfg = window.APP_CONFIG || {};
   const DATA_URL = cfg.DATA_URL || "./data/yacimientos.json";
   const LINK_REPORT_URL = cfg.LINK_REPORT_URL || "./reports/link-check-report.json";
+  const GTM_ID = (cfg.GTM_ID || "").trim();
   const CACHE_KEY = cfg.CACHE_KEY || "mineraleschilenos:data:v1";
   const CACHE_TTL_MS = cfg.CACHE_TTL_MS || 1000 * 60 * 60 * 6;
   const MOBILE_SHEET_KEY = "mineraleschilenos:mobile-sheet-state";
@@ -71,6 +72,32 @@
     modalContent: document.getElementById("modal-content"),
     modalClose: document.getElementById("btn-close-modal")
   };
+
+  function initGtm() {
+    if (!/^GTM-[A-Z0-9]+$/i.test(GTM_ID)) {
+      return;
+    }
+
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+      "gtm.start": new Date().getTime(),
+      event: "gtm.js"
+    });
+
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = `https://www.googletagmanager.com/gtm.js?id=${encodeURIComponent(GTM_ID)}`;
+    document.head.appendChild(script);
+
+    const noscriptHost = document.getElementById("gtm-noscript");
+    if (noscriptHost) {
+      noscriptHost.innerHTML = [
+        "<noscript>",
+        `<iframe src="https://www.googletagmanager.com/ns.html?id=${encodeURIComponent(GTM_ID)}" height="0" width="0" style="display:none;visibility:hidden"></iframe>`,
+        "</noscript>"
+      ].join("");
+    }
+  }
 
   function colorFor(item) {
     if (item.libre) return "#2D7A4F";
@@ -648,6 +675,7 @@
   }
 
   async function bootstrap() {
+    initGtm();
     wireUi();
     els.status.textContent = "Inicializando visualizador...";
     void loadLinkHealth();
