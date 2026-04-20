@@ -55,6 +55,7 @@
     btnReset: document.getElementById("btn-reset"),
     btnFit: document.getElementById("btn-fit"),
     btnMobilePanel: document.getElementById("btn-mobile-panel"),
+    mobileFilterBar: document.getElementById("mobile-filter-bar"),
     sidebar: document.getElementById("sidebar"),
     sheetGrab: document.querySelector(".sheet-grab"),
     mobileBackdrop: document.getElementById("mobile-backdrop"),
@@ -176,6 +177,15 @@
     selectEl.innerHTML = options.join("");
   }
 
+  function escapeHtml(value) {
+    return String(value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll("\"", "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
   function buildMarker(item) {
     const html = [
       `<div class="marker-pin" style="background:${colorFor(item)}">`,
@@ -233,6 +243,42 @@
     });
   }
 
+  function renderMobileFilterBar() {
+    if (!els.mobileFilterBar) return;
+
+    const chips = [];
+    chips.push(`<button type="button" class="mchip mchip--accent" data-action="open-panel">Filtros</button>`);
+    chips.push(`<span class="mchip mchip--muted">${filtered.length} resultados</span>`);
+
+    const q = els.q.value.trim();
+    if (q) chips.push(`<span class="mchip">Buscar: ${escapeHtml(q)}</span>`);
+    if (els.mineral.value) chips.push(`<span class="mchip">Mineral: ${escapeHtml(els.mineral.value)}</span>`);
+    if (els.region.value) chips.push(`<span class="mchip">Region: ${escapeHtml(els.region.value)}</span>`);
+    if (els.tipo.value) chips.push(`<span class="mchip">Tipo: ${escapeHtml(els.tipo.value)}</span>`);
+    if (onlyLibres) chips.push(`<span class="mchip">Solo disponibles</span>`);
+
+    const hasFilters = q || els.mineral.value || els.region.value || els.tipo.value || onlyLibres;
+    if (hasFilters) {
+      chips.push(`<button type="button" class="mchip" data-action="clear-filters">Limpiar</button>`);
+    }
+
+    els.mobileFilterBar.innerHTML = chips.join("");
+    els.mobileFilterBar.querySelectorAll("[data-action='open-panel']").forEach((node) => {
+      node.addEventListener("click", () => setMobilePanelOpen(true));
+    });
+    els.mobileFilterBar.querySelectorAll("[data-action='clear-filters']").forEach((node) => {
+      node.addEventListener("click", () => {
+        onlyLibres = false;
+        els.btnLibres.classList.remove("btn-gold");
+        els.q.value = "";
+        els.mineral.value = "";
+        els.region.value = "";
+        els.tipo.value = "";
+        applyFilters();
+      });
+    });
+  }
+
   function applyFilters() {
     const q = els.q.value.trim().toLowerCase();
     const fMineral = els.mineral.value;
@@ -260,6 +306,7 @@
     }
 
     renderList();
+    renderMobileFilterBar();
     setStatus(window.__dataOrigin || "remote", filtered.length, allItems.length, window.__dataUpdatedAt || null);
   }
 

@@ -58,6 +58,10 @@ header {
   display: none;
 }
 
+#mobile-filter-bar {
+  display: none;
+}
+
 .logo {
   font-family: "Bebas Neue", sans-serif;
   letter-spacing: 1.7px;
@@ -382,6 +386,48 @@ button:hover {
 
   .top-kpis {
     display: none;
+  }
+
+  #mobile-filter-bar {
+    display: flex;
+    position: fixed;
+    left: 8px;
+    right: 8px;
+    top: calc(var(--header-h) + 8px);
+    z-index: 1245;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 2px 2px 6px;
+    scrollbar-width: none;
+  }
+
+  #mobile-filter-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mchip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(18, 18, 18, 0.92);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 8px 12px;
+    color: var(--text);
+    font-size: 12px;
+    white-space: nowrap;
+    backdrop-filter: blur(8px);
+  }
+
+  .mchip--accent {
+    background: rgba(255, 184, 48, 0.95);
+    color: #141414;
+    border-color: transparent;
+    font-weight: 700;
+  }
+
+  .mchip--muted {
+    color: var(--muted);
   }
 
   #sidebar {
