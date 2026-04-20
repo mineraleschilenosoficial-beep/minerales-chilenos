@@ -72,6 +72,7 @@ Notas:
 
 - Los enlaces de `preconnect` se marcan como `skipped` porque no están pensados para responder `200`.
 - Códigos `401/403` se consideran "existentes pero restringidos".
+- Problemas de certificado SSL externo se marcan como `ssl_warning` (warning no bloqueante).
 
 ## Validación de datos
 

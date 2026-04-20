@@ -1,7 +1,8 @@
 {
   "checked": 15,
   "ok_count": 14,
-  "failed_count": 1,
+  "warning_count": 1,
+  "failed_count": 0,
   "results": [
     {
       "url": "https://fonts.googleapis.com",
@@ -96,10 +97,10 @@
     },
     {
       "url": "https://www.sernageomin.cl",
-      "status": "",
+      "status": "ssl_warning",
       "final_url": "",
       "error": "<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1081)>",
-      "note": ""
+      "note": "ssl-certificate-issue"
     },
     {
       "url": "https://www.corfo.cl",
@@ -109,13 +110,14 @@
       "note": ""
     }
   ],
-  "failed": [
+  "warnings": [
     {
       "url": "https://www.sernageomin.cl",
-      "status": "",
+      "status": "ssl_warning",
       "final_url": "",
       "error": "<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1081)>",
-      "note": ""
+      "note": "ssl-certificate-issue"
     }
-  ]
+  ],
+  "failed": []
 }

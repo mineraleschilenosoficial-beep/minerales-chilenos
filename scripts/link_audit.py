@@ -62,6 +62,7 @@ def check_url(url: str, ctx: ssl.SSLContext) -> Dict[str, str]:
         }
 
     methods = ("HEAD", "GET")
+    last_error = ""
     for method in methods:
         try:
             request = urllib.request.Request(
@@ -89,6 +90,26 @@ def check_url(url: str, ctx: ssl.SSLContext) -> Dict[str, str]:
                     "note": "reachable-but-restricted"
                 }
             last_error = f"HTTP {exc.code}"
+        except ssl.SSLError as exc:
+            return {
+                "url": url,
+                "status": "ssl_warning",
+                "final_url": "",
+                "error": str(exc),
+                "note": "ssl-certificate-issue"
+            }
+        except urllib.error.URLError as exc:
+            # Some SSL problems are wrapped inside URLError.
+            err = str(exc)
+            if "CERTIFICATE_VERIFY_FAILED" in err or "certificate verify failed" in err.lower():
+                return {
+                    "url": url,
+                    "status": "ssl_warning",
+                    "final_url": "",
+                    "error": err,
+                    "note": "ssl-certificate-issue"
+                }
+            last_error = err
         except Exception as exc:  # noqa: BLE001
             last_error = str(exc)
 
@@ -106,20 +127,28 @@ def main() -> int:
     ctx = ssl.create_default_context()
 
     results = [check_url(url, ctx) for url in urls]
-    ok = [r for r in results if r["status"] in {"200", "201", "301", "302", "307", "308", "401", "403", "skipped"}]
-    failed = [r for r in results if r not in ok]
+    ok_statuses = {"200", "201", "301", "302", "307", "308", "401", "403", "skipped"}
+    warn_statuses = {"ssl_warning"}
+    ok = [r for r in results if r["status"] in ok_statuses]
+    warnings = [r for r in results if r["status"] in warn_statuses]
+    failed = [r for r in results if r["status"] not in ok_statuses and r["status"] not in warn_statuses]
 
     REPORTS_DIR.mkdir(exist_ok=True)
     report = {
       "checked": len(results),
       "ok_count": len(ok),
+      "warning_count": len(warnings),
       "failed_count": len(failed),
       "results": results,
+      "warnings": warnings,
       "failed": failed
     }
     REPORT_FILE.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    print(f"checked={len(results)} ok={len(ok)} failed={len(failed)}")
+    print(f"checked={len(results)} ok={len(ok)} warnings={len(warnings)} failed={len(failed)}")
+    if warnings:
+        for row in warnings:
+            print(f"WARN {row['url']} -> {row['note']}")
     if failed:
         for row in failed:
             print(f"FAIL {row['url']} -> {row['error'] or row['status']}")
