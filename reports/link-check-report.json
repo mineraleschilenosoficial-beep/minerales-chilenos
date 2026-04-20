@@ -1,7 +1,7 @@
 {
-  "checked": 17,
+  "checked": 15,
   "ok_count": 14,
-  "warning_count": 3,
+  "warning_count": 1,
   "failed_count": 0,
   "results": [
     {
@@ -96,7 +96,7 @@
       "note": ""
     },
     {
-      "url": "https://www.sernageomin.cl",
+      "url": "https://www.sernageomin.cl/mineria-concesiones-mineras/",
       "status": "ssl_warning",
       "final_url": "",
       "error": "<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1081)>",
@@ -108,39 +108,11 @@
       "final_url": "https://www.corfo.gob.cl/sites/cpp/convocatorias/litio-y-salares",
       "error": "",
       "note": ""
-    },
-    {
-      "url": "https://www.sernageomin.cl/mineria-concesiones-mineras/",
-      "status": "ssl_warning",
-      "final_url": "",
-      "error": "<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1081)>",
-      "note": "ssl-certificate-issue"
-    },
-    {
-      "url": "https://portalgeomin.sernageomin.cl/",
-      "status": "ssl_warning",
-      "final_url": "",
-      "error": "<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1081)>",
-      "note": "ssl-certificate-issue"
     }
   ],
   "warnings": [
     {
-      "url": "https://www.sernageomin.cl",
-      "status": "ssl_warning",
-      "final_url": "",
-      "error": "<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1081)>",
-      "note": "ssl-certificate-issue"
-    },
-    {
       "url": "https://www.sernageomin.cl/mineria-concesiones-mineras/",
-      "status": "ssl_warning",
-      "final_url": "",
-      "error": "<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1081)>",
-      "note": "ssl-certificate-issue"
-    },
-    {
-      "url": "https://portalgeomin.sernageomin.cl/",
       "status": "ssl_warning",
       "final_url": "",
       "error": "<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1081)>",

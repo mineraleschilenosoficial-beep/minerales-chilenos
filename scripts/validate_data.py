@@ -24,6 +24,24 @@ def is_http_url(value: str) -> bool:
         return False
 
 
+def is_specific_url(value: str) -> bool:
+    """Reject generic homepage-like URLs."""
+    try:
+        parsed = urlparse(value)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            return False
+        path = (parsed.path or "").strip()
+        # "/" or empty path is considered generic.
+        if path in {"", "/"}:
+            return False
+        # If path is very short and no query/fragment, still likely generic.
+        if len(path.strip("/")) < 3 and not parsed.query and not parsed.fragment:
+            return False
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def parse_iso(value: str) -> dt.datetime | None:
     try:
         # Accept trailing Z
@@ -135,8 +153,33 @@ def main() -> int:
                     url = doc.get("url")
                     if not isinstance(url, str) or not is_http_url(url):
                         errors.append(f"{dpath}.url must be valid http/https URL")
+                    elif not is_specific_url(url):
+                        errors.append(f"{dpath}.url must be specific (not homepage/root)")
                     if not isinstance(doc.get("tipo"), str) or not doc["tipo"].strip():
                         errors.append(f"{dpath}.tipo must be non-empty string")
+
+    if isinstance(meta, dict):
+        sources = meta.get("sources")
+        if sources is not None:
+            if not isinstance(sources, list) or not sources:
+                errors.append("meta.sources must be a non-empty array when present")
+            else:
+                for s_idx, src in enumerate(sources):
+                    spath = f"meta.sources[{s_idx}]"
+                    if not isinstance(src, dict):
+                        errors.append(f"{spath} must be object")
+                        continue
+                    name = src.get("name")
+                    url = src.get("url")
+                    note = src.get("note")
+                    if not isinstance(name, str) or not name.strip():
+                        errors.append(f"{spath}.name must be non-empty string")
+                    if not isinstance(url, str) or not is_http_url(url):
+                        errors.append(f"{spath}.url must be valid http/https URL")
+                    elif not is_specific_url(url):
+                        errors.append(f"{spath}.url must be specific (not homepage/root)")
+                    if note is not None and (not isinstance(note, str) or not note.strip()):
+                        errors.append(f"{spath}.note must be non-empty string when present")
 
     if warnings:
         print("Warnings:")

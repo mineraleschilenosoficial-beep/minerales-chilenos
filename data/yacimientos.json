@@ -8,8 +8,8 @@
     "sources": [
       {
         "name": "Catastro Minero Nacional (SERNAGEOMIN)",
-        "url": "https://portalgeomin.sernageomin.cl/",
-        "note": "Consulta de pertenencias y catastro oficial."
+        "url": "https://www.sernageomin.cl/mineria-concesiones-mineras/",
+        "note": "Página oficial del proceso de concesiones mineras."
       },
       {
         "name": "Concesiones Mineras (SERNAGEOMIN)",
@@ -188,7 +188,7 @@
       "docs": [
         {
           "n": "Estudio Geologico 2022",
-          "url": "https://www.sernageomin.cl",
+          "url": "https://www.sernageomin.cl/mineria-concesiones-mineras/",
           "tipo": "Tecnico"
         },
         {
@@ -257,7 +257,7 @@
       "docs": [
         {
           "n": "Estudio Magnetico Aereo 2022",
-          "url": "https://portalgeomin.sernageomin.cl/",
+          "url": "https://www.sernageomin.cl/mineria-concesiones-mineras/",
           "tipo": "Tecnico"
         }
       ],

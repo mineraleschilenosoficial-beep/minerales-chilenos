@@ -88,6 +88,7 @@ Chequeos incluidos:
 - `meta.updatedAt`, `meta.version`, `meta.source` obligatorios.
 - `items[*]` con campos mínimos (`id`, `nombre`, `mineral`, `lat`, `lng`, `region`, `tipo`, `libre`).
 - `id` único, coordenadas válidas y URLs con formato correcto.
+- `meta.sources.url` y `items[*].docs[*].url` deben ser URLs específicas (no homepage/root).
 - advertencia si `meta.updatedAt` es antiguo.
 
 ## Actualización diaria automática
