@@ -259,14 +259,14 @@
       "noticias": "Estudios tecnicos completos disponibles.",
       "docs": [
         {
-          "n": "Estudio Geologico 2022",
-          "url": "https://www.sernageomin.cl/mineria-concesiones-mineras/",
-          "tipo": "Tecnico"
+          "n": "USGS Mineral Commodity Summary 2025 - Lithium",
+          "url": "https://pubs.usgs.gov/periodicals/mcs2025/mcs2025-lithium.pdf",
+          "tipo": "Reporte técnico"
         },
         {
-          "n": "Informe CORFO Litio",
-          "url": "https://www.corfo.gob.cl/sites/cpp/convocatorias/litio-y-salares",
-          "tipo": "Evaluacion"
+          "n": "USGS Mineral Commodity Summary 2024 - Lithium",
+          "url": "https://pubs.usgs.gov/periodicals/mcs2024/mcs2024-lithium.pdf",
+          "tipo": "Serie histórica"
         }
       ],
       "web": "#",
@@ -308,9 +308,9 @@
       "noticias": "Informe exploratorio reciente.",
       "docs": [
         {
-          "n": "Informe Exploratorio 2023",
-          "url": "https://www.sernageomin.cl/mineria-concesiones-mineras/",
-          "tipo": "Tecnico"
+          "n": "USGS Mineral Commodity Summary 2025 - Lithium",
+          "url": "https://pubs.usgs.gov/periodicals/mcs2025/mcs2025-lithium.pdf",
+          "tipo": "Reporte técnico"
         }
       ],
       "web": "#",
@@ -352,9 +352,9 @@
       "noticias": "Estudio magnetico aereo disponible.",
       "docs": [
         {
-          "n": "Estudio Magnetico Aereo 2022",
-          "url": "https://www.sernageomin.cl/mineria-concesiones-mineras/",
-          "tipo": "Tecnico"
+          "n": "USGS Mineral Commodity Summary 2024 - Iron Ore",
+          "url": "https://pubs.usgs.gov/periodicals/mcs2024/mcs2024-iron-ore.pdf",
+          "tipo": "Reporte técnico"
         }
       ],
       "web": "#",
