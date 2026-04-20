@@ -394,6 +394,10 @@
     const isOpen = nextState !== "collapsed";
     els.btnMobilePanel.setAttribute("aria-expanded", isOpen ? "true" : "false");
     els.btnMobilePanel.textContent = isOpen ? "Cerrar panel" : "Panel";
+    els.btnMobilePanel.setAttribute("aria-label", isOpen ? "Cerrar panel de filtros" : "Abrir panel de filtros");
+    if (nextState === "full" && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
     if (mapEnabled && map) {
       setTimeout(() => map.invalidateSize(), 120);
     }
@@ -421,24 +425,30 @@
       }
     });
 
-    els.sheetGrab.addEventListener("pointerup", (event) => {
+    const handlePointerEnd = (event) => {
       if (!startY) return;
       const delta = event.clientY - startY;
       if (!moved) {
         setMobileSheetState(mobileSheetState === "collapsed" ? "half" : "collapsed");
-      } else if (delta > 35) {
+      } else if (delta > 28) {
         if (mobileSheetState === "full") {
           setMobileSheetState("half");
         } else {
           setMobileSheetState("collapsed");
         }
-      } else if (delta < -35) {
+      } else if (delta < -28) {
         if (mobileSheetState === "collapsed") {
           setMobileSheetState("half");
         } else {
           setMobileSheetState("full");
         }
       }
+      startY = 0;
+      moved = false;
+    };
+
+    els.sheetGrab.addEventListener("pointerup", handlePointerEnd);
+    els.sheetGrab.addEventListener("pointercancel", () => {
       startY = 0;
       moved = false;
     });

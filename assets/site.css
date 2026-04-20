@@ -441,9 +441,11 @@ button:hover {
     border-radius: 16px 16px 0 0;
     max-height: 68vh;
     transform: translateY(calc(100% - 54px));
-    transition: transform 0.25s ease;
+    transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
     box-shadow: 0 -14px 30px rgba(0, 0, 0, 0.45);
     padding-top: 8px;
+    will-change: transform;
+    overscroll-behavior: contain;
   }
 
   body.mobile-sheet-collapsed #sidebar {
@@ -456,6 +458,7 @@ button:hover {
 
   body.mobile-sheet-full #sidebar {
     transform: translateY(0);
+    max-height: calc(100vh - var(--header-h));
   }
 
   #mobile-backdrop {
@@ -473,6 +476,15 @@ button:hover {
   body.mobile-sheet-full #mobile-backdrop {
     opacity: 1;
     pointer-events: auto;
+  }
+
+  body.mobile-sheet-full #map {
+    pointer-events: none;
+  }
+
+  body.mobile-sheet-full .legend {
+    opacity: 0.35;
+    pointer-events: none;
   }
 
   .sheet-grab {
