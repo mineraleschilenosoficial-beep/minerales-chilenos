@@ -4,7 +4,24 @@
     "version": 1,
     "source": "MineralesChilenos frontend dataset",
     "lastVerifiedAt": "2026-04-20T20:51:04.032774+00:00",
-    "refreshMode": "local-only"
+    "refreshMode": "local-only",
+    "sources": [
+      {
+        "name": "Catastro Minero Nacional (SERNAGEOMIN)",
+        "url": "https://portalgeomin.sernageomin.cl/",
+        "note": "Consulta de pertenencias y catastro oficial."
+      },
+      {
+        "name": "Concesiones Mineras (SERNAGEOMIN)",
+        "url": "https://www.sernageomin.cl/mineria-concesiones-mineras/",
+        "note": "Marco oficial para concesiones y trámites."
+      },
+      {
+        "name": "CORFO - Litio y Salares",
+        "url": "https://www.corfo.cl/sites/cpp/convocatorias/litio-y-salares",
+        "note": "Convocatorias y antecedentes públicos de salares."
+      }
+    ]
   },
   "items": [
     {

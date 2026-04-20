@@ -253,6 +253,34 @@ button:hover {
   font-size: 12px;
 }
 
+#source-links {
+  display: grid;
+  gap: 8px;
+}
+
+.source-link {
+  display: block;
+  text-decoration: none;
+  color: #d7d7d7;
+  background: #171717;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 9px 10px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.source-link:hover {
+  border-color: rgba(255, 184, 48, 0.55);
+  color: #fff;
+}
+
+.source-link small {
+  display: block;
+  color: var(--muted);
+  margin-top: 3px;
+}
+
 #map {
   grid-area: map;
   width: 100%;

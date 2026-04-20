@@ -45,6 +45,7 @@ El sitio carga datos desde `data/yacimientos.json` y usa cache local temporal de
 1. Editar solo `data/yacimientos.json`.
 2. Mantener estructura:
    - `meta` con `updatedAt`, `version`, `source`.
+   - `meta.sources` con enlaces exactos de fuentes oficiales.
    - `items` con registros de yacimientos/concesiones.
 3. Hacer commit y push.
 4. GitHub Pages publica automáticamente.

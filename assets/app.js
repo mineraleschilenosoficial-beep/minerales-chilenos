@@ -53,6 +53,7 @@
     region: document.getElementById("f-region"),
     tipo: document.getElementById("f-tipo"),
     list: document.getElementById("list"),
+    sourceLinks: document.getElementById("source-links"),
     status: document.getElementById("status"),
     topKpis: document.getElementById("topKpis"),
     btnLibres: document.getElementById("btn-libres"),
@@ -310,6 +311,43 @@
         applyFilters();
       });
     });
+  }
+
+  function renderSourceLinks(meta) {
+    if (!els.sourceLinks) return;
+    const fallbackSources = [
+      {
+        name: "Catastro Minero Nacional (SERNAGEOMIN)",
+        url: "https://portalgeomin.sernageomin.cl/",
+        note: "Consulta de pertenencias y catastro."
+      },
+      {
+        name: "Concesiones Mineras (SERNAGEOMIN)",
+        url: "https://www.sernageomin.cl/mineria-concesiones-mineras/",
+        note: "Información oficial de concesiones."
+      },
+      {
+        name: "CORFO - Litio",
+        url: "https://www.corfo.cl/sites/cpp/convocatorias/litio-y-salares",
+        note: "Programas y lineamientos públicos."
+      }
+    ];
+
+    const sources = Array.isArray(meta && meta.sources) && meta.sources.length > 0
+      ? meta.sources
+      : fallbackSources;
+
+    const html = sources
+      .filter((src) => src && typeof src.url === "string" && src.url.startsWith("http"))
+      .map((src) => {
+        const name = escapeHtml(src.name || src.url);
+        const url = escapeHtml(src.url);
+        const note = src.note ? `<small>${escapeHtml(src.note)}</small>` : "";
+        return `<a class="source-link" href="${url}" target="_blank" rel="noreferrer">${name}<small>${url}</small>${note}</a>`;
+      })
+      .join("");
+
+    els.sourceLinks.innerHTML = html || '<div class="item-meta">Sin fuentes definidas.</div>';
   }
 
   function applyFilters() {
@@ -647,6 +685,7 @@
       fillSelect(els.region, regions, "Todas");
       fillSelect(els.tipo, tipos, "Todos");
       setTopKpis(payload.meta || {}, allItems);
+      renderSourceLinks(payload.meta || {});
       applyFilters();
       fitToFiltered();
 
