@@ -355,7 +355,7 @@
       throw new Error("Leaflet no esta disponible.");
     }
 
-    map = L.map("map", { center: [-30.5, -70.2], zoom: 5 });
+    map = L.map("map", { center: [-30.5, -70.2], zoom: 5, maxZoom: 19 });
     markerLayer = (typeof L.markerClusterGroup === "function")
       ? L.markerClusterGroup({ maxClusterRadius: 48, showCoverageOnHover: false })
       : L.layerGroup();
