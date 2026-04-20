@@ -55,6 +55,10 @@
     btnReset: document.getElementById("btn-reset"),
     btnFit: document.getElementById("btn-fit"),
     btnMobilePanel: document.getElementById("btn-mobile-panel"),
+    sidebar: document.getElementById("sidebar"),
+    sheetGrab: document.querySelector(".sheet-grab"),
+    mobileBackdrop: document.getElementById("mobile-backdrop"),
+    mapContainer: document.getElementById("map"),
     modal: document.getElementById("detail-modal"),
     modalTitle: document.getElementById("modal-title"),
     modalContent: document.getElementById("modal-content"),
@@ -207,6 +211,9 @@
         if (!item) return;
 
         if (!mapEnabled || !map) {
+          if (isMobileViewport()) {
+            setMobilePanelOpen(false);
+          }
           openDetail(item);
           return;
         }
@@ -219,6 +226,9 @@
 
         map.flyTo([item.lat, item.lng], Math.max(7, map.getZoom()), { duration: 0.45 });
         marker.fire("click");
+        if (isMobileViewport()) {
+          setMobilePanelOpen(false);
+        }
       });
     });
   }
@@ -323,6 +333,53 @@
     els.modal.classList.remove("open");
   }
 
+  function isMobileViewport() {
+    return window.matchMedia("(max-width: 980px)").matches;
+  }
+
+  function setMobilePanelOpen(isOpen) {
+    if (!els.btnMobilePanel) return;
+    document.body.classList.toggle("mobile-panel-open", isOpen);
+    els.btnMobilePanel.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    els.btnMobilePanel.textContent = isOpen ? "Cerrar panel" : "Panel";
+    if (mapEnabled && map) {
+      setTimeout(() => map.invalidateSize(), 120);
+    }
+  }
+
+  function bindMobileSheetGestures() {
+    if (!els.sheetGrab) return;
+    let startY = 0;
+    let moved = false;
+
+    els.sheetGrab.addEventListener("pointerdown", (event) => {
+      startY = event.clientY;
+      moved = false;
+    });
+
+    els.sheetGrab.addEventListener("pointermove", (event) => {
+      if (!startY) return;
+      const delta = event.clientY - startY;
+      if (Math.abs(delta) > 10) {
+        moved = true;
+      }
+    });
+
+    els.sheetGrab.addEventListener("pointerup", (event) => {
+      if (!startY) return;
+      const delta = event.clientY - startY;
+      if (!moved) {
+        setMobilePanelOpen(!document.body.classList.contains("mobile-panel-open"));
+      } else if (delta > 30) {
+        setMobilePanelOpen(false);
+      } else if (delta < -30) {
+        setMobilePanelOpen(true);
+      }
+      startY = 0;
+      moved = false;
+    });
+  }
+
   function wireUi() {
     ["input", "change"].forEach((evt) => {
       els.q.addEventListener(evt, applyFilters);
@@ -352,11 +409,30 @@
 
     if (els.btnMobilePanel) {
       els.btnMobilePanel.addEventListener("click", () => {
-        const isOpen = document.body.classList.toggle("mobile-panel-open");
-        els.btnMobilePanel.setAttribute("aria-expanded", isOpen ? "true" : "false");
-        els.btnMobilePanel.textContent = isOpen ? "Cerrar panel" : "Panel";
+        setMobilePanelOpen(!document.body.classList.contains("mobile-panel-open"));
       });
     }
+
+    if (els.mobileBackdrop) {
+      els.mobileBackdrop.addEventListener("click", () => setMobilePanelOpen(false));
+    }
+
+    if (els.mapContainer) {
+      els.mapContainer.addEventListener("click", () => {
+        if (isMobileViewport()) {
+          setMobilePanelOpen(false);
+        }
+      });
+    }
+
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        setMobilePanelOpen(false);
+        closeModal();
+      }
+    });
+
+    bindMobileSheetGestures();
   }
 
   function initMap() {
