@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MineralesChilenos.cl - Mapa interactivo minero</title>
-  <meta name="description" content="Mapa interactivo de yacimientos y concesiones mineras en Chile. Sitio 100% frontend listo para GitHub Pages.">
+  <title>MineralesChilenos.cl - Mapa minero interactivo</title>
+  <meta name="description" content="Mapa minero interactivo de Chile con yacimientos y concesiones disponibles. Sitio 100% frontend listo para GitHub Pages.">
+  <meta name="theme-color" content="#0a0a0a">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.0/dist/MarkerCluster.css">
@@ -15,276 +16,711 @@
   <script src="https://unpkg.com/leaflet.markercluster@1.5.0/dist/leaflet.markercluster.js"></script>
   <style>
     :root {
-      --cobre: #B87333;
-      --litio: #5B9BD5;
-      --oro: #FFB830;
-      --verde: #2D7A4F;
-      --gris-dark: #141414;
+      --bg: #0a0a0a;
+      --panel: #131313;
+      --panel-2: #1b1b1b;
+      --line: rgba(255, 255, 255, 0.12);
+      --text: #f7f7f7;
+      --muted: #b8b8b8;
+      --gold: #ffb830;
+      --cobre: #b87333;
+      --litio: #5b9bd5;
+      --hierro: #858585;
+      --verde: #2d7a4f;
+      --shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
+      --header-h: 66px;
+      --sidebar-w: 360px;
     }
 
-    * {
+    * { box-sizing: border-box; }
+
+    html, body {
       margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: "DM Sans", sans-serif;
-      background: #0A0A0A;
-      color: #fff;
-      height: 100vh;
+      width: 100%;
+      height: 100%;
       overflow: hidden;
+      font-family: "Inter", system-ui, sans-serif;
+      color: var(--text);
+      background: var(--bg);
     }
 
-    #header {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 64px;
-      background: rgba(10, 10, 10, 0.95);
-      backdrop-filter: blur(12px);
-      z-index: 2000;
+    #app {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-columns: var(--sidebar-w) 1fr;
+      grid-template-rows: var(--header-h) 1fr;
+      grid-template-areas:
+        "header header"
+        "sidebar map";
+    }
+
+    header {
+      grid-area: header;
       display: flex;
       align-items: center;
-      padding: 0 20px;
-      gap: 15px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      gap: 14px;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(10, 10, 10, 0.96);
+      backdrop-filter: blur(10px);
+      z-index: 1200;
     }
 
     .logo {
       font-family: "Bebas Neue", sans-serif;
-      font-size: 26px;
-      letter-spacing: 2px;
+      letter-spacing: 1.7px;
+      font-size: 28px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--gold);
+      box-shadow: 0 0 10px var(--gold);
+      animation: pulse 2.3s infinite;
+    }
+
+    .top-kpis {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .kpi {
+      border: 1px solid var(--line);
+      background: #121212;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    aside {
+      grid-area: sidebar;
+      border-right: 1px solid var(--line);
+      background: linear-gradient(180deg, #141414, #101010);
+      overflow-y: auto;
+      padding: 16px;
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .panel h2 {
+      margin: 0 0 10px;
+      font-size: 14px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--gold);
+      font-family: "JetBrains Mono", monospace;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .field label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 11px;
+      font: inherit;
+      font-size: 14px;
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      background: #1a1a1a;
+      color: var(--text);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: .2s ease;
+    }
+
+    button:hover {
+      border-color: rgba(255, 184, 48, 0.55);
+      transform: translateY(-1px);
+    }
+
+    .btn-gold {
+      background: var(--gold);
+      color: #121212;
+      border-color: transparent;
+    }
+
+    #status {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.45;
+      margin-top: 2px;
+    }
+
+    #list {
+      display: grid;
+      gap: 8px;
+      max-height: 34vh;
+      overflow: auto;
+      padding-right: 3px;
+    }
+
+    .item {
+      border: 1px solid var(--line);
+      background: #171717;
+      border-radius: 10px;
+      padding: 10px;
+      cursor: pointer;
+      display: grid;
+      gap: 4px;
+      transition: .2s ease;
+    }
+
+    .item:hover {
+      border-color: rgba(255, 184, 48, 0.45);
+      background: #1c1c1c;
+    }
+
+    .item-title {
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .item-meta {
+      color: var(--muted);
+      font-size: 12px;
     }
 
     #map {
-      position: absolute;
-      top: 64px;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: 1;
+      grid-area: map;
+      width: 100%;
+      height: calc(100vh - var(--header-h));
     }
 
-    .mmarker {
-      width: 42px;
-      height: 42px;
-      border-radius: 50% 50% 50% 0;
-      transform: rotate(-45deg);
-      border: 4px solid rgba(255, 255, 255, 0.7);
+    .legend {
+      position: fixed;
+      right: 12px;
+      bottom: 12px;
+      z-index: 1200;
+      border: 1px solid var(--line);
+      background: rgba(16, 16, 16, 0.92);
+      backdrop-filter: blur(8px);
+      border-radius: 12px;
+      padding: 12px;
+      width: min(300px, calc(100vw - 24px));
+    }
+
+    .legend h3 {
+      margin: 0 0 10px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--gold);
+      font-family: "JetBrains Mono", monospace;
+    }
+
+    .legend-row {
       display: flex;
       align-items: center;
-      justify-content: center;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.8);
-      transition: all .3s;
-      font-family: "JetBrains Mono", monospace;
-      font-weight: 700;
-      color: #000;
-      font-size: 15px;
+      gap: 7px;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
     }
 
-    .mmarker-inner {
-      transform: rotate(45deg);
-      display: inline-block;
-      line-height: 1;
-    }
-
-    .mmarker:hover {
-      transform: rotate(-45deg) scale(1.45);
+    .sw {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
     }
 
     #detail-modal {
       position: fixed;
-      bottom: -100%;
-      left: 0;
-      right: 0;
-      z-index: 3000;
-      background: #1C1C1C;
-      border-radius: 20px 20px 0 0;
-      box-shadow: 0 -15px 50px rgba(0, 0, 0, 0.9);
-      transition: bottom .4s ease;
-      max-height: 92vh;
+      inset: auto 0 -100% 0;
+      z-index: 1400;
+      background: #1c1c1c;
+      border-radius: 18px 18px 0 0;
+      box-shadow: 0 -12px 36px rgba(0, 0, 0, 0.65);
+      transition: bottom .33s ease;
+      max-height: 88vh;
       overflow-y: auto;
+      border-top: 1px solid var(--line);
     }
 
-    #detail-modal.open {
-      bottom: 0;
-    }
+    #detail-modal.open { bottom: 0; }
 
     .modal-header {
-      padding: 18px 24px;
-      background: #111;
+      position: sticky;
+      top: 0;
+      z-index: 2;
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      font-size: 22px;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 16px 20px;
+      background: #141414;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .modal-title {
+      margin: 0;
       font-family: "Bebas Neue", sans-serif;
+      font-size: 31px;
       letter-spacing: 1px;
     }
 
-    .close-btn {
-      font-size: 32px;
-      cursor: pointer;
+    .close {
+      font-size: 28px;
       line-height: 1;
+      cursor: pointer;
+      color: #f2f2f2;
+      background: transparent;
+      border: none;
+      padding: 0 4px;
     }
 
-    .info-box {
-      background: #2A2A2A;
-      padding: 18px;
+    .modal-body { padding: 18px 20px 24px; }
+
+    .card {
+      background: #262626;
+      border: 1px solid var(--line);
       border-radius: 12px;
-      margin: 20px 0;
-      line-height: 1.6;
+      padding: 13px 14px;
+      margin-bottom: 12px;
+      line-height: 1.55;
     }
 
-    .pill {
-      background: #B87333;
-      color: #000;
-      padding: 4px 14px;
-      border-radius: 9999px;
-      font-size: 13px;
-      font-weight: 700;
-    }
-
-    .libre-section {
-      background: #2D7A4F;
-      color: #fff;
-      padding: 20px;
-      border-radius: 12px;
-      margin: 20px 0;
-    }
-
-    .btn-link {
-      display: block;
-      background: #fff;
-      color: #2D7A4F;
-      padding: 16px;
-      text-align: center;
-      border-radius: 9999px;
-      font-weight: 700;
-      margin: 12px 0;
+    .link-btn {
+      display: inline-block;
       text-decoration: none;
+      border-radius: 999px;
+      background: var(--gold);
+      color: #141414;
+      padding: 10px 14px;
+      margin-top: 8px;
+      font-weight: 700;
+    }
+
+    .marker-pin {
+      width: 36px;
+      height: 36px;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      border: 3px solid rgba(255, 255, 255, 0.72);
+      box-shadow: var(--shadow);
+      display: grid;
+      place-items: center;
+    }
+
+    .marker-pin > span {
+      transform: rotate(45deg);
+      color: #141414;
+      font-family: "JetBrains Mono", monospace;
+      font-weight: 700;
+      font-size: 12px;
     }
 
     @keyframes pulse {
       0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
+      50% { opacity: .45; }
+    }
+
+    @media (max-width: 980px) {
+      :root { --sidebar-w: 100%; }
+      #app {
+        grid-template-columns: 1fr;
+        grid-template-rows: var(--header-h) auto 1fr;
+        grid-template-areas:
+          "header"
+          "sidebar"
+          "map";
+      }
+      aside {
+        border-right: none;
+        border-bottom: 1px solid var(--line);
+        max-height: 42vh;
+      }
+      #map {
+        height: 58vh;
+      }
+      .top-kpis { display: none; }
     }
   </style>
 </head>
 <body>
-  <header id="header">
-    <div class="logo">
-      <span style="display:inline-block;width:10px;height:10px;background:#FFB830;border-radius:50%;animation:pulse 2s infinite;"></span>
-      <em>Minerales</em>Chilenos.cl
-    </div>
-    <div style="margin-left:auto;color:#FFB830;font-size:14px;">65+ yacimientos - 12 concesiones libres</div>
-  </header>
+  <div id="app">
+    <header>
+      <div class="logo"><span class="dot"></span>MineralesChilenos.cl</div>
+      <div class="top-kpis" id="topKpis"></div>
+    </header>
 
-  <div id="map"></div>
+    <aside>
+      <section class="panel">
+        <h2>Filtros</h2>
+        <div class="field">
+          <label for="q">Buscar</label>
+          <input id="q" type="text" placeholder="Empresa, yacimiento, región">
+        </div>
+        <div class="field">
+          <label for="f-mineral">Mineral</label>
+          <select id="f-mineral"></select>
+        </div>
+        <div class="field">
+          <label for="f-region">Región</label>
+          <select id="f-region"></select>
+        </div>
+        <div class="field">
+          <label for="f-tipo">Tipo</label>
+          <select id="f-tipo"></select>
+        </div>
+        <div class="row">
+          <button id="btn-libres">Solo concesiones disponibles</button>
+          <button id="btn-reset">Limpiar</button>
+          <button id="btn-fit" class="btn-gold">Ajustar mapa</button>
+        </div>
+        <div id="status"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Resultados</h2>
+        <div id="list"></div>
+      </section>
+    </aside>
+
+    <div id="map"></div>
+  </div>
+
+  <aside class="legend">
+    <h3>Leyenda</h3>
+    <div class="legend-row"><span class="sw" style="background:var(--cobre)"></span> Cobre</div>
+    <div class="legend-row"><span class="sw" style="background:var(--litio)"></span> Litio</div>
+    <div class="legend-row"><span class="sw" style="background:var(--hierro)"></span> Hierro</div>
+    <div class="legend-row"><span class="sw" style="background:var(--verde)"></span> Concesión disponible</div>
+  </aside>
 
   <div id="detail-modal">
     <div class="modal-header">
-      <div id="modal-nombre">-</div>
-      <div class="close-btn" onclick="cerrarModal()">✕</div>
+      <h3 class="modal-title" id="modal-title">Detalle</h3>
+      <button class="close" aria-label="Cerrar" onclick="closeModal()">×</button>
     </div>
-    <div id="modal-content" style="padding:0 24px 30px;"></div>
+    <div class="modal-body" id="modal-content"></div>
   </div>
 
   <script>
-    const YACIMIENTOS = [
-      {id:1, nombre:"Chuquicamata", mineral:["cobre"], lat:-22.3167, lng:-68.9167, region:"Antofagasta", tipo:"Mina activa", empresa:"CODELCO", sup:"85.000 ha", alt:"2.870 msnm", prod:"330.000 t Cu/año", dotacion:"12.500 trabajadores", sueldos_promedio:"CLP 2.800.000 / mes", ingresos:"USD 8.500 millones", inversiones:"USD 1.800 millones", contrataciones_futuras:"350 en 2026", noticias:"Transición a mina subterránea en marcha.", web:"https://www.codelco.com", libre:false},
-      {id:2, nombre:"Escondida", mineral:["cobre"], lat:-24.2833, lng:-69.0667, region:"Antofagasta", tipo:"Mina activa", empresa:"BHP", sup:"140.000 ha", alt:"3.050 msnm", prod:"1.200.000 t Cu/año", dotacion:"19.000 trabajadores", sueldos_promedio:"CLP 3.100.000 / mes", ingresos:"USD 12.000 millones", inversiones:"USD 10.500 millones", contrataciones_futuras:"600 en 2025-2027", noticias:"La mina más grande del mundo.", web:"https://www.escondida.cl", libre:false},
-      {id:3, nombre:"El Teniente", mineral:["cobre"], lat:-34.0833, lng:-70.35, region:"O'Higgins", tipo:"Mina activa", empresa:"CODELCO", sup:"35.000 ha", alt:"2.100 msnm", prod:"480.000 t Cu/año", dotacion:"14.000 trabajadores", sueldos_promedio:"CLP 2.650.000 / mes", ingresos:"USD 4.200 millones", inversiones:"USD 3.000 millones", contrataciones_futuras:"420 en 2026", noticias:"Proyecto Nuevo Nivel Mina.", web:"https://www.codelco.com", libre:false},
-      {id:4, nombre:"Los Pelambres", mineral:["cobre"], lat:-31.8167, lng:-70.5333, region:"Coquimbo", tipo:"Mina activa", empresa:"Antofagasta Minerals", sup:"70.000 ha", alt:"3.400 msnm", prod:"360.000 t Cu/año", dotacion:"8.500 trabajadores", sueldos_promedio:"CLP 2.900.000 / mes", ingresos:"USD 3.800 millones", inversiones:"USD 1.500 millones", contrataciones_futuras:"300 en 2025", noticias:"Expansión en curso.", web:"https://www.pelambres.cl", libre:false},
-      {id:5, nombre:"Collahuasi", mineral:["cobre"], lat:-20.9833, lng:-68.7, region:"Tarapacá", tipo:"Mina activa", empresa:"Glencore / Anglo American", sup:"180.000 ha", alt:"4.400 msnm", prod:"610.000 t Cu/año", dotacion:"10.200 trabajadores", sueldos_promedio:"CLP 3.000.000 / mes", ingresos:"USD 5.200 millones", inversiones:"USD 2.000 millones", contrataciones_futuras:"400 en 2026", noticias:"Expansión en altura.", web:"https://www.collahuasi.cl", libre:false},
-      {id:11, nombre:"Salar de Atacama (SQM)", mineral:["litio"], lat:-23.55, lng:-68.25, region:"Antofagasta", tipo:"Mina activa", empresa:"SQM", sup:"182.000 ha", alt:"2.300 msnm", prod:"180.000 t LCE/año", dotacion:"3.200 trabajadores", sueldos_promedio:"CLP 2.900.000 / mes", ingresos:"USD 2.800 millones", inversiones:"USD 1.200 millones", contrataciones_futuras:"280 en 2025", noticias:"Joint venture con CODELCO.", web:"https://www.sqm.com", libre:false},
-      {id:12, nombre:"Salar de Atacama (Albemarle)", mineral:["litio"], lat:-23.65, lng:-68.3, region:"Antofagasta", tipo:"Mina activa", empresa:"Albemarle", sup:"60.000 ha", alt:"2.300 msnm", prod:"85.000 t LCE/año", dotacion:"1.800 trabajadores", sueldos_promedio:"CLP 3.100.000 / mes", ingresos:"USD 1.400 millones", inversiones:"USD 800 millones", contrataciones_futuras:"150 en 2026", noticias:"Expansión en curso.", web:"https://www.albemarle.com", libre:false},
-      {id:14, nombre:"Salar de Pedernales", mineral:["litio"], lat:-26.3, lng:-69.2, region:"Atacama", tipo:"Concesión disponible", libre:true, sup:"88.000 ha", alt:"3.400 msnm", potencial:"200.000 t LCE estimadas", prof:"Salmuera 0-200 m", estudioFecha:"2022", estudioFuente:"SERNAGEOMIN / CORFO", dotacion:"0 (disponible)", sueldos_promedio:"-", ingresos:"-", inversiones:"-", contrataciones_futuras:"-", noticias:"Estudios técnicos completos disponibles.", docs:[{n:"Estudio Geológico 2022", url:"https://www.sernageomin.cl", tipo:"Técnico"}, {n:"Informe CORFO Litio", url:"https://www.corfo.cl", tipo:"Evaluación"}], web:"#"},
-      {id:15, nombre:"Salar de Punta Negra", mineral:["litio"], lat:-24.55, lng:-68.55, region:"Antofagasta", tipo:"Concesión disponible", libre:true, sup:"31.000 ha", alt:"3.600 msnm", potencial:"80.000 t LCE estimadas", prof:"Salmuera 0-150 m", estudioFecha:"2023", estudioFuente:"SERNAGEOMIN", dotacion:"0 (disponible)", sueldos_promedio:"-", ingresos:"-", inversiones:"-", contrataciones_futuras:"-", noticias:"Informe exploratorio reciente.", docs:[{n:"Informe Exploratorio 2023", url:"https://www.sernageomin.cl", tipo:"Técnico"}], web:"#"},
-      {id:22, nombre:"Prospecto Cerro Imán", mineral:["hierro"], lat:-29.2, lng:-70.8, region:"Coquimbo", tipo:"Concesión disponible", libre:true, sup:"9.500 ha", alt:"1.800 msnm", potencial:"150 Mt Fe estimado", prof:"Afloramiento + 400 m", estudioFecha:"2022", estudioFuente:"SERNAGEOMIN", dotacion:"0 (disponible)", sueldos_promedio:"-", ingresos:"-", inversiones:"-", contrataciones_futuras:"-", noticias:"Estudio magnético aéreo disponible.", docs:[{n:"Estudio Magnético Aéreo 2022", url:"https://www.sernageomin.cl", tipo:"Técnico"}], web:"#"}
-    ];
-
+    const DATA_URL = "./data/yacimientos.json";
+    const CACHE_KEY = "mineraleschilenos:data:v1";
+    const CACHE_TTL_MS = 1000 * 60 * 60 * 6;
     const map = L.map("map", { center: [-30.5, -70.2], zoom: 5 });
-    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19 }).addTo(map);
+    const cluster = L.markerClusterGroup({ maxClusterRadius: 48, showCoverageOnHover: false });
+    map.addLayer(cluster);
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19
+    }).addTo(map);
 
-    const clusterGroup = L.markerClusterGroup({ maxClusterRadius: 50 }).addTo(map);
+    let allItems = [];
+    let filtered = [];
+    let onlyLibres = false;
+    const markerById = new Map();
 
-    function crearMarcadores() {
-      clusterGroup.clearLayers();
-      YACIMIENTOS.forEach((y) => {
-        const color = y.libre ? "#2D7A4F" : "#B87333";
-        const letra = y.libre ? "🔓" : y.mineral[0][0].toUpperCase();
-        const iconHtml = `<div class="mmarker" style="background:${color}"><div class="mmarker-inner">${letra}</div></div>`;
-        const icon = L.divIcon({ html: iconHtml, className: "", iconSize: [42, 42], iconAnchor: [21, 42] });
-        const marker = L.marker([y.lat, y.lng], { icon });
-        marker.on("click", () => abrirDetalle(y));
-        clusterGroup.addLayer(marker);
+    const els = {
+      q: document.getElementById("q"),
+      mineral: document.getElementById("f-mineral"),
+      region: document.getElementById("f-region"),
+      tipo: document.getElementById("f-tipo"),
+      list: document.getElementById("list"),
+      status: document.getElementById("status"),
+      topKpis: document.getElementById("topKpis"),
+      btnLibres: document.getElementById("btn-libres"),
+      btnReset: document.getElementById("btn-reset"),
+      btnFit: document.getElementById("btn-fit")
+    };
+
+    function colorFor(item) {
+      if (item.libre) return "#2D7A4F";
+      const m = (item.mineral && item.mineral[0] || "").toLowerCase();
+      if (m.includes("litio")) return "#5B9BD5";
+      if (m.includes("hierro")) return "#858585";
+      return "#B87333";
+    }
+
+    function symbolFor(item) {
+      if (item.libre) return "L";
+      const m = (item.mineral && item.mineral[0] || "").toLowerCase();
+      if (m.includes("litio")) return "Li";
+      if (m.includes("hierro")) return "Fe";
+      return "Cu";
+    }
+
+    function formatDate(iso) {
+      if (!iso) return "-";
+      const dt = new Date(iso);
+      if (Number.isNaN(dt.getTime())) return iso;
+      return dt.toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" });
+    }
+
+    function setTopKpis(meta, items) {
+      const libres = items.filter((x) => x.libre).length;
+      const activos = items.length - libres;
+      const html = `
+        <div class="kpi">${items.length} puntos</div>
+        <div class="kpi">${activos} activos</div>
+        <div class="kpi">${libres} disponibles</div>
+        <div class="kpi">Actualizado: ${formatDate(meta && meta.updatedAt)}</div>
+      `;
+      els.topKpis.innerHTML = html;
+    }
+
+    function setStatus(origin, totalShown, totalAll, updatedAt) {
+      const label = origin === "cache" ? "cache local" : "fuente remota";
+      els.status.textContent = `Mostrando ${totalShown} de ${totalAll}. Fuente: ${label}. Ultima actualizacion: ${formatDate(updatedAt)}.`;
+    }
+
+    function fillSelect(selectEl, values, placeholder) {
+      const options = [`<option value="">${placeholder}</option>`]
+        .concat(Array.from(values).sort((a, b) => a.localeCompare(b)).map((v) => `<option value="${v}">${v}</option>`));
+      selectEl.innerHTML = options.join("");
+    }
+
+    function buildMarker(item) {
+      const html = `
+        <div class="marker-pin" style="background:${colorFor(item)}">
+          <span>${symbolFor(item)}</span>
+        </div>
+      `;
+      const icon = L.divIcon({
+        html,
+        className: "",
+        iconSize: [36, 36],
+        iconAnchor: [18, 36]
+      });
+      const marker = L.marker([item.lat, item.lng], { icon });
+      marker.on("click", () => openDetail(item));
+      return marker;
+    }
+
+    function renderList() {
+      if (!filtered.length) {
+        els.list.innerHTML = `<div class="item"><div class="item-title">Sin resultados</div><div class="item-meta">Ajusta filtros o limpia busqueda.</div></div>`;
+        return;
+      }
+      els.list.innerHTML = filtered.map((x) => `
+        <article class="item" data-id="${x.id}">
+          <div class="item-title">${x.nombre}</div>
+          <div class="item-meta">${x.tipo} · ${x.region}</div>
+          <div class="item-meta">${(x.mineral || []).join(", ").toUpperCase()}</div>
+        </article>
+      `).join("");
+      els.list.querySelectorAll(".item[data-id]").forEach((node) => {
+        node.addEventListener("click", () => {
+          const id = Number(node.getAttribute("data-id"));
+          const item = filtered.find((it) => it.id === id);
+          if (!item) return;
+          const marker = markerById.get(id);
+          if (marker) {
+            map.flyTo([item.lat, item.lng], Math.max(7, map.getZoom()), { duration: 0.45 });
+            marker.fire("click");
+          }
+        });
       });
     }
 
-    function abrirDetalle(y) {
-      const content = document.getElementById("modal-content");
-      let html = `
-        <div style="font-size:28px;font-family:'Bebas Neue',sans-serif;margin-bottom:8px;">${y.nombre}</div>
-        <div style="color:#FFB830;font-size:14px;margin-bottom:20px;">${y.tipo} • ${y.region}</div>
-        <div style="display:flex;gap:8px;margin-bottom:24px;">
-          ${(y.mineral || []).map((m) => `<span class="pill">${m.toUpperCase()}</span>`).join("")}
-        </div>
-        <div class="info-box">
-          🏭 Empresa: <strong>${y.empresa || "Disponible para concesión"}</strong><br>
-          📏 Superficie: <strong>${y.sup}</strong><br>
-          🏔️ Altitud: <strong>${y.alt}</strong><br>
-          📈 Producción: <strong>${y.prod || "-"}</strong>
-        </div>
-        <div class="info-box">
-          👷 Dotación actual: <strong>${y.dotacion}</strong><br>
-          💰 Sueldos promedio: <strong>${y.sueldos_promedio}</strong><br>
-          📊 Ingresos anuales: <strong>${y.ingresos}</strong><br>
-          🔨 Nuevas inversiones: <strong>${y.inversiones}</strong><br>
-          📅 Contrataciones futuras: <strong>${y.contrataciones_futuras}</strong>
-        </div>
-      `;
+    function applyFilters() {
+      const q = els.q.value.trim().toLowerCase();
+      const fMineral = els.mineral.value;
+      const fRegion = els.region.value;
+      const fTipo = els.tipo.value;
 
-      if (y.libre) {
-        html += `
-          <div class="libre-section">
-            <div style="font-size:18px;font-weight:700;margin-bottom:12px;">✅ CONCESIÓN DISPONIBLE</div>
-            <div style="margin-bottom:16px;">
-              <strong>Potencial estimado:</strong> ${y.potencial}<br>
-              <strong>Profundidad:</strong> ${y.prof}<br>
-              <strong>Último estudio:</strong> ${y.estudioFecha} • ${y.estudioFuente}
-            </div>
-            <div style="font-family:'JetBrains Mono',monospace;font-size:13px;margin-bottom:8px;">📄 ESTUDIOS TÉCNICOS DISPONIBLES</div>
-            ${(y.docs || []).map((d) => `
-              <a href="${d.url}" target="_blank" style="display:block;background:rgba(255,255,255,0.15);padding:14px;border-radius:10px;margin-bottom:8px;color:#fff;text-decoration:none;">
-                📑 ${d.n} <span style="float:right;opacity:0.8;font-size:12px;">${d.tipo}</span>
-              </a>
-            `).join("")}
-            <a href="https://cmn.sernageomin.cl" target="_blank" class="btn-link">🗺️ Ver en Catastro Minero Nacional (CMN)</a>
-            <a href="https://www.sernageomin.cl/mineria-concesiones-mineras/" target="_blank" class="btn-link">📋 Solicitar concesión ahora (SERNAGEOMIN)</a>
-          </div>
-        `;
+      filtered = allItems.filter((x) => {
+        if (onlyLibres && !x.libre) return false;
+        if (fMineral && !(x.mineral || []).includes(fMineral)) return false;
+        if (fRegion && x.region !== fRegion) return false;
+        if (fTipo && x.tipo !== fTipo) return false;
+        if (q) {
+          const haystack = `${x.nombre} ${x.region} ${x.empresa || ""} ${(x.mineral || []).join(" ")}`.toLowerCase();
+          if (!haystack.includes(q)) return false;
+        }
+        return true;
+      });
+
+      cluster.clearLayers();
+      markerById.clear();
+      filtered.forEach((x) => {
+        const marker = buildMarker(x);
+        markerById.set(x.id, marker);
+        cluster.addLayer(marker);
+      });
+      renderList();
+      setStatus(window.__dataOrigin || "remote", filtered.length, allItems.length, window.__dataUpdatedAt || null);
+    }
+
+    function fitToFiltered() {
+      if (!filtered.length) return;
+      const bounds = L.latLngBounds(filtered.map((x) => [x.lat, x.lng]));
+      map.fitBounds(bounds.pad(0.25), { animate: true, duration: 0.55 });
+    }
+
+    function wireUi() {
+      ["input", "change"].forEach((evt) => {
+        els.q.addEventListener(evt, applyFilters);
+        els.mineral.addEventListener(evt, applyFilters);
+        els.region.addEventListener(evt, applyFilters);
+        els.tipo.addEventListener(evt, applyFilters);
+      });
+
+      els.btnLibres.addEventListener("click", () => {
+        onlyLibres = !onlyLibres;
+        els.btnLibres.classList.toggle("btn-gold", onlyLibres);
+        applyFilters();
+      });
+
+      els.btnReset.addEventListener("click", () => {
+        onlyLibres = false;
+        els.btnLibres.classList.remove("btn-gold");
+        els.q.value = "";
+        els.mineral.value = "";
+        els.region.value = "";
+        els.tipo.value = "";
+        applyFilters();
+      });
+
+      els.btnFit.addEventListener("click", fitToFiltered);
+    }
+
+    function saveCache(payload) {
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({
+          ts: Date.now(),
+          payload
+        }));
+      } catch {}
+    }
+
+    function loadCache() {
+      try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (!raw) return null;
+        const obj = JSON.parse(raw);
+        if (!obj || !obj.ts || !obj.payload) return null;
+        if ((Date.now() - obj.ts) > CACHE_TTL_MS) return null;
+        return obj.payload;
+      } catch {
+        return null;
       }
+    }
 
-      html += `
-        <div style="margin-top:20px;">
-          <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:1px;color:#FFB830;margin-bottom:8px;">📰 NOTICIAS RELEVANTES</div>
-          <div style="background:#2A2A2A;padding:14px;border-radius:12px;">${y.noticias || "Sin novedades por ahora."}</div>
+    async function loadData() {
+      const cache = loadCache();
+      if (cache && Array.isArray(cache.items)) {
+        window.__dataOrigin = "cache";
+        return cache;
+      }
+      const res = await fetch(`${DATA_URL}?v=${Date.now()}`, { cache: "no-store" });
+      if (!res.ok) throw new Error("No se pudo cargar data.");
+      const json = await res.json();
+      if (!json || !Array.isArray(json.items)) throw new Error("Formato de data invalido.");
+      saveCache(json);
+      window.__dataOrigin = "remote";
+      return json;
+    }
+
+    function openDetail(item) {
+      const title = document.getElementById("modal-title");
+      const content = document.getElementById("modal-content");
+      title.textContent = item.nombre;
+      const mineralPills = (item.mineral || []).map((m) => `<span style="display:inline-block;background:${colorFor(item)};color:#111;padding:4px 10px;border-radius:999px;font-weight:700;margin-right:6px">${m.toUpperCase()}</span>`).join("");
+      const freeSection = item.libre ? `
+        <div class="card" style="border-color:rgba(45,122,79,0.45);background:rgba(45,122,79,0.2)">
+          <strong>Concesion disponible</strong><br>
+          Potencial: ${item.potencial || "-"}<br>
+          Profundidad: ${item.prof || "-"}<br>
+          Ultimo estudio: ${(item.estudioFecha || "-")} ${(item.estudioFuente ? "· " + item.estudioFuente : "")}
         </div>
-        ${y.web && y.web !== "#" ? `<a href="${y.web}" target="_blank" class="btn-link" style="background:#FFB830;color:#000;margin-top:20px;">🌐 Página web corporativa</a>` : ""}
-      `;
+      ` : "";
+      const docs = Array.isArray(item.docs) ? item.docs.map((d) => `
+        <a class="link-btn" style="margin-right:8px;background:#2b2b2b;color:#fff;border:1px solid var(--line)" href="${d.url}" target="_blank" rel="noreferrer">${d.n}</a>
+      `).join("") : "";
 
-      content.innerHTML = html;
+      content.innerHTML = `
+        <div style="color:var(--gold);margin-bottom:10px">${item.tipo} · ${item.region}</div>
+        <div style="margin-bottom:12px">${mineralPills}</div>
+        <div class="card">
+          Empresa: <strong>${item.empresa || "Disponible para concesion"}</strong><br>
+          Superficie: <strong>${item.sup || "-"}</strong><br>
+          Altitud: <strong>${item.alt || "-"}</strong><br>
+          Produccion: <strong>${item.prod || "-"}</strong>
+        </div>
+        <div class="card">
+          Dotacion: <strong>${item.dotacion || "-"}</strong><br>
+          Sueldos promedio: <strong>${item.sueldos_promedio || "-"}</strong><br>
+          Ingresos anuales: <strong>${item.ingresos || "-"}</strong><br>
+          Contrataciones futuras: <strong>${item.contrataciones_futuras || "-"}</strong>
+        </div>
+        ${freeSection}
+        <div class="card">${item.noticias || "Sin novedades por ahora."}</div>
+        ${docs ? `<div style="margin-bottom:10px">${docs}</div>` : ""}
+        ${(item.web && item.web !== "#") ? `<a class="link-btn" href="${item.web}" target="_blank" rel="noreferrer">Ver pagina corporativa</a>` : ""}
+      `;
       document.getElementById("detail-modal").classList.add("open");
     }
 
-    function cerrarModal() {
+    function closeModal() {
       document.getElementById("detail-modal").classList.remove("open");
     }
+    window.closeModal = closeModal;
 
-    crearMarcadores();
-    console.log("%c✅ Sitio frontend listo para GitHub Pages", "color:#FFB830;font-size:14px");
+    async function bootstrap() {
+      wireUi();
+      try {
+        const payload = await loadData();
+        allItems = payload.items;
+        window.__dataUpdatedAt = payload.meta && payload.meta.updatedAt;
+        const minerals = new Set(allItems.flatMap((x) => x.mineral || []));
+        const regions = new Set(allItems.map((x) => x.region).filter(Boolean));
+        const tipos = new Set(allItems.map((x) => x.tipo).filter(Boolean));
+        fillSelect(els.mineral, minerals, "Todos");
+        fillSelect(els.region, regions, "Todas");
+        fillSelect(els.tipo, tipos, "Todos");
+        setTopKpis(payload.meta || {}, allItems);
+        applyFilters();
+        fitToFiltered();
+      } catch (error) {
+        els.status.textContent = "No fue posible cargar la informacion. Revisa data/yacimientos.json.";
+        console.error(error);
+      }
+    }
+
+    bootstrap();
   </script>
 </body>
 </html>
