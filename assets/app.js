@@ -3,6 +3,35 @@
   const DATA_URL = cfg.DATA_URL || "./data/yacimientos.json";
   const CACHE_KEY = cfg.CACHE_KEY || "mineraleschilenos:data:v1";
   const CACHE_TTL_MS = cfg.CACHE_TTL_MS || 1000 * 60 * 60 * 6;
+  const FALLBACK_DATASET = {
+    meta: {
+      updatedAt: new Date().toISOString(),
+      version: 0,
+      source: "fallback-local"
+    },
+    items: [
+      {
+        id: 9001,
+        nombre: "Punto de respaldo - Antofagasta",
+        mineral: ["cobre"],
+        lat: -23.65,
+        lng: -70.4,
+        region: "Antofagasta",
+        tipo: "Referencia",
+        empresa: "MineralesChilenos.cl",
+        sup: "-",
+        alt: "-",
+        prod: "-",
+        dotacion: "-",
+        sueldos_promedio: "-",
+        ingresos: "-",
+        contrataciones_futuras: "-",
+        noticias: "Carga en modo respaldo local.",
+        web: "#",
+        libre: false
+      }
+    ]
+  };
 
   const LEAFLET_JS = [
     "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js",
@@ -289,19 +318,49 @@
     }
   }
 
+  function loadAnyCache() {
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      if (!raw) return null;
+      const obj = JSON.parse(raw);
+      if (!obj || !obj.payload) return null;
+      return obj.payload;
+    } catch {
+      return null;
+    }
+  }
+
   async function loadData() {
     const cache = loadCache();
     if (cache && Array.isArray(cache.items)) {
       window.__dataOrigin = "cache";
       return cache;
     }
-    const res = await fetch(`${DATA_URL}?v=${Date.now()}`, { cache: "no-store" });
-    if (!res.ok) throw new Error("No se pudo cargar data.");
-    const json = await res.json();
-    if (!json || !Array.isArray(json.items)) throw new Error("Formato de data invalido.");
-    saveCache(json);
-    window.__dataOrigin = "remote";
-    return json;
+    const candidateUrls = [
+      DATA_URL,
+      "./data/yacimientos.json",
+      "/data/yacimientos.json"
+    ];
+    for (const url of candidateUrls) {
+      try {
+        const res = await fetch(`${url}?v=${Date.now()}`, { cache: "no-store" });
+        if (!res.ok) continue;
+        const json = await res.json();
+        if (!json || !Array.isArray(json.items)) continue;
+        saveCache(json);
+        window.__dataOrigin = "remote";
+        return json;
+      } catch {}
+    }
+
+    const staleCache = loadAnyCache();
+    if (staleCache && Array.isArray(staleCache.items)) {
+      window.__dataOrigin = "cache-stale";
+      return staleCache;
+    }
+
+    window.__dataOrigin = "fallback";
+    return FALLBACK_DATASET;
   }
 
   function openDetail(item) {
@@ -411,6 +470,9 @@
       fitToFiltered();
       setTimeout(() => map.invalidateSize(), 100);
       window.addEventListener("resize", () => map.invalidateSize());
+      if (window.__dataOrigin === "fallback") {
+        els.status.textContent = "No se pudo cargar data remota. Mostrando dataset de respaldo local.";
+      }
     } catch (error) {
       els.status.textContent = "No fue posible cargar mapa o datos. Revisa conexion/CDN y data/yacimientos.json.";
       console.error(error);
