@@ -73,6 +73,21 @@ Notas:
 - Los enlaces de `preconnect` se marcan como `skipped` porque no están pensados para responder `200`.
 - Códigos `401/403` se consideran "existentes pero restringidos".
 
+## Validación de datos
+
+Valida esquema y calidad mínima de `data/yacimientos.json`:
+
+```bash
+python3 scripts/validate_data.py
+```
+
+Chequeos incluidos:
+
+- `meta.updatedAt`, `meta.version`, `meta.source` obligatorios.
+- `items[*]` con campos mínimos (`id`, `nombre`, `mineral`, `lat`, `lng`, `region`, `tipo`, `libre`).
+- `id` único, coordenadas válidas y URLs con formato correcto.
+- advertencia si `meta.updatedAt` es antiguo.
+
 ## Actualización diaria automática
 
 Se incluyó workflow de GitHub Actions:
@@ -82,8 +97,9 @@ Se incluyó workflow de GitHub Actions:
 Qué hace diariamente:
 
 1. Ejecuta `scripts/daily_refresh.py`.
-2. Ejecuta `scripts/link_audit.py`.
-3. Si hay cambios, hace commit y push automático.
+2. Ejecuta `scripts/validate_data.py`.
+3. Ejecuta `scripts/link_audit.py`.
+4. Si hay cambios, hace commit y push automático.
 
 Opcional (fuente remota de datos):
 

@@ -25,6 +25,9 @@ jobs:
           DATA_JSON_SOURCE_URL: ${{ secrets.DATA_JSON_SOURCE_URL }}
         run: python scripts/daily_refresh.py
 
+      - name: Validate data schema
+        run: python scripts/validate_data.py
+
       - name: Audit links
         run: python scripts/link_audit.py
 
