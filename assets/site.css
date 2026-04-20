@@ -253,12 +253,7 @@ button:hover {
   font-size: 12px;
 }
 
-#source-links {
-  display: grid;
-  gap: 8px;
-}
-
-.source-link {
+#pin-source-links .source-link {
   display: block;
   text-decoration: none;
   color: #d7d7d7;
@@ -270,12 +265,12 @@ button:hover {
   line-height: 1.35;
 }
 
-.source-link:hover {
+#pin-source-links .source-link:hover {
   border-color: rgba(255, 184, 48, 0.55);
   color: #fff;
 }
 
-.source-link small {
+#pin-source-links .source-link small {
   display: block;
   color: var(--muted);
   margin-top: 3px;
