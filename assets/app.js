@@ -419,6 +419,17 @@
       ? item.docs.map((d) => `<a class="link-btn" style="margin-right:8px;background:#2b2b2b;color:#fff;border:1px solid var(--line)" href="${d.url}" target="_blank" rel="noreferrer">${d.n}</a>`).join("")
       : "";
 
+    const pinSources = Array.isArray(item.sources) ? item.sources : [];
+    const sourcesHtml = pinSources
+      .filter((src) => src && typeof src.url === "string" && src.url.startsWith("http"))
+      .map((src) => {
+        const name = escapeHtml(src.name || src.url);
+        const url = escapeHtml(src.url);
+        const note = src.note ? `<small>${escapeHtml(src.note)}</small>` : "";
+        return `<a class="source-link" href="${url}" target="_blank" rel="noreferrer">${name}<small>${url}</small>${note}</a>`;
+      })
+      .join("");
+
     const webBtn = (item.web && item.web !== "#")
       ? `<a class="link-btn" href="${item.web}" target="_blank" rel="noreferrer">Ver pagina corporativa</a>`
       : "";
@@ -440,6 +451,7 @@
       "</div>",
       freeSection,
       `<div class="card">${item.noticias || "Sin novedades por ahora."}</div>`,
+      sourcesHtml ? `<div class="card"><strong>Fuentes del pin</strong><div id="pin-source-links" style="display:grid;gap:8px;margin-top:8px;">${sourcesHtml}</div></div>` : "",
       docs ? `<div style="margin-bottom:10px">${docs}</div>` : "",
       webBtn
     ].join("");

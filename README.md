@@ -46,6 +46,7 @@ El sitio carga datos desde `data/yacimientos.json` y usa cache local temporal de
 2. Mantener estructura:
    - `meta` con `updatedAt`, `version`, `source`.
    - `meta.sources` con enlaces exactos de fuentes oficiales.
+   - `items[*].sources` con fuentes específicas por pin.
    - `items` con registros de yacimientos/concesiones.
 3. Hacer commit y push.
 4. GitHub Pages publica automáticamente.
@@ -89,6 +90,7 @@ Chequeos incluidos:
 - `items[*]` con campos mínimos (`id`, `nombre`, `mineral`, `lat`, `lng`, `region`, `tipo`, `libre`).
 - `id` único, coordenadas válidas y URLs con formato correcto.
 - `meta.sources.url` y `items[*].docs[*].url` deben ser URLs específicas (no homepage/root).
+- `items[*].sources[*].url` también debe ser específica (no homepage/root).
 - advertencia si `meta.updatedAt` es antiguo.
 
 ## Actualización diaria automática

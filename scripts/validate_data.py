@@ -158,6 +158,28 @@ def main() -> int:
                     if not isinstance(doc.get("tipo"), str) or not doc["tipo"].strip():
                         errors.append(f"{dpath}.tipo must be non-empty string")
 
+        sources = item.get("sources")
+        if sources is not None:
+            if not isinstance(sources, list) or not sources:
+                errors.append(f"{path}.sources must be a non-empty array when present")
+            else:
+                for s_idx, src in enumerate(sources):
+                    spath = f"{path}.sources[{s_idx}]"
+                    if not isinstance(src, dict):
+                        errors.append(f"{spath} must be object")
+                        continue
+                    name = src.get("name")
+                    url = src.get("url")
+                    note = src.get("note")
+                    if not isinstance(name, str) or not name.strip():
+                        errors.append(f"{spath}.name must be non-empty string")
+                    if not isinstance(url, str) or not is_http_url(url):
+                        errors.append(f"{spath}.url must be valid http/https URL")
+                    elif not is_specific_url(url):
+                        errors.append(f"{spath}.url must be specific (not homepage/root)")
+                    if note is not None and (not isinstance(note, str) or not note.strip()):
+                        errors.append(f"{spath}.note must be non-empty string when present")
+
     if isinstance(meta, dict):
         sources = meta.get("sources")
         if sources is not None:

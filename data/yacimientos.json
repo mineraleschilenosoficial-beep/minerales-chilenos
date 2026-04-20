@@ -45,7 +45,19 @@
       "contrataciones_futuras": "350 en 2026",
       "noticias": "Transicion a mina subterranea en marcha.",
       "web": "https://www.codelco.com",
-      "libre": false
+      "libre": false,
+      "sources": [
+        {
+          "name": "Wikipedia - Chuquicamata",
+          "url": "https://en.wikipedia.org/wiki/Chuquicamata",
+          "note": "Ficha y contexto histórico."
+        },
+        {
+          "name": "Wikipedia - Codelco",
+          "url": "https://en.wikipedia.org/wiki/Codelco",
+          "note": "Contexto corporativo de la operación."
+        }
+      ]
     },
     {
       "id": 2,
@@ -68,7 +80,19 @@
       "contrataciones_futuras": "600 en 2025-2027",
       "noticias": "La mina de cobre mas grande del mundo.",
       "web": "https://www.escondida.cl",
-      "libre": false
+      "libre": false,
+      "sources": [
+        {
+          "name": "Wikipedia - Minera Escondida",
+          "url": "https://en.wikipedia.org/wiki/Minera_Escondida",
+          "note": "Ficha técnica y contexto."
+        },
+        {
+          "name": "Wikipedia - BHP",
+          "url": "https://en.wikipedia.org/wiki/BHP",
+          "note": "Controlador principal de Minera Escondida."
+        }
+      ]
     },
     {
       "id": 3,
@@ -91,7 +115,19 @@
       "contrataciones_futuras": "420 en 2026",
       "noticias": "Proyecto Nuevo Nivel Mina.",
       "web": "https://www.codelco.com",
-      "libre": false
+      "libre": false,
+      "sources": [
+        {
+          "name": "Wikipedia - El Teniente",
+          "url": "https://en.wikipedia.org/wiki/El_Teniente",
+          "note": "Antecedentes y operación."
+        },
+        {
+          "name": "Wikipedia - Codelco",
+          "url": "https://en.wikipedia.org/wiki/Codelco",
+          "note": "Contexto corporativo de la operación."
+        }
+      ]
     },
     {
       "id": 5,
@@ -114,7 +150,19 @@
       "contrataciones_futuras": "400 en 2026",
       "noticias": "Expansion en altura.",
       "web": "https://www.collahuasi.cl",
-      "libre": false
+      "libre": false,
+      "sources": [
+        {
+          "name": "Wikipedia - Collahuasi mine",
+          "url": "https://en.wikipedia.org/wiki/Collahuasi_mine",
+          "note": "Detalle de la operación minera."
+        },
+        {
+          "name": "Wikipedia - Glencore",
+          "url": "https://en.wikipedia.org/wiki/Glencore",
+          "note": "Uno de los controladores de Collahuasi."
+        }
+      ]
     },
     {
       "id": 11,
@@ -137,7 +185,19 @@
       "contrataciones_futuras": "280 en 2025",
       "noticias": "Joint venture con CODELCO.",
       "web": "https://www.sqm.com",
-      "libre": false
+      "libre": false,
+      "sources": [
+        {
+          "name": "Wikipedia - Salar de Atacama",
+          "url": "https://en.wikipedia.org/wiki/Salar_de_Atacama",
+          "note": "Contexto geográfico y productivo."
+        },
+        {
+          "name": "SQM - Lithium",
+          "url": "https://www.sqm.com/en/lithium/",
+          "note": "Información corporativa de litio."
+        }
+      ]
     },
     {
       "id": 12,
@@ -160,7 +220,19 @@
       "contrataciones_futuras": "150 en 2026",
       "noticias": "Expansion en curso.",
       "web": "https://www.albemarle.com",
-      "libre": false
+      "libre": false,
+      "sources": [
+        {
+          "name": "Wikipedia - Albemarle Corporation",
+          "url": "https://en.wikipedia.org/wiki/Albemarle_Corporation",
+          "note": "Perfil de la empresa."
+        },
+        {
+          "name": "Albemarle - Sitio corporativo",
+          "url": "https://www.albemarle.com/global/en",
+          "note": "Fuente corporativa oficial."
+        }
+      ]
     },
     {
       "id": 14,
@@ -197,7 +269,19 @@
           "tipo": "Evaluacion"
         }
       ],
-      "web": "#"
+      "web": "#",
+      "sources": [
+        {
+          "name": "SERNAGEOMIN - Concesiones Mineras",
+          "url": "https://www.sernageomin.cl/mineria-concesiones-mineras/",
+          "note": "Marco oficial de concesiones."
+        },
+        {
+          "name": "CORFO - Convocatorias",
+          "url": "https://www.corfo.gob.cl/sites/cpp/convocatorias/litio-y-salares",
+          "note": "Información pública de salares y litio."
+        }
+      ]
     },
     {
       "id": 15,
@@ -229,7 +313,19 @@
           "tipo": "Tecnico"
         }
       ],
-      "web": "#"
+      "web": "#",
+      "sources": [
+        {
+          "name": "SERNAGEOMIN - Concesiones Mineras",
+          "url": "https://www.sernageomin.cl/mineria-concesiones-mineras/",
+          "note": "Procedimiento oficial vigente."
+        },
+        {
+          "name": "CORFO - Convocatorias",
+          "url": "https://www.corfo.gob.cl/sites/cpp/convocatorias/litio-y-salares",
+          "note": "Información pública de salares y litio."
+        }
+      ]
     },
     {
       "id": 22,
@@ -261,7 +357,19 @@
           "tipo": "Tecnico"
         }
       ],
-      "web": "#"
+      "web": "#",
+      "sources": [
+        {
+          "name": "SERNAGEOMIN - Concesiones Mineras",
+          "url": "https://www.sernageomin.cl/mineria-concesiones-mineras/",
+          "note": "Marco oficial y requisitos."
+        },
+        {
+          "name": "USGS - Iron ore reference",
+          "url": "https://www.usgs.gov/centers/national-minerals-information-center/iron-ore-statistics-and-information",
+          "note": "Referencia técnica internacional para hierro."
+        }
+      ]
     }
   ]
 }
