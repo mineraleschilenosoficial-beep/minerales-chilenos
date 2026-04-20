@@ -1,6 +1,7 @@
 (function () {
   const cfg = window.APP_CONFIG || {};
   const DATA_URL = cfg.DATA_URL || "./data/yacimientos.json";
+  const LINK_REPORT_URL = cfg.LINK_REPORT_URL || "./reports/link-check-report.json";
   const CACHE_KEY = cfg.CACHE_KEY || "mineraleschilenos:data:v1";
   const CACHE_TTL_MS = cfg.CACHE_TTL_MS || 1000 * 60 * 60 * 6;
   const MOBILE_SHEET_KEY = "mineraleschilenos:mobile-sheet-state";
@@ -58,6 +59,7 @@
     btnReset: document.getElementById("btn-reset"),
     btnFit: document.getElementById("btn-fit"),
     btnMobilePanel: document.getElementById("btn-mobile-panel"),
+    healthBadge: document.getElementById("health-badge"),
     mobileFilterBar: document.getElementById("mobile-filter-bar"),
     sidebar: document.getElementById("sidebar"),
     sheetGrab: document.querySelector(".sheet-grab"),
@@ -170,6 +172,34 @@
       : origin === "fallback" ? "respaldo local"
       : "fuente remota";
     els.status.textContent = `Mostrando ${shown} de ${total}. Fuente: ${source}. Ultima actualizacion: ${formatDate(updatedAt)}.`;
+  }
+
+  function setHealthBadge(statusClass, text) {
+    if (!els.healthBadge) return;
+    els.healthBadge.classList.remove("health-ok", "health-warn", "health-fail");
+    els.healthBadge.classList.add(statusClass);
+    els.healthBadge.textContent = text;
+  }
+
+  async function loadLinkHealth() {
+    if (!els.healthBadge) return;
+    setHealthBadge("", "Fuentes: revisando...");
+    try {
+      const res = await fetch(`${LINK_REPORT_URL}?v=${Date.now()}`, { cache: "no-store" });
+      if (!res.ok) throw new Error("report not available");
+      const report = await res.json();
+      const failed = Number(report.failed_count || 0);
+      const warnings = Number(report.warning_count || 0);
+      if (failed > 0) {
+        setHealthBadge("health-fail", `Fuentes: ${failed} fallo(s)`);
+      } else if (warnings > 0) {
+        setHealthBadge("health-warn", `Fuentes: ${warnings} warning(s)`);
+      } else {
+        setHealthBadge("health-ok", "Fuentes: OK");
+      }
+    } catch {
+      setHealthBadge("health-warn", "Fuentes: sin reporte");
+    }
   }
 
   function fillSelect(selectEl, values, placeholder) {
@@ -594,6 +624,7 @@
   async function bootstrap() {
     wireUi();
     els.status.textContent = "Inicializando visualizador...";
+    void loadLinkHealth();
 
     try {
       initMap();
