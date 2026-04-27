@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Refresh dataset and persist it into PostgreSQL (and local fallback file)."""
+"""Refresh dataset and persist it exclusively into PostgreSQL."""
 
 from __future__ import annotations
 
@@ -25,11 +25,14 @@ def fetch_optional_remote_source(url: str) -> dict | None:
 
 
 def main() -> int:
-    current = get_dataset()
-    current.setdefault("meta", {})
-
     source_url = os.getenv("DATA_JSON_SOURCE_URL", "").strip()
-    source_mode = "local-only"
+    source_mode = "db-only"
+
+    try:
+        current = get_dataset()
+    except Exception:  # noqa: BLE001
+        current = {"meta": {}, "items": []}
+    current.setdefault("meta", {})
 
     if source_url:
         try:
@@ -44,6 +47,10 @@ def main() -> int:
         except Exception as exc:  # noqa: BLE001
             current["meta"]["lastRemoteError"] = str(exc)
             source_mode = "remote-json-error"
+
+    if not source_url and not current.get("items"):
+        print("ERROR: dataset is empty in PostgreSQL and DATA_JSON_SOURCE_URL is not set")
+        return 1
 
     current["meta"]["lastVerifiedAt"] = utc_now_iso()
     current["meta"]["refreshMode"] = source_mode

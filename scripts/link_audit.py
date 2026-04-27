@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import json
 import re
 import ssl
 import sys
@@ -16,8 +15,6 @@ from storage import get_dataset, save_link_report
 
 ROOT = Path(__file__).resolve().parents[1]
 INDEX_FILE = ROOT / "index.html"
-REPORTS_DIR = ROOT / "reports"
-REPORT_FILE = REPORTS_DIR / "link-check-report.json"
 
 PRECONNECT_ONLY = {
     "https://fonts.googleapis.com",
@@ -133,7 +130,6 @@ def main() -> int:
     warnings = [r for r in results if r["status"] in warn_statuses]
     failed = [r for r in results if r["status"] not in ok_statuses and r["status"] not in warn_statuses]
 
-    REPORTS_DIR.mkdir(exist_ok=True)
     report = {
       "checked": len(results),
       "ok_count": len(ok),
@@ -143,7 +139,6 @@ def main() -> int:
       "warnings": warnings,
       "failed": failed
     }
-    REPORT_FILE.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
     save_link_report(report)
 
     print(f"checked={len(results)} ok={len(ok)} warnings={len(warnings)} failed={len(failed)}")

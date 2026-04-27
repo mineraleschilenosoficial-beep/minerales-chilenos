@@ -7,7 +7,7 @@ Aplicación web para `MineralesChilenos.cl` preparada para desplegar en Coolify 
 - `api/server.py`: API HTTP y servidor de archivos estáticos.
 - `assets/app.js`: frontend (mapa, filtros, modal y cache local del navegador).
 - `assets/config.js`: endpoints de la API y configuración de cache/GTM.
-- `scripts/storage.py`: persistencia compartida en PostgreSQL (con respaldo en `data/yacimientos.json`).
+- `scripts/storage.py`: persistencia compartida exclusivamente en PostgreSQL.
 - `scripts/daily_refresh.py`: refresca dataset.
 - `scripts/validate_data.py`: valida esquema/calidad del dataset.
 - `scripts/link_audit.py`: audita enlaces y genera reporte.
@@ -23,7 +23,7 @@ Aplicación web para `MineralesChilenos.cl` preparada para desplegar en Coolify 
 python3 -m pip install -r requirements.txt
 ```
 
-2. Definir base de datos (opcional en local):
+2. Definir base de datos (obligatorio):
 
 ```bash
 export DATABASE_URL="postgresql://user:password@localhost:5432/minerales"
@@ -62,8 +62,7 @@ La UI consume:
 
 Persistencia:
 
-- Primaria: PostgreSQL (`DATABASE_URL`, tabla `app_state`).
-- Respaldo: `data/yacimientos.json` y `reports/link-check-report.json`.
+- PostgreSQL (`DATABASE_URL`, tabla `app_state`) como única fuente de datos.
 
 Comportamiento de lectura frontend:
 
@@ -91,7 +90,7 @@ python3 scripts/refresh_cycle.py
 Audita enlaces externos de:
 
 - `index.html` (CDN/fuentes/scripts)
-- `data/yacimientos.json` (`web` y `docs.url`)
+- dataset almacenado en PostgreSQL (`items[*].web` y `items[*].docs[*].url`)
 
 Ejecutar:
 
@@ -101,7 +100,7 @@ python3 scripts/link_audit.py
 
 Resultado:
 
-- `reports/link-check-report.json`
+- reporte persistido en PostgreSQL (`key = link_report`).
 
 Notas:
 
@@ -111,7 +110,7 @@ Notas:
 
 ## Validación de datos
 
-Valida esquema y calidad mínima de `data/yacimientos.json`:
+Valida esquema y calidad mínima del dataset en PostgreSQL:
 
 ```bash
 python3 scripts/validate_data.py

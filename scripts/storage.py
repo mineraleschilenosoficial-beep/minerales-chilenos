@@ -4,9 +4,7 @@
 from __future__ import annotations
 
 import datetime as dt
-import json
 import os
-from pathlib import Path
 from typing import Any
 
 try:
@@ -18,11 +16,6 @@ except ModuleNotFoundError:  # pragma: no cover - handled at runtime
     dict_row = None
     Jsonb = None
 
-
-ROOT = Path(__file__).resolve().parents[1]
-DATA_FILE = ROOT / "data" / "yacimientos.json"
-
-
 def utc_now_iso() -> str:
     return dt.datetime.now(dt.timezone.utc).isoformat()
 
@@ -33,6 +26,13 @@ def get_database_url() -> str:
 
 def has_database_config() -> bool:
     return bool(get_database_url())
+
+
+def _required_database_url() -> str:
+    dsn = get_database_url()
+    if not dsn:
+        raise RuntimeError("DATABASE_URL is required. Local JSON storage is disabled.")
+    return dsn
 
 
 def ensure_schema(conn: psycopg.Connection[Any]) -> None:
@@ -48,23 +48,8 @@ def ensure_schema(conn: psycopg.Connection[Any]) -> None:
         )
 
 
-def load_local_dataset() -> dict[str, Any]:
-    payload = json.loads(DATA_FILE.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict):
-        raise ValueError("Local dataset must be a JSON object.")
-    payload.setdefault("meta", {})
-    payload.setdefault("items", [])
-    return payload
-
-
-def save_local_dataset(payload: dict[str, Any]) -> None:
-    DATA_FILE.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-
-
 def get_state_from_db(key: str) -> dict[str, Any] | None:
-    dsn = get_database_url()
-    if not dsn:
-        return None
+    dsn = _required_database_url()
     if psycopg is None or dict_row is None:
         raise RuntimeError("psycopg is required when DATABASE_URL is set")
     with psycopg.connect(dsn, row_factory=dict_row) as conn:
@@ -79,9 +64,7 @@ def get_state_from_db(key: str) -> dict[str, Any] | None:
 
 
 def upsert_state_to_db(key: str, payload: dict[str, Any]) -> None:
-    dsn = get_database_url()
-    if not dsn:
-        return
+    dsn = _required_database_url()
     if psycopg is None or Jsonb is None:
         raise RuntimeError("psycopg is required when DATABASE_URL is set")
     with psycopg.connect(dsn) as conn:
@@ -104,12 +87,11 @@ def get_dataset() -> dict[str, Any]:
     if db_payload and isinstance(db_payload.get("items"), list):
         db_payload.setdefault("meta", {})
         return db_payload
-    return load_local_dataset()
+    raise RuntimeError("Dataset not found in PostgreSQL. Run daily refresh to bootstrap data.")
 
 
 def save_dataset(payload: dict[str, Any]) -> None:
     upsert_state_to_db("dataset", payload)
-    save_local_dataset(payload)
 
 
 def get_link_report() -> dict[str, Any] | None:

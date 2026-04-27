@@ -1,7 +1,7 @@
 (function () {
   const cfg = window.APP_CONFIG || {};
-  const DATA_URL = cfg.DATA_URL || "./data/yacimientos.json";
-  const LINK_REPORT_URL = cfg.LINK_REPORT_URL || "./reports/link-check-report.json";
+  const DATA_URL = cfg.DATA_URL || "/api/yacimientos";
+  const LINK_REPORT_URL = cfg.LINK_REPORT_URL || "/api/link-report";
   const GTM_ID = (cfg.GTM_ID || "").trim();
   const CACHE_KEY = cfg.CACHE_KEY || "mineraleschilenos:data:v1";
   const CACHE_TTL_MS = cfg.CACHE_TTL_MS || 1000 * 60 * 60 * 6;
@@ -160,7 +160,7 @@
       return freshCache;
     }
 
-    const candidates = [DATA_URL, "./data/yacimientos.json", "/data/yacimientos.json"];
+    const candidates = [DATA_URL, "/api/yacimientos"];
     for (const url of candidates) {
       try {
         const res = await fetch(`${url}?v=${Date.now()}`, { cache: "no-store" });
@@ -710,7 +710,7 @@
         els.status.textContent = "No se pudieron cargar los datos remotos. Mostrando respaldo local.";
       }
     } catch (dataError) {
-      els.status.textContent = "No fue posible cargar los datos. Verifica data/yacimientos.json.";
+      els.status.textContent = "No fue posible cargar los datos. Verifica la conexión a la API y PostgreSQL.";
       console.error(dataError);
     }
   }

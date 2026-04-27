@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate data/yacimientos.json with strict schema and freshness checks."""
+"""Validate dataset from PostgreSQL with strict schema and freshness checks."""
 
 from __future__ import annotations
 
