@@ -137,6 +137,7 @@ Chequeos incluidos:
   - `DATA_JSON_SOURCE_URL` (opcional, JSON remoto con `{meta, items}` para poblar/actualizar datos).
 
 Si no defines `DATA_JSON_SOURCE_URL`, el refresh hace bootstrap automático en PostgreSQL con dataset vacío válido (sin depender de archivos JSON locales).
+Si no defines `DATA_JSON_SOURCE_URL` y la DB está vacía, el sistema hace scraping del servicio oficial de Yacimientos de SERNAGEOMIN e inserta los registros válidos en PostgreSQL.
 
 ### 2) Base de datos PostgreSQL
 
