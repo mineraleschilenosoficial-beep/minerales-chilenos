@@ -13,6 +13,7 @@ from storage import get_dataset, save_dataset, utc_now_iso
 
 
 SERNAGEOMIN_MAPSERVER = "https://geoarcgis.sernageomin.cl/ArcGIS/rest/services/geoportal/Yacimiento/MapServer/0/query"
+CKAN_PACKAGE_SEARCH = "https://datos.gob.cl/api/3/action/package_search"
 
 
 def fetch_optional_remote_source(url: str) -> dict | None:
@@ -27,6 +28,10 @@ def fetch_optional_remote_source(url: str) -> dict | None:
     if not isinstance(payload, dict) or not isinstance(payload.get("items"), list):
         raise ValueError("Remote payload must be an object with 'items' array.")
     return payload
+
+
+def _split_env_urls(value: str) -> list[str]:
+    return [part.strip() for part in value.split(",") if part.strip()]
 
 
 def _request_json(url: str, params: dict[str, str]) -> dict:
@@ -74,20 +79,9 @@ def _extract_coords(attrs: dict, geom: dict | None) -> tuple[float | None, float
     return lat, lng
 
 
-def scrape_sernageomin_dataset() -> dict:
-    payload = _request_json(
-        SERNAGEOMIN_MAPSERVER,
-        {
-            "where": "1=1",
-            "outFields": "*",
-            "returnGeometry": "true",
-            "outSR": "4326",
-            "f": "json",
-        },
-    )
-    features = payload.get("features")
+def _dataset_from_features(features: list, source_name: str, source_url: str) -> dict:
     if not isinstance(features, list):
-        raise ValueError("SERNAGEOMIN response does not include a valid features array.")
+        raise ValueError(f"{source_name} response does not include a valid features array.")
 
     items: list[dict] = []
     next_id = 1
@@ -115,7 +109,7 @@ def scrape_sernageomin_dataset() -> dict:
         tipo = _pick_str(attrs, ["TIPO", "TIPO_YAC", "CLASE"], fallback="Yacimiento")
 
         source_objid = attrs.get("OBJECTID")
-        source_url = f"https://geoarcgis.sernageomin.cl/ArcGIS/rest/services/geoportal/Yacimiento/MapServer/0/{source_objid}" if source_objid is not None else "https://geoarcgis.sernageomin.cl/ArcGIS/rest/services/geoportal/Yacimiento/MapServer/0"
+        row_url = f"{source_url.rsplit('/query', 1)[0]}/{source_objid}" if source_objid is not None else source_url.rsplit("/query", 1)[0]
 
         items.append(
             {
@@ -134,14 +128,14 @@ def scrape_sernageomin_dataset() -> dict:
                 "sueldos_promedio": "-",
                 "ingresos": "-",
                 "contrataciones_futuras": "-",
-                "noticias": "Dato obtenido por scraping de servicio oficial SERNAGEOMIN.",
+                "noticias": f"Dato obtenido por scraping de {source_name}.",
                 "web": "#",
                 "libre": False,
                 "sources": [
                     {
-                        "name": "SERNAGEOMIN - Servicio de Yacimientos",
-                        "url": source_url,
-                        "note": "Scraping desde servicio ArcGIS publicado en datos.gob.cl",
+                        "name": source_name,
+                        "url": row_url,
+                        "note": "Registro obtenido por scraping con fallback de fuentes.",
                     }
                 ],
             }
@@ -149,24 +143,101 @@ def scrape_sernageomin_dataset() -> dict:
         next_id += 1
 
     if not items:
-        raise ValueError("Scraping completed but produced 0 valid records.")
+        raise ValueError(f"Scraping from {source_name} produced 0 valid records.")
 
     now = utc_now_iso()
     return {
         "meta": {
             "updatedAt": now,
             "version": 1,
-            "source": "sernageomin-scrape",
+            "source": source_name.lower().replace(" ", "-"),
             "sources": [
                 {
-                    "name": "SERNAGEOMIN - Yacimientos",
-                    "url": "https://geoarcgis.sernageomin.cl/ArcGIS/rest/services/geoportal/Yacimiento/MapServer",
-                    "note": "Servicio oficial publicado en datos.gob.cl",
+                    "name": source_name,
+                    "url": source_url.rsplit("/query", 1)[0],
+                    "note": "Fuente utilizada para refresco automático.",
                 }
             ],
         },
         "items": items,
     }
+
+
+def _scrape_arcgis_query(source_url: str, source_name: str) -> dict:
+    payload = _request_json(
+        source_url,
+        {
+            "where": "1=1",
+            "outFields": "*",
+            "returnGeometry": "true",
+            "outSR": "4326",
+            "f": "json",
+        },
+    )
+    return _dataset_from_features(payload.get("features"), source_name, source_url)
+
+
+def _discover_ckan_arcgis_urls() -> list[str]:
+    payload = _request_json(
+        CKAN_PACKAGE_SEARCH,
+        {
+            "fq": "organization:servicio_nacional_de_geologia_y_mineria",
+            "q": "yacimientos",
+            "rows": "20",
+        },
+    )
+    result = payload.get("result")
+    if not isinstance(result, dict):
+        return []
+    packages = result.get("results")
+    if not isinstance(packages, list):
+        return []
+
+    discovered: list[str] = []
+    for pkg in packages:
+        if not isinstance(pkg, dict):
+            continue
+        resources = pkg.get("resources")
+        if not isinstance(resources, list):
+            continue
+        for resource in resources:
+            if not isinstance(resource, dict):
+                continue
+            url = resource.get("url")
+            if not isinstance(url, str) or "MapServer" not in url:
+                continue
+            base = url.rstrip("/")
+            if base.endswith("/0"):
+                discovered.append(f"{base}/query")
+            elif base.endswith("/MapServer"):
+                discovered.append(f"{base}/0/query")
+    unique: list[str] = []
+    seen = set()
+    for url in discovered:
+        if url not in seen:
+            seen.add(url)
+            unique.append(url)
+    return unique
+
+
+def scrape_dataset_with_fallback() -> tuple[dict, str]:
+    candidates: list[tuple[str, str]] = [("SERNAGEOMIN ArcGIS", SERNAGEOMIN_MAPSERVER)]
+
+    for url in _split_env_urls(os.getenv("SCRAPE_SOURCE_URLS", "")):
+        candidates.append(("SCRAPE_SOURCE_URLS", url))
+
+    for url in _discover_ckan_arcgis_urls():
+        candidates.append(("datos.gob.cl CKAN", url))
+
+    errors: list[str] = []
+    for source_name, source_url in candidates:
+        try:
+            dataset = _scrape_arcgis_query(source_url, source_name)
+            return dataset, source_name
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"{source_name} ({source_url}): {exc}")
+            continue
+    raise RuntimeError("All scraping sources failed. " + " | ".join(errors))
 
 
 def main() -> int:
@@ -196,9 +267,11 @@ def main() -> int:
             source_mode = "remote-json-error"
 
     if not source_url and not current["items"]:
-        scraped = scrape_sernageomin_dataset()
+        scraped, source_name = scrape_dataset_with_fallback()
         current = scraped
-        source_mode = "sernageomin-scrape"
+        current.setdefault("meta", {})
+        current["meta"]["scrapeSourceName"] = source_name
+        source_mode = "scrape-fallback"
 
     current["meta"].setdefault("version", 1)
     current["meta"].setdefault("source", "postgresql")

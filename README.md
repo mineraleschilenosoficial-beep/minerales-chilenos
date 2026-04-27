@@ -135,9 +135,9 @@ Chequeos incluidos:
 - Variables requeridas:
   - `DATABASE_URL` (PostgreSQL de Coolify o externo).
   - `DATA_JSON_SOURCE_URL` (opcional, JSON remoto con `{meta, items}` para poblar/actualizar datos).
+  - `SCRAPE_SOURCE_URLS` (opcional, lista separada por comas de endpoints ArcGIS `/query` para fallback de scraping).
 
-Si no defines `DATA_JSON_SOURCE_URL`, el refresh hace bootstrap automático en PostgreSQL con dataset vacío válido (sin depender de archivos JSON locales).
-Si no defines `DATA_JSON_SOURCE_URL` y la DB está vacía, el sistema hace scraping del servicio oficial de Yacimientos de SERNAGEOMIN e inserta los registros válidos en PostgreSQL.
+Si no defines `DATA_JSON_SOURCE_URL` y la DB está vacía, el sistema hace scraping con fallback en cadena: servicio oficial de SERNAGEOMIN + descubrimiento de recursos en datos.gob.cl (CKAN) + URLs opcionales de `SCRAPE_SOURCE_URLS`.
 
 ### 2) Base de datos PostgreSQL
 
