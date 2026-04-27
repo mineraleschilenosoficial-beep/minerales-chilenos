@@ -49,6 +49,12 @@
   const MAX_LIST_RENDER = 350;
   const markerById = new Map();
   const allMarkerById = new Map();
+  const itemById = new Map();
+  const mineralIndex = new Map();
+  const regionIndex = new Map();
+  const tipoIndex = new Map();
+  let libresItems = [];
+  let markerRenderVersion = 0;
   let selectedMarkerId = null;
 
   const els = {
@@ -331,6 +337,16 @@
     return marker;
   }
 
+  function addToIndex(indexMap, key, item) {
+    if (!key) return;
+    const list = indexMap.get(key);
+    if (list) {
+      list.push(item);
+      return;
+    }
+    indexMap.set(key, [item]);
+  }
+
   function setSelectedMarker(id) {
     const previousId = selectedMarkerId;
     selectedMarkerId = id ?? null;
@@ -371,34 +387,6 @@
       htmlRows.push(`<div class="item"><div class="item-title">Mostrando primeros ${MAX_LIST_RENDER}</div><div class="item-meta">Usa filtros para acotar resultados (${filtered.length} encontrados).</div></div>`);
     }
     els.list.innerHTML = htmlRows.join("");
-
-    els.list.querySelectorAll(".item[data-id]").forEach((node) => {
-      node.addEventListener("click", () => {
-        const id = Number(node.getAttribute("data-id"));
-        const item = filtered.find((it) => it.id === id);
-        if (!item) return;
-
-        if (!mapEnabled || !map) {
-          if (isMobileViewport()) {
-            setMobilePanelOpen(false);
-          }
-          openDetail(item);
-          return;
-        }
-
-        const marker = markerById.get(id);
-        if (!marker) {
-          openDetail(item);
-          return;
-        }
-
-        map.flyTo([item.lat, item.lng], Math.max(7, map.getZoom()), { duration: 0.45 });
-        marker.fire("click");
-        if (isMobileViewport()) {
-          setMobilePanelOpen(false);
-        }
-      });
-    });
   }
 
   function renderMobileFilterBar() {
@@ -445,42 +433,79 @@
     };
   }
 
-  function applyFilters() {
-    const q = els.q.value.trim().toLowerCase();
-    const fMineral = els.mineral.value;
-    const fRegion = els.region.value;
-    const fTipo = els.tipo.value;
+  function renderMarkersForFiltered(items) {
+    if (!mapEnabled || !markerLayer) return;
+    markerRenderVersion += 1;
+    const currentVersion = markerRenderVersion;
+    markerLayer.clearLayers();
+    markerById.clear();
 
-    filtered = allItems.filter((x) => {
-      if (onlyLibres && !x.libre) return false;
-      if (fMineral && !(x.mineral || []).includes(fMineral)) return false;
-      if (fRegion && x.region !== fRegion) return false;
-      if (fTipo && x.tipo !== fTipo) return false;
-      if (!q) return true;
-      return x._searchText.includes(q);
-    });
+    const chunkSize = 600;
+    let cursor = 0;
 
-    if (mapEnabled && markerLayer) {
-      markerLayer.clearLayers();
-      markerById.clear();
-      const markersToShow = [];
-      filtered.forEach((x) => {
-        const marker = allMarkerById.get(x.id);
-        if (!marker) return;
-        markerById.set(x.id, marker);
-        markersToShow.push(marker);
-      });
-      if (typeof markerLayer.addLayers === "function") {
-        markerLayer.addLayers(markersToShow);
-      } else {
-        markersToShow.forEach((marker) => markerLayer.addLayer(marker));
+    const pushChunk = () => {
+      if (currentVersion !== markerRenderVersion) return;
+      const chunkMarkers = [];
+      const end = Math.min(cursor + chunkSize, items.length);
+      for (; cursor < end; cursor += 1) {
+        const item = items[cursor];
+        let marker = allMarkerById.get(item.id);
+        if (!marker) {
+          marker = buildMarker(item);
+          allMarkerById.set(item.id, marker);
+        }
+        markerById.set(item.id, marker);
+        chunkMarkers.push(marker);
       }
+
+      if (chunkMarkers.length) {
+        if (typeof markerLayer.addLayers === "function") {
+          markerLayer.addLayers(chunkMarkers);
+        } else {
+          chunkMarkers.forEach((marker) => markerLayer.addLayer(marker));
+        }
+      }
+
+      if (cursor < items.length) {
+        requestAnimationFrame(pushChunk);
+        return;
+      }
+
       if (selectedMarkerId !== null && !markerById.has(selectedMarkerId)) {
         selectedMarkerId = null;
       } else if (selectedMarkerId !== null) {
         requestAnimationFrame(() => setSelectedMarker(selectedMarkerId));
       }
-    }
+    };
+
+    requestAnimationFrame(pushChunk);
+  }
+
+  function applyFilters() {
+    const q = els.q.value.trim().toLowerCase();
+    const queryTokens = q ? q.split(/\s+/).filter(Boolean) : [];
+    const fMineral = els.mineral.value;
+    const fRegion = els.region.value;
+    const fTipo = els.tipo.value;
+    const candidateBuckets = [];
+    if (fMineral) candidateBuckets.push(mineralIndex.get(fMineral) || []);
+    if (fRegion) candidateBuckets.push(regionIndex.get(fRegion) || []);
+    if (fTipo) candidateBuckets.push(tipoIndex.get(fTipo) || []);
+    if (onlyLibres) candidateBuckets.push(libresItems);
+    const baseItems = candidateBuckets.length
+      ? candidateBuckets.reduce((best, bucket) => (bucket.length < best.length ? bucket : best))
+      : allItems;
+
+    filtered = baseItems.filter((x) => {
+      if (onlyLibres && !x.libre) return false;
+      if (fMineral && !(x.mineral || []).includes(fMineral)) return false;
+      if (fRegion && x.region !== fRegion) return false;
+      if (fTipo && x.tipo !== fTipo) return false;
+      if (!queryTokens.length) return true;
+      return queryTokens.every((token) => x._searchText.includes(token));
+    });
+
+    renderMarkersForFiltered(filtered);
 
     renderList();
     renderMobileFilterBar();
@@ -724,6 +749,33 @@
     });
 
     els.btnFit.addEventListener("click", fitToFiltered);
+    els.list.addEventListener("click", (event) => {
+      const node = event.target instanceof HTMLElement ? event.target.closest(".item[data-id]") : null;
+      if (!node) return;
+      const id = Number(node.getAttribute("data-id"));
+      const item = itemById.get(id);
+      if (!item) return;
+
+      if (!mapEnabled || !map) {
+        if (isMobileViewport()) {
+          setMobilePanelOpen(false);
+        }
+        openDetail(item);
+        return;
+      }
+
+      const marker = markerById.get(id);
+      if (!marker) {
+        openDetail(item);
+        return;
+      }
+
+      map.flyTo([item.lat, item.lng], Math.max(7, map.getZoom()), { duration: 0.45 });
+      marker.fire("click");
+      if (isMobileViewport()) {
+        setMobilePanelOpen(false);
+      }
+    });
     els.modalClose.addEventListener("click", closeModal);
     if (els.detailBackdrop) {
       els.detailBackdrop.addEventListener("click", closeModal);
@@ -815,12 +867,19 @@
       });
       window.__dataUpdatedAt = payload.meta && payload.meta.updatedAt;
 
-      if (mapEnabled && markerLayer) {
-        allMarkerById.clear();
-        allItems.forEach((item) => {
-          allMarkerById.set(item.id, buildMarker(item));
-        });
-      }
+      itemById.clear();
+      mineralIndex.clear();
+      regionIndex.clear();
+      tipoIndex.clear();
+      libresItems = [];
+      allMarkerById.clear();
+      allItems.forEach((item) => {
+        itemById.set(item.id, item);
+        if (item.libre) libresItems.push(item);
+        addToIndex(regionIndex, item.region, item);
+        addToIndex(tipoIndex, item.tipo, item);
+        (item.mineral || []).forEach((mineral) => addToIndex(mineralIndex, mineral, item));
+      });
 
       const minerals = new Set(allItems.flatMap((x) => x.mineral || []));
       const regions = new Set(allItems.map((x) => x.region).filter(Boolean));
