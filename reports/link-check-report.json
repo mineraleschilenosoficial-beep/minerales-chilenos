@@ -1,8 +1,8 @@
 {
   "checked": 16,
-  "ok_count": 16,
+  "ok_count": 15,
   "warning_count": 0,
-  "failed_count": 0,
+  "failed_count": 1,
   "results": [
     {
       "url": "https://fonts.googleapis.com",
@@ -69,10 +69,10 @@
     },
     {
       "url": "https://www.escondida.cl",
-      "status": "403",
-      "final_url": "https://www.escondida.cl",
-      "error": "",
-      "note": "reachable-but-restricted"
+      "status": "",
+      "final_url": "",
+      "error": "<urlopen error timed out>",
+      "note": ""
     },
     {
       "url": "https://www.collahuasi.cl",
@@ -91,7 +91,7 @@
     {
       "url": "https://www.albemarle.com",
       "status": "200",
-      "final_url": "https://www.albemarle.com/global/en",
+      "final_url": "https://www.albemarle.com/us/en",
       "error": "",
       "note": ""
     },
@@ -118,5 +118,13 @@
     }
   ],
   "warnings": [],
-  "failed": []
+  "failed": [
+    {
+      "url": "https://www.escondida.cl",
+      "status": "",
+      "final_url": "",
+      "error": "<urlopen error timed out>",
+      "note": ""
+    }
+  ]
 }
