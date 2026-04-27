@@ -71,6 +71,7 @@
     btnMobilePanel: document.getElementById("btn-mobile-panel"),
     healthBadge: document.getElementById("health-badge"),
     mobileFilterBar: document.getElementById("mobile-filter-bar"),
+    selectedInfo: document.getElementById("selected-info"),
     sidebar: document.getElementById("sidebar"),
     sheetGrab: document.querySelector(".sheet-grab"),
     mobileBackdrop: document.getElementById("mobile-backdrop"),
@@ -332,9 +333,46 @@
     const marker = L.marker([item.lat, item.lng], { icon });
     marker.on("click", () => {
       setSelectedMarker(item.id);
+      renderSelectedSidebar(item);
       openDetail(item);
     });
     return marker;
+  }
+
+  function renderSelectedSidebar(item) {
+    if (!els.selectedInfo) return;
+    if (!item) {
+      els.selectedInfo.classList.add("empty");
+      els.selectedInfo.innerHTML = "Selecciona un pin para ver una ficha rápida del yacimiento.";
+      return;
+    }
+
+    const rows = [];
+    const pushRow = (label, value) => {
+      if (value === null || value === undefined || String(value).trim() === "") return;
+      rows.push(`<div class="selected-row"><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</div>`);
+    };
+
+    pushRow("Tipo", prettyTypeLabel(item.tipo));
+    pushRow("Región", item.region);
+    pushRow("Minerales", (item.mineral || []).map((m) => toTitleCase(m)).join(", "));
+    pushRow("Estado", item.libre ? "Concesión disponible" : "Operación registrada");
+    if (typeof item.lat === "number" && typeof item.lng === "number") {
+      pushRow("Coordenadas", `${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`);
+    }
+
+    const links = (Array.isArray(item.sources) ? item.sources : [])
+      .filter((src) => src && typeof src.url === "string" && src.url.startsWith("http"))
+      .slice(0, 3)
+      .map((src) => `<a href="${escapeHtml(src.url)}" target="_blank" rel="noreferrer">${escapeHtml(src.name || "Fuente")}</a>`)
+      .join("");
+
+    els.selectedInfo.classList.remove("empty");
+    els.selectedInfo.innerHTML = [
+      `<div class="selected-title">${escapeHtml(item.nombre || "Yacimiento")}</div>`,
+      rows.length ? `<div class="selected-grid">${rows.join("")}</div>` : '<div class="selected-row">Sin metadatos adicionales útiles.</div>',
+      links ? `<div class="selected-links">${links}</div>` : ""
+    ].join("");
   }
 
   function addToIndex(indexMap, key, item) {
@@ -473,6 +511,7 @@
 
       if (selectedMarkerId !== null && !markerById.has(selectedMarkerId)) {
         selectedMarkerId = null;
+        renderSelectedSidebar(null);
       } else if (selectedMarkerId !== null) {
         requestAnimationFrame(() => setSelectedMarker(selectedMarkerId));
       }
@@ -770,6 +809,8 @@
       if (!item) return;
 
       if (!mapEnabled || !map) {
+        setSelectedMarker(id);
+        renderSelectedSidebar(item);
         if (isMobileViewport()) {
           setMobilePanelOpen(false);
         }
@@ -779,6 +820,8 @@
 
       const marker = markerById.get(id);
       if (!marker) {
+        setSelectedMarker(id);
+        renderSelectedSidebar(item);
         openDetail(item);
         return;
       }
@@ -870,6 +913,7 @@
     initGtm();
     renderLegend();
     wireUi();
+    renderSelectedSidebar(null);
     els.status.textContent = "Inicializando visualizador...";
     void loadLinkHealth();
 

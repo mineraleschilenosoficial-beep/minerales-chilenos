@@ -227,6 +227,61 @@ button:hover {
   padding-right: 3px;
 }
 
+.selected-info {
+  border: 1px solid var(--line);
+  background: #171717;
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.selected-info.empty {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.selected-title {
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.selected-grid {
+  display: grid;
+  gap: 4px;
+}
+
+.selected-row {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.selected-row strong {
+  color: #ececec;
+  font-weight: 600;
+}
+
+.selected-links {
+  margin-top: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.selected-links a {
+  text-decoration: none;
+  font-size: 12px;
+  color: #d9d9d9;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 8px;
+  background: #1d1d1d;
+}
+
+.selected-links a:hover {
+  border-color: rgba(255, 184, 48, 0.55);
+}
+
 .item {
   border: 1px solid var(--line);
   background: #171717;
