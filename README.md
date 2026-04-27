@@ -136,7 +136,7 @@ Chequeos incluidos:
   - `DATABASE_URL` (PostgreSQL de Coolify o externo).
   - `DATA_JSON_SOURCE_URL` (opcional, JSON remoto con `{meta, items}` para poblar/actualizar datos).
 
-Si no defines `DATA_JSON_SOURCE_URL` y la DB está vacía, el sistema hace scraping con fallback en cadena usando fuentes integradas: servicio oficial de SERNAGEOMIN (primario), endpoint legacy de SERNAGEOMIN y descubrimiento automático de recursos en datos.gob.cl (CKAN).
+Si no defines `DATA_JSON_SOURCE_URL` y la DB está vacía, el sistema hace scraping con fallback en cadena usando fuentes integradas: servicio oficial de SERNAGEOMIN (primario), endpoint legacy de SERNAGEOMIN, descubrimiento automático de recursos en datos.gob.cl (CKAN) y fallback final USGS MRDS (WFS para Chile).
 
 ### 2) Base de datos PostgreSQL
 

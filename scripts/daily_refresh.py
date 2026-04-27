@@ -7,6 +7,7 @@ import json
 import os
 import ssl
 import urllib.request
+import xml.etree.ElementTree as ET
 from urllib.parse import urlencode
 
 from storage import get_dataset, save_dataset, utc_now_iso
@@ -14,6 +15,8 @@ from storage import get_dataset, save_dataset, utc_now_iso
 
 SERNAGEOMIN_MAPSERVER = "https://geoarcgis.sernageomin.cl/ArcGIS/rest/services/geoportal/Yacimiento/MapServer/0/query"
 CKAN_PACKAGE_SEARCH = "https://datos.gob.cl/api/3/action/package_search"
+MRDS_WFS_URL = "https://mrdata.usgs.gov/services/mrds"
+MRDS_MAX_FEATURES = 800
 BUILTIN_ARCGIS_SOURCES: list[tuple[str, str]] = [
     ("SERNAGEOMIN ArcGIS", SERNAGEOMIN_MAPSERVER),
     ("SERNAGEOMIN ArcGIS Legacy", "http://portalgeomin.sernageomin.cl:6080/arcgis/rest/services/geoportal/Yacimiento/MapServer/0/query"),
@@ -49,6 +52,18 @@ def _request_json(url: str, params: dict[str, str]) -> dict:
     return payload
 
 
+def _request_text(url: str, params: dict[str, str]) -> str:
+    query = urlencode(params)
+    request = urllib.request.Request(
+        f"{url}?{query}",
+        method="GET",
+        headers={"User-Agent": "Mozilla/5.0 (DailyRefresh)"},
+    )
+    ctx = ssl.create_default_context()
+    with urllib.request.urlopen(request, timeout=45, context=ctx) as response:
+        return response.read().decode("utf-8", "ignore")
+
+
 def _pick_str(attrs: dict, candidates: list[str], fallback: str = "-") -> str:
     for key in candidates:
         value = attrs.get(key)
@@ -77,6 +92,39 @@ def _extract_coords(attrs: dict, geom: dict | None) -> tuple[float | None, float
     lat = _to_float(attrs.get("LATITUD") or attrs.get("LAT") or attrs.get("Y"))
     lng = _to_float(attrs.get("LONGITUD") or attrs.get("LON") or attrs.get("LNG") or attrs.get("X"))
     return lat, lng
+
+
+def _parse_mrds_coordinates(raw_value: str) -> tuple[float | None, float | None]:
+    if not raw_value:
+        return None, None
+    first = raw_value.split()[0]
+    if "," not in first:
+        return None, None
+    lon_raw, lat_raw = first.split(",", 1)
+    lat = _to_float(lat_raw)
+    lng = _to_float(lon_raw)
+    return lat, lng
+
+
+def _decode_mrds_minerals(code_list: str) -> list[str]:
+    code_map = {
+        "CU": "cobre",
+        "AU": "oro",
+        "AG": "plata",
+        "FE": "hierro",
+        "LI": "litio",
+        "MO": "molibdeno",
+        "ZN": "zinc",
+        "PB": "plomo",
+        "MN": "manganeso",
+    }
+    minerals: list[str] = []
+    for token in code_list.replace(",", " ").split():
+        clean = token.strip().upper()
+        if not clean:
+            continue
+        minerals.append(code_map.get(clean, clean.lower()))
+    return minerals or ["desconocido"]
 
 
 def _dataset_from_features(features: list, source_name: str, source_url: str) -> dict:
@@ -163,6 +211,97 @@ def _dataset_from_features(features: list, source_name: str, source_url: str) ->
     }
 
 
+def scrape_mrds_chile_dataset() -> dict:
+    xml_text = _request_text(
+        MRDS_WFS_URL,
+        {
+            "service": "WFS",
+            "version": "1.0.0",
+            "request": "GetFeature",
+            "typeName": "mrds-high",
+            "maxFeatures": str(MRDS_MAX_FEATURES),
+            "FILTER": "<Filter><PropertyIsEqualTo><PropertyName>fips_code</PropertyName><Literal>fCI</Literal></PropertyIsEqualTo></Filter>",
+        },
+    )
+    root = ET.fromstring(xml_text)
+    ns = {
+        "gml": "http://www.opengis.net/gml",
+        "ms": "http://mapserver.gis.umn.edu/mapserver",
+    }
+
+    items: list[dict] = []
+    next_id = 1
+    for member in root.findall(".//gml:featureMember", ns):
+        feature = None
+        for child in list(member):
+            feature = child
+            break
+        if feature is None:
+            continue
+
+        site_name = (feature.findtext("ms:site_name", default="", namespaces=ns) or "").strip()
+        dep_id = (feature.findtext("ms:dep_id", default="", namespaces=ns) or "").strip()
+        dev_stat = (feature.findtext("ms:dev_stat", default="", namespaces=ns) or "").strip()
+        code_list = (feature.findtext("ms:code_list", default="", namespaces=ns) or "").strip()
+        source_url = (feature.findtext("ms:url", default="", namespaces=ns) or "").strip()
+        coord_text = feature.findtext(".//gml:coordinates", default="", namespaces=ns) or ""
+        lat, lng = _parse_mrds_coordinates(coord_text)
+
+        if not site_name or lat is None or lng is None:
+            continue
+
+        items.append(
+            {
+                "id": next_id,
+                "nombre": site_name,
+                "mineral": _decode_mrds_minerals(code_list),
+                "lat": lat,
+                "lng": lng,
+                "region": "Chile",
+                "tipo": dev_stat or "Yacimiento",
+                "empresa": "-",
+                "sup": "-",
+                "alt": "-",
+                "prod": "-",
+                "dotacion": "-",
+                "sueldos_promedio": "-",
+                "ingresos": "-",
+                "contrataciones_futuras": "-",
+                "noticias": "Dato obtenido por scraping de USGS MRDS (Chile).",
+                "web": "#",
+                "libre": False,
+                "sources": [
+                    {
+                        "name": "USGS MRDS",
+                        "url": source_url or "https://mrdata.usgs.gov/mrds/",
+                        "note": f"dep_id={dep_id}" if dep_id else "Fuente WFS MRDS",
+                    }
+                ],
+            }
+        )
+        next_id += 1
+
+    if not items:
+        raise ValueError("USGS MRDS scraping produced 0 valid Chile records.")
+
+    now = utc_now_iso()
+    return {
+        "meta": {
+            "updatedAt": now,
+            "version": 1,
+            "source": "usgs-mrds",
+            "sources": [
+                {
+                    "name": "USGS MRDS WFS",
+                    "url": "https://mrdata.usgs.gov/services/mrds",
+                    "note": "Filtro por Chile usando fips_code=fCI.",
+                }
+            ],
+        },
+        "items": items,
+    }
+
+
 def _scrape_arcgis_query(source_url: str, source_name: str) -> dict:
     payload = _request_json(
         source_url,
@@ -241,6 +380,11 @@ def scrape_dataset_with_fallback() -> tuple[dict, str]:
         except Exception as exc:  # noqa: BLE001
             errors.append(f"{source_name} ({source_url}): {exc}")
             continue
+    try:
+        dataset = scrape_mrds_chile_dataset()
+        return dataset, "USGS MRDS WFS"
+    except Exception as exc:  # noqa: BLE001
+        errors.append(f"USGS MRDS WFS ({MRDS_WFS_URL}): {exc}")
     raise RuntimeError("All scraping sources failed. " + " | ".join(errors))
 
 
