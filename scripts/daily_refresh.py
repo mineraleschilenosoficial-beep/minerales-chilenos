@@ -10,6 +10,46 @@ import urllib.request
 from storage import get_dataset, save_dataset, utc_now_iso
 
 
+def build_seed_dataset() -> dict:
+    now = utc_now_iso()
+    return {
+        "meta": {
+            "updatedAt": now,
+            "version": 1,
+            "source": "seed-script",
+        },
+        "items": [
+            {
+                "id": 9001,
+                "nombre": "Punto semilla - Antofagasta",
+                "mineral": ["cobre"],
+                "lat": -23.65,
+                "lng": -70.4,
+                "region": "Antofagasta",
+                "tipo": "Referencia",
+                "empresa": "MineralesChilenos.cl",
+                "sup": "-",
+                "alt": "-",
+                "prod": "-",
+                "dotacion": "-",
+                "sueldos_promedio": "-",
+                "ingresos": "-",
+                "contrataciones_futuras": "-",
+                "noticias": "Dato inicial generado automaticamente por seed script.",
+                "web": "#",
+                "libre": False,
+                "sources": [
+                    {
+                        "name": "Seed inicial del sistema",
+                        "url": "https://www.mineraleschilenos.cl/seed/bootstrap-script",
+                        "note": "Registro base para iniciar PostgreSQL sin fuente externa.",
+                    }
+                ],
+            }
+        ],
+    }
+
+
 def fetch_optional_remote_source(url: str) -> dict | None:
     ctx = ssl.create_default_context()
     request = urllib.request.Request(
@@ -51,7 +91,8 @@ def main() -> int:
             source_mode = "remote-json-error"
 
     if not source_url and not current["items"]:
-        source_mode = "db-bootstrap-empty"
+        current = build_seed_dataset()
+        source_mode = "db-bootstrap-script"
 
     current["meta"].setdefault("version", 1)
     current["meta"].setdefault("source", "postgresql")
