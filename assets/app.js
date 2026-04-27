@@ -47,6 +47,7 @@
   let mobileSheetState = "collapsed";
   let mobileSheetStateInitialized = false;
   const markerById = new Map();
+  let selectedMarkerId = null;
 
   const els = {
     q: document.getElementById("q"),
@@ -321,8 +322,32 @@
     ].join("");
     const icon = L.divIcon({ html, className: "", iconSize: [36, 36], iconAnchor: [18, 36] });
     const marker = L.marker([item.lat, item.lng], { icon });
-    marker.on("click", () => openDetail(item));
+    marker.on("click", () => {
+      setSelectedMarker(item.id);
+      openDetail(item);
+    });
     return marker;
+  }
+
+  function setSelectedMarker(id) {
+    const previousId = selectedMarkerId;
+    selectedMarkerId = id ?? null;
+
+    if (previousId !== null) {
+      const previousMarker = markerById.get(previousId);
+      const previousPin = previousMarker?.getElement()?.querySelector(".marker-pin");
+      if (previousPin) {
+        previousPin.classList.remove("is-selected");
+      }
+    }
+
+    if (selectedMarkerId !== null) {
+      const currentMarker = markerById.get(selectedMarkerId);
+      const currentPin = currentMarker?.getElement()?.querySelector(".marker-pin");
+      if (currentPin) {
+        currentPin.classList.add("is-selected");
+      }
+    }
   }
 
   function renderList() {
@@ -430,6 +455,11 @@
         markerById.set(x.id, marker);
         markerLayer.addLayer(marker);
       });
+      if (selectedMarkerId !== null && !markerById.has(selectedMarkerId)) {
+        selectedMarkerId = null;
+      } else if (selectedMarkerId !== null) {
+        setSelectedMarker(selectedMarkerId);
+      }
     }
 
     renderList();

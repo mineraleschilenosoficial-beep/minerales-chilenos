@@ -462,6 +462,14 @@ body.detail-open #detail-backdrop {
   font-size: 12px;
 }
 
+.marker-pin.is-selected {
+  border-color: #ffdf8f;
+  box-shadow:
+    0 0 0 3px rgba(255, 184, 48, 0.45),
+    0 0 20px rgba(255, 184, 48, 0.55),
+    var(--shadow);
+}
+
 .marker-pin--mini {
   width: 20px;
   height: 20px;
