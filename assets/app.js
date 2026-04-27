@@ -496,14 +496,27 @@
       ? candidateBuckets.reduce((best, bucket) => (bucket.length < best.length ? bucket : best))
       : allItems;
 
-    filtered = baseItems.filter((x) => {
-      if (onlyLibres && !x.libre) return false;
-      if (fMineral && !(x.mineral || []).includes(fMineral)) return false;
-      if (fRegion && x.region !== fRegion) return false;
-      if (fTipo && x.tipo !== fTipo) return false;
-      if (!queryTokens.length) return true;
-      return queryTokens.every((token) => x._searchText.includes(token));
-    });
+    const nextFiltered = [];
+    for (let i = 0; i < baseItems.length; i += 1) {
+      const x = baseItems[i];
+      if (onlyLibres && !x.libre) continue;
+      if (fMineral && !(x.mineral || []).includes(fMineral)) continue;
+      if (fRegion && x.region !== fRegion) continue;
+      if (fTipo && x.tipo !== fTipo) continue;
+      if (queryTokens.length) {
+        let allTokensFound = true;
+        const haystack = x._searchText;
+        for (let t = 0; t < queryTokens.length; t += 1) {
+          if (!haystack.includes(queryTokens[t])) {
+            allTokensFound = false;
+            break;
+          }
+        }
+        if (!allTokensFound) continue;
+      }
+      nextFiltered.push(x);
+    }
+    filtered = nextFiltered;
 
     renderMarkersForFiltered(filtered);
 
@@ -830,7 +843,16 @@
 
     map = L.map("map", { center: [-30.5, -70.2], zoom: 5, maxZoom: 19 });
     markerLayer = (typeof L.markerClusterGroup === "function")
-      ? L.markerClusterGroup({ maxClusterRadius: 48, showCoverageOnHover: false })
+      ? L.markerClusterGroup({
+        maxClusterRadius: 48,
+        showCoverageOnHover: false,
+        chunkedLoading: true,
+        chunkInterval: 45,
+        chunkDelay: 15,
+        removeOutsideVisibleBounds: true,
+        animate: false,
+        animateAddingMarkers: false
+      })
       : L.layerGroup();
     map.addLayer(markerLayer);
 
