@@ -360,32 +360,11 @@ def _discover_ckan_arcgis_urls() -> list[str]:
 
 
 def scrape_dataset_with_fallback() -> tuple[dict, str]:
-    candidates: list[tuple[str, str]] = list(BUILTIN_ARCGIS_SOURCES)
-    for url in _discover_ckan_arcgis_urls():
-        candidates.append(("datos.gob.cl CKAN", url))
-
-    unique_candidates: list[tuple[str, str]] = []
-    seen_urls: set[str] = set()
-    for source_name, source_url in candidates:
-        if source_url in seen_urls:
-            continue
-        seen_urls.add(source_url)
-        unique_candidates.append((source_name, source_url))
-
-    errors: list[str] = []
-    for source_name, source_url in unique_candidates:
-        try:
-            dataset = _scrape_arcgis_query(source_url, source_name)
-            return dataset, source_name
-        except Exception as exc:  # noqa: BLE001
-            errors.append(f"{source_name} ({source_url}): {exc}")
-            continue
     try:
         dataset = scrape_mrds_chile_dataset()
         return dataset, "USGS MRDS WFS"
     except Exception as exc:  # noqa: BLE001
-        errors.append(f"USGS MRDS WFS ({MRDS_WFS_URL}): {exc}")
-    raise RuntimeError("All scraping sources failed. " + " | ".join(errors))
+        raise RuntimeError(f"USGS MRDS WFS scraping failed ({MRDS_WFS_URL}): {exc}") from exc
 
 
 def main() -> int:
