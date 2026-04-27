@@ -213,6 +213,30 @@
     return `${value} ${value === 1 ? singular : plural}`;
   }
 
+  function toTitleCase(value) {
+    return String(value || "")
+      .replaceAll("_", " ")
+      .trim()
+      .toLocaleLowerCase("es-CL")
+      .replace(/\b\p{L}/gu, (m) => m.toLocaleUpperCase("es-CL"));
+  }
+
+  function prettyTypeLabel(value) {
+    const raw = String(value || "").trim();
+    const normalized = raw.toLocaleLowerCase("es-CL");
+    const map = {
+      producer: "Productor",
+      "past producer": "Ex productor",
+      prospect: "Prospecto",
+      occurrence: "Ocurrencia mineral",
+      deposit: "Yacimiento",
+      mine: "Mina",
+      plant: "Planta",
+      refinery: "Refineria"
+    };
+    return map[normalized] || toTitleCase(raw);
+  }
+
   async function loadLinkHealth() {
     if (!els.healthBadge) return;
     setHealthBadge("", "Fuentes: verificando...");
@@ -234,10 +258,13 @@
     }
   }
 
-  function fillSelect(selectEl, values, placeholder) {
+  function fillSelect(selectEl, values, placeholder, labelFormatter = (v) => String(v)) {
     const options = [`<option value="">${placeholder}</option>`];
-    Array.from(values).sort((a, b) => a.localeCompare(b)).forEach((v) => {
-      options.push(`<option value="${v}">${v}</option>`);
+    Array.from(values)
+      .sort((a, b) => labelFormatter(a).localeCompare(labelFormatter(b), "es"))
+      .forEach((v) => {
+      const label = labelFormatter(v);
+      options.push(`<option value="${escapeHtml(v)}">${escapeHtml(label)}</option>`);
     });
     selectEl.innerHTML = options.join("");
   }
@@ -317,9 +344,9 @@
 
     const q = els.q.value.trim();
     if (q) chips.push(`<span class="mchip">Buscar: ${escapeHtml(q)}</span>`);
-    if (els.mineral.value) chips.push(`<span class="mchip">Mineral: ${escapeHtml(els.mineral.value)}</span>`);
+    if (els.mineral.value) chips.push(`<span class="mchip">Mineral: ${escapeHtml(toTitleCase(els.mineral.value))}</span>`);
     if (els.region.value) chips.push(`<span class="mchip">Región: ${escapeHtml(els.region.value)}</span>`);
-    if (els.tipo.value) chips.push(`<span class="mchip">Tipo: ${escapeHtml(els.tipo.value)}</span>`);
+    if (els.tipo.value) chips.push(`<span class="mchip">Tipo: ${escapeHtml(prettyTypeLabel(els.tipo.value))}</span>`);
     if (onlyLibres) chips.push(`<span class="mchip">Solo disponibles</span>`);
 
     const hasFilters = q || els.mineral.value || els.region.value || els.tipo.value || onlyLibres;
@@ -697,9 +724,9 @@
       const regions = new Set(allItems.map((x) => x.region).filter(Boolean));
       const tipos = new Set(allItems.map((x) => x.tipo).filter(Boolean));
 
-      fillSelect(els.mineral, minerals, "Todos");
-      fillSelect(els.region, regions, "Todas");
-      fillSelect(els.tipo, tipos, "Todos");
+      fillSelect(els.mineral, minerals, "Todos", toTitleCase);
+      fillSelect(els.region, regions, "Todas", toTitleCase);
+      fillSelect(els.tipo, tipos, "Todos", prettyTypeLabel);
       setTopKpis(payload.meta || {}, allItems);
       applyFilters();
       fitToFiltered();

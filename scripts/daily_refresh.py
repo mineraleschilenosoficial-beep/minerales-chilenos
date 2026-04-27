@@ -97,6 +97,22 @@ def _decode_mrds_minerals(code_list: str) -> list[str]:
     return unique or ["desconocido"]
 
 
+def _translate_dev_status(value: str) -> str:
+    normalized = _normalize_name(value)
+    status_map = {
+        "producer": "Productor",
+        "past producer": "Ex productor",
+        "prospect": "Prospecto",
+        "occurrence": "Ocurrencia mineral",
+        "unknown": "Sin clasificar",
+        "deposit": "Yacimiento",
+        "mine": "Mina",
+        "plant": "Planta",
+        "refinery": "Refineria",
+    }
+    return status_map.get(normalized, value.strip() or "Yacimiento")
+
+
 def _normalize_name(value: str) -> str:
     cleaned = "".join(ch.lower() if ch.isalnum() else " " for ch in value).strip()
     return " ".join(cleaned.split())
@@ -109,6 +125,8 @@ def _is_valid_chile_coordinate(lat: float, lng: float) -> bool:
 def _is_garbage_name(name: str) -> bool:
     normalized = _normalize_name(name)
     if not normalized or len(normalized) < 3:
+        return True
+    if "unidentified" in normalized or "unknown" in normalized or "unnamed" in normalized:
         return True
     garbage_tokens = {
         "unidentified mine",
@@ -189,7 +207,7 @@ def _iter_mrds_records() -> tuple[list[dict], list[str]]:
                         "mineral": _decode_mrds_minerals(code_list),
                         "lat": lat,
                         "lng": lng,
-                        "tipo": dev_stat or "Yacimiento",
+                        "tipo": _translate_dev_status(dev_stat or "Yacimiento"),
                         "source_url": source_url or "https://mrdata.usgs.gov/mrds/",
                     }
                 )
