@@ -10,7 +10,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from urllib.parse import urlencode
 
-from storage import get_dataset, save_dataset, utc_now_iso
+from storage import save_dataset, utc_now_iso
 
 
 MRDS_WFS_URL = "https://mrdata.usgs.gov/services/mrds"
@@ -378,15 +378,8 @@ def scrape_dataset_with_fallback() -> tuple[dict, str]:
 
 def main() -> int:
     source_url = os.getenv("DATA_JSON_SOURCE_URL", "").strip()
-    source_mode = "db-only"
-
-    try:
-        current = get_dataset()
-    except Exception:  # noqa: BLE001
-        current = {"meta": {}, "items": []}
-    current.setdefault("meta", {})
-    if not isinstance(current.get("items"), list):
-        current["items"] = []
+    source_mode = "rebuild"
+    current: dict = {"meta": {}, "items": []}
 
     if source_url:
         try:
@@ -399,15 +392,13 @@ def main() -> int:
                 current["meta"]["updatedAt"] = utc_now_iso()
                 source_mode = "remote-json"
         except Exception as exc:  # noqa: BLE001
-            current["meta"]["lastRemoteError"] = str(exc)
-            source_mode = "remote-json-error"
-
-    if not source_url and not current["items"]:
+            raise RuntimeError(f"Remote JSON refresh failed ({source_url}): {exc}") from exc
+    else:
         scraped, source_name = scrape_dataset_with_fallback()
         current = scraped
         current.setdefault("meta", {})
         current["meta"]["scrapeSourceName"] = source_name
-        source_mode = "scrape-fallback"
+        source_mode = "scrape-rebuild"
 
     current["meta"].setdefault("version", 1)
     current["meta"].setdefault("source", "postgresql")

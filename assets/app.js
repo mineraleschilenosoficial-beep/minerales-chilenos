@@ -3,7 +3,7 @@
   const DATA_URL = cfg.DATA_URL || "/api/yacimientos";
   const LINK_REPORT_URL = cfg.LINK_REPORT_URL || "/api/link-report";
   const GTM_ID = (cfg.GTM_ID || "").trim();
-  const CACHE_KEY = cfg.CACHE_KEY || "mineraleschilenos:data:v1";
+  const CACHE_KEY = cfg.CACHE_KEY || "mineraleschilenos:data:v2";
   const CACHE_TTL_MS = cfg.CACHE_TTL_MS || 1000 * 60 * 60 * 6;
   const MOBILE_SHEET_KEY = "mineraleschilenos:mobile-sheet-state";
 
@@ -154,12 +154,6 @@
   }
 
   async function loadData() {
-    const freshCache = loadFreshCache();
-    if (freshCache && Array.isArray(freshCache.items)) {
-      window.__dataOrigin = "cache";
-      return freshCache;
-    }
-
     const candidates = [DATA_URL, "/api/yacimientos"];
     for (const url of candidates) {
       try {
@@ -171,6 +165,12 @@
         window.__dataOrigin = "remote";
         return json;
       } catch {}
+    }
+
+    const freshCache = loadFreshCache();
+    if (freshCache && Array.isArray(freshCache.items)) {
+      window.__dataOrigin = "cache";
+      return freshCache;
     }
 
     const staleCache = loadAnyCache();
