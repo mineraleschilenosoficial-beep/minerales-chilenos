@@ -70,8 +70,22 @@
     detailBackdrop: document.getElementById("detail-backdrop"),
     modalTitle: document.getElementById("modal-title"),
     modalContent: document.getElementById("modal-content"),
-    modalClose: document.getElementById("btn-close-modal")
+    modalClose: document.getElementById("btn-close-modal"),
+    legendList: document.getElementById("legend-list")
   };
+
+  const MINERAL_STYLES = [
+    { key: "cobre", label: "Cobre", color: "#B87333", symbol: "Cu" },
+    { key: "litio", label: "Litio", color: "#5B9BD5", symbol: "Li" },
+    { key: "hierro", label: "Hierro", color: "#858585", symbol: "Fe" },
+    { key: "oro", label: "Oro", color: "#D4AF37", symbol: "Au" },
+    { key: "plata", label: "Plata", color: "#C0C0C0", symbol: "Ag" },
+    { key: "zinc", label: "Zinc", color: "#7E9FB3", symbol: "Zn" },
+    { key: "plomo", label: "Plomo", color: "#5A5A66", symbol: "Pb" },
+    { key: "molibdeno", label: "Molibdeno", color: "#4E7A73", symbol: "Mo" },
+    { key: "manganeso", label: "Manganeso", color: "#7D6A56", symbol: "Mn" },
+    { key: "desconocido", label: "Sin clasificar", color: "#9A8C6E", symbol: "?" }
+  ];
 
   function initGtm() {
     if (!/^GTM-[A-Z0-9]+$/i.test(GTM_ID)) {
@@ -99,20 +113,28 @@
     }
   }
 
+  function normalizeMineral(value) {
+    return String(value || "").trim().toLocaleLowerCase("es-CL");
+  }
+
+  function mineralStyle(value) {
+    const normalized = normalizeMineral(value);
+    for (const style of MINERAL_STYLES) {
+      if (normalized.includes(style.key)) return style;
+    }
+    return MINERAL_STYLES[MINERAL_STYLES.length - 1];
+  }
+
   function colorFor(item) {
     if (item.libre) return "#2D7A4F";
-    const m = ((item.mineral && item.mineral[0]) || "").toLowerCase();
-    if (m.includes("litio")) return "#5B9BD5";
-    if (m.includes("hierro")) return "#858585";
-    return "#B87333";
+    const primary = (item.mineral && item.mineral[0]) || "desconocido";
+    return mineralStyle(primary).color;
   }
 
   function symbolFor(item) {
     if (item.libre) return "L";
-    const m = ((item.mineral && item.mineral[0]) || "").toLowerCase();
-    if (m.includes("litio")) return "Li";
-    if (m.includes("hierro")) return "Fe";
-    return "Cu";
+    const primary = (item.mineral && item.mineral[0]) || "desconocido";
+    return mineralStyle(primary).symbol;
   }
 
   function formatDate(iso) {
@@ -207,6 +229,19 @@
     els.healthBadge.classList.remove("health-ok", "health-warn", "health-fail");
     els.healthBadge.classList.add(statusClass);
     els.healthBadge.textContent = text;
+  }
+
+  function renderLegend() {
+    if (!els.legendList) return;
+    const rows = [
+      ...MINERAL_STYLES
+        .filter((style) => style.key !== "desconocido")
+        .map((style) => {
+          return `<div class="legend-row"><span class="sw" style="background:${style.color}"></span> ${style.label}</div>`;
+        }),
+      '<div class="legend-row"><span class="sw" style="background:#2D7A4F"></span> Concesion disponible</div>'
+    ];
+    els.legendList.innerHTML = rows.join("");
   }
 
   function pluralize(value, singular, plural) {
@@ -424,7 +459,13 @@
   function openDetail(item) {
     els.modalTitle.textContent = item.nombre;
     const mineralPills = (item.mineral || []).map((m) => {
-      return `<span style="display:inline-block;background:${colorFor(item)};color:#111;padding:4px 10px;border-radius:999px;font-weight:700;margin-right:6px">${m.toUpperCase()}</span>`;
+      const style = mineralStyle(m);
+      return [
+        `<span class="mineral-pill" style="--mineral-color:${style.color}">`,
+        `<span class="marker-pin marker-pin--mini" style="background:${style.color}"><span>${style.symbol}</span></span>`,
+        `<span>${escapeHtml(toTitleCase(m))}</span>`,
+        "</span>"
+      ].join("");
     }).join("");
 
     const freeSection = item.libre ? [
@@ -471,7 +512,7 @@
 
     els.modalContent.innerHTML = [
       `<div style="color:var(--gold);margin-bottom:10px">${item.tipo} · ${item.region}</div>`,
-      `<div style="margin-bottom:12px">${mineralPills}</div>`,
+      `<div class="mineral-pill-row">${mineralPills}</div>`,
       `<details class="detail-group" open><summary>Resumen de operación</summary><div class="detail-group-body">${operationHtml}</div></details>`,
       `<details class="detail-group"><summary>Mercado laboral y económico</summary><div class="detail-group-body">${marketHtml}</div></details>`,
       freeSection,
@@ -703,6 +744,7 @@
 
   async function bootstrap() {
     initGtm();
+    renderLegend();
     wireUi();
     els.status.textContent = "Inicializando visualizador...";
     void loadLinkHealth();
