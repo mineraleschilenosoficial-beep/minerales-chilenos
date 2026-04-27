@@ -14,6 +14,10 @@ from storage import get_dataset, save_dataset, utc_now_iso
 
 SERNAGEOMIN_MAPSERVER = "https://geoarcgis.sernageomin.cl/ArcGIS/rest/services/geoportal/Yacimiento/MapServer/0/query"
 CKAN_PACKAGE_SEARCH = "https://datos.gob.cl/api/3/action/package_search"
+BUILTIN_ARCGIS_SOURCES: list[tuple[str, str]] = [
+    ("SERNAGEOMIN ArcGIS", SERNAGEOMIN_MAPSERVER),
+    ("SERNAGEOMIN ArcGIS Legacy", "http://portalgeomin.sernageomin.cl:6080/arcgis/rest/services/geoportal/Yacimiento/MapServer/0/query"),
+]
 
 
 def fetch_optional_remote_source(url: str) -> dict | None:
@@ -28,10 +32,6 @@ def fetch_optional_remote_source(url: str) -> dict | None:
     if not isinstance(payload, dict) or not isinstance(payload.get("items"), list):
         raise ValueError("Remote payload must be an object with 'items' array.")
     return payload
-
-
-def _split_env_urls(value: str) -> list[str]:
-    return [part.strip() for part in value.split(",") if part.strip()]
 
 
 def _request_json(url: str, params: dict[str, str]) -> dict:
@@ -221,16 +221,20 @@ def _discover_ckan_arcgis_urls() -> list[str]:
 
 
 def scrape_dataset_with_fallback() -> tuple[dict, str]:
-    candidates: list[tuple[str, str]] = [("SERNAGEOMIN ArcGIS", SERNAGEOMIN_MAPSERVER)]
-
-    for url in _split_env_urls(os.getenv("SCRAPE_SOURCE_URLS", "")):
-        candidates.append(("SCRAPE_SOURCE_URLS", url))
-
+    candidates: list[tuple[str, str]] = list(BUILTIN_ARCGIS_SOURCES)
     for url in _discover_ckan_arcgis_urls():
         candidates.append(("datos.gob.cl CKAN", url))
 
-    errors: list[str] = []
+    unique_candidates: list[tuple[str, str]] = []
+    seen_urls: set[str] = set()
     for source_name, source_url in candidates:
+        if source_url in seen_urls:
+            continue
+        seen_urls.add(source_url)
+        unique_candidates.append((source_name, source_url))
+
+    errors: list[str] = []
+    for source_name, source_url in unique_candidates:
         try:
             dataset = _scrape_arcgis_query(source_url, source_name)
             return dataset, source_name
