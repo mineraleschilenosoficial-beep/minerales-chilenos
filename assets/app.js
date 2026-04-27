@@ -46,7 +46,9 @@
   let onlyLibres = false;
   let mobileSheetState = "collapsed";
   let mobileSheetStateInitialized = false;
+  const MAX_LIST_RENDER = 350;
   const markerById = new Map();
+  const allMarkerById = new Map();
   let selectedMarkerId = null;
 
   const els = {
@@ -355,8 +357,8 @@
       els.list.innerHTML = '<div class="item"><div class="item-title">Sin resultados</div><div class="item-meta">Ajusta filtros o limpia búsqueda.</div></div>';
       return;
     }
-
-    els.list.innerHTML = filtered.map((x) => {
+    const visibleItems = filtered.slice(0, MAX_LIST_RENDER);
+    const htmlRows = visibleItems.map((x) => {
       return [
         `<article class="item" data-id="${x.id}">`,
         `<div class="item-title">${x.nombre}</div>`,
@@ -364,7 +366,11 @@
         `<div class="item-meta">${(x.mineral || []).join(", ").toUpperCase()}</div>`,
         "</article>"
       ].join("");
-    }).join("");
+    });
+    if (filtered.length > MAX_LIST_RENDER) {
+      htmlRows.push(`<div class="item"><div class="item-title">Mostrando primeros ${MAX_LIST_RENDER}</div><div class="item-meta">Usa filtros para acotar resultados (${filtered.length} encontrados).</div></div>`);
+    }
+    els.list.innerHTML = htmlRows.join("");
 
     els.list.querySelectorAll(".item[data-id]").forEach((node) => {
       node.addEventListener("click", () => {
@@ -431,6 +437,14 @@
     });
   }
 
+  function debounce(fn, waitMs) {
+    let timer = null;
+    return (...args) => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => fn(...args), waitMs);
+    };
+  }
+
   function applyFilters() {
     const q = els.q.value.trim().toLowerCase();
     const fMineral = els.mineral.value;
@@ -443,22 +457,28 @@
       if (fRegion && x.region !== fRegion) return false;
       if (fTipo && x.tipo !== fTipo) return false;
       if (!q) return true;
-      const haystack = `${x.nombre} ${x.region} ${x.empresa || ""} ${(x.mineral || []).join(" ")}`.toLowerCase();
-      return haystack.includes(q);
+      return x._searchText.includes(q);
     });
 
     if (mapEnabled && markerLayer) {
       markerLayer.clearLayers();
       markerById.clear();
+      const markersToShow = [];
       filtered.forEach((x) => {
-        const marker = buildMarker(x);
+        const marker = allMarkerById.get(x.id);
+        if (!marker) return;
         markerById.set(x.id, marker);
-        markerLayer.addLayer(marker);
+        markersToShow.push(marker);
       });
+      if (typeof markerLayer.addLayers === "function") {
+        markerLayer.addLayers(markersToShow);
+      } else {
+        markersToShow.forEach((marker) => markerLayer.addLayer(marker));
+      }
       if (selectedMarkerId !== null && !markerById.has(selectedMarkerId)) {
         selectedMarkerId = null;
       } else if (selectedMarkerId !== null) {
-        setSelectedMarker(selectedMarkerId);
+        requestAnimationFrame(() => setSelectedMarker(selectedMarkerId));
       }
     }
 
@@ -680,12 +700,12 @@
   }
 
   function wireUi() {
-    ["input", "change"].forEach((evt) => {
-      els.q.addEventListener(evt, applyFilters);
-      els.mineral.addEventListener(evt, applyFilters);
-      els.region.addEventListener(evt, applyFilters);
-      els.tipo.addEventListener(evt, applyFilters);
-    });
+    const debouncedApply = debounce(applyFilters, 160);
+    els.q.addEventListener("input", debouncedApply);
+    els.q.addEventListener("change", applyFilters);
+    els.mineral.addEventListener("change", applyFilters);
+    els.region.addEventListener("change", applyFilters);
+    els.tipo.addEventListener("change", applyFilters);
 
     els.btnLibres.addEventListener("click", () => {
       onlyLibres = !onlyLibres;
@@ -789,8 +809,18 @@
 
     try {
       const payload = await loadData();
-      allItems = payload.items;
+      allItems = payload.items.map((x) => {
+        const searchText = `${x.nombre || ""} ${x.region || ""} ${x.empresa || ""} ${(x.mineral || []).join(" ")}`.toLowerCase();
+        return { ...x, _searchText: searchText };
+      });
       window.__dataUpdatedAt = payload.meta && payload.meta.updatedAt;
+
+      if (mapEnabled && markerLayer) {
+        allMarkerById.clear();
+        allItems.forEach((item) => {
+          allMarkerById.set(item.id, buildMarker(item));
+        });
+      }
 
       const minerals = new Set(allItems.flatMap((x) => x.mineral || []));
       const regions = new Set(allItems.map((x) => x.region).filter(Boolean));

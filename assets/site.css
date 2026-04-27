@@ -347,7 +347,7 @@ button:hover {
   position: fixed;
   inset: 0;
   z-index: 1390;
-  background: rgba(0, 0, 0, 0.35);
+  background: transparent;
   opacity: 0;
   pointer-events: none;
   transition: opacity .2s ease;
