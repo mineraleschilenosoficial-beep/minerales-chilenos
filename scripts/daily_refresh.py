@@ -192,6 +192,7 @@ def _iter_mrds_records() -> tuple[list[dict], list[str]]:
                 site_name = (feature.findtext("ms:site_name", default="", namespaces=ns) or "").strip()
                 dep_id = (feature.findtext("ms:dep_id", default="", namespaces=ns) or "").strip()
                 dev_stat = (feature.findtext("ms:dev_stat", default="", namespaces=ns) or "").strip()
+                fips_code = (feature.findtext("ms:fips_code", default="", namespaces=ns) or "").strip()
                 code_list = (feature.findtext("ms:code_list", default="", namespaces=ns) or "").strip()
                 source_url = (feature.findtext("ms:url", default="", namespaces=ns) or "").strip()
                 coord_text = feature.findtext(".//gml:coordinates", default="", namespaces=ns) or ""
@@ -203,6 +204,7 @@ def _iter_mrds_records() -> tuple[list[dict], list[str]]:
                 records.append(
                     {
                         "dep_id": dep_id,
+                        "fips_code": fips_code,
                         "nombre": site_name,
                         "mineral": _decode_mrds_minerals(code_list),
                         "lat": lat,
@@ -227,10 +229,14 @@ def scrape_mrds_chile_dataset() -> dict:
     dedup_coord_drop = 0
     dedup_exact_coord_drop = 0
     dedup_name_area_drop = 0
+    non_chile_drop = 0
 
     by_dep_id: dict[str, dict] = {}
     without_dep_id: list[dict] = []
     for record in records:
+        if record.get("fips_code") != "fCI":
+            non_chile_drop += 1
+            continue
         lat = record["lat"]
         lng = record["lng"]
         if not _is_valid_chile_coordinate(lat, lng):
@@ -346,6 +352,7 @@ def scrape_mrds_chile_dataset() -> dict:
         "droppedSuspiciousCoordMineral": dedup_coord_drop,
         "droppedDuplicatesExactCoord": dedup_exact_coord_drop,
         "droppedDuplicatesNameArea": dedup_name_area_drop,
+        "droppedNonChile": non_chile_drop,
         "failedWindows": len(errors),
     }
 
