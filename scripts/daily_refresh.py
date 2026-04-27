@@ -1,22 +1,13 @@
 #!/usr/bin/env python3
-"""Daily data refresh entrypoint for GitHub Actions (frontend-only)."""
+"""Refresh dataset and persist it into PostgreSQL (and local fallback file)."""
 
 from __future__ import annotations
 
-import datetime as dt
 import json
 import os
 import ssl
 import urllib.request
-from pathlib import Path
-
-
-ROOT = Path(__file__).resolve().parents[1]
-DATA_FILE = ROOT / "data" / "yacimientos.json"
-
-
-def utc_now_iso() -> str:
-    return dt.datetime.now(dt.timezone.utc).isoformat()
+from storage import get_dataset, save_dataset, utc_now_iso
 
 
 def fetch_optional_remote_source(url: str) -> dict | None:
@@ -34,7 +25,7 @@ def fetch_optional_remote_source(url: str) -> dict | None:
 
 
 def main() -> int:
-    current = json.loads(DATA_FILE.read_text(encoding="utf-8"))
+    current = get_dataset()
     current.setdefault("meta", {})
 
     source_url = os.getenv("DATA_JSON_SOURCE_URL", "").strip()
@@ -57,7 +48,7 @@ def main() -> int:
     current["meta"]["lastVerifiedAt"] = utc_now_iso()
     current["meta"]["refreshMode"] = source_mode
 
-    DATA_FILE.write_text(json.dumps(current, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    save_dataset(current)
     print(f"daily refresh complete mode={source_mode}")
     return 0
 

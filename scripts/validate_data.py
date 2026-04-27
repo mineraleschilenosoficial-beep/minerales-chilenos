@@ -4,16 +4,12 @@
 from __future__ import annotations
 
 import datetime as dt
-import json
 import re
 import sys
-from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-
-ROOT = Path(__file__).resolve().parents[1]
-DATA_FILE = ROOT / "data" / "yacimientos.json"
+from storage import get_dataset
 
 
 def is_http_url(value: str) -> bool:
@@ -55,11 +51,11 @@ def main() -> int:
     errors: list[str] = []
     warnings: list[str] = []
 
-    if not DATA_FILE.exists():
-        print("ERROR: data/yacimientos.json not found")
+    try:
+        payload = get_dataset()
+    except Exception as exc:  # noqa: BLE001
+        print(f"ERROR: cannot load dataset ({exc})")
         return 1
-
-    payload = json.loads(DATA_FILE.read_text(encoding="utf-8"))
     meta = payload.get("meta")
     items = payload.get("items")
 

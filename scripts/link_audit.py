@@ -12,10 +12,10 @@ import urllib.request
 from pathlib import Path
 from typing import Dict, List
 
+from storage import get_dataset, save_link_report
 
 ROOT = Path(__file__).resolve().parents[1]
 INDEX_FILE = ROOT / "index.html"
-DATA_FILE = ROOT / "data" / "yacimientos.json"
 REPORTS_DIR = ROOT / "reports"
 REPORT_FILE = REPORTS_DIR / "link-check-report.json"
 
@@ -27,7 +27,7 @@ PRECONNECT_ONLY = {
 
 def collect_urls() -> List[str]:
     index = INDEX_FILE.read_text(encoding="utf-8")
-    data = json.loads(DATA_FILE.read_text(encoding="utf-8"))
+    data = get_dataset()
 
     urls: List[str] = []
     for pattern in [r'href="(https?://[^"]+)"', r'src="(https?://[^"]+)"']:
@@ -144,6 +144,7 @@ def main() -> int:
       "failed": failed
     }
     REPORT_FILE.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+    save_link_report(report)
 
     print(f"checked={len(results)} ok={len(ok)} warnings={len(warnings)} failed={len(failed)}")
     if warnings:
