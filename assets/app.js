@@ -71,7 +71,6 @@
     btnMobilePanel: document.getElementById("btn-mobile-panel"),
     healthBadge: document.getElementById("health-badge"),
     mobileFilterBar: document.getElementById("mobile-filter-bar"),
-    selectedInfo: document.getElementById("selected-info"),
     sidebar: document.getElementById("sidebar"),
     sheetGrab: document.querySelector(".sheet-grab"),
     mobileBackdrop: document.getElementById("mobile-backdrop"),
@@ -333,46 +332,9 @@
     const marker = L.marker([item.lat, item.lng], { icon });
     marker.on("click", () => {
       setSelectedMarker(item.id);
-      renderSelectedSidebar(item);
       openDetail(item);
     });
     return marker;
-  }
-
-  function renderSelectedSidebar(item) {
-    if (!els.selectedInfo) return;
-    if (!item) {
-      els.selectedInfo.classList.add("empty");
-      els.selectedInfo.innerHTML = "Selecciona un pin para ver una ficha rápida del yacimiento.";
-      return;
-    }
-
-    const rows = [];
-    const pushRow = (label, value) => {
-      if (value === null || value === undefined || String(value).trim() === "") return;
-      rows.push(`<div class="selected-row"><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</div>`);
-    };
-
-    pushRow("Tipo", prettyTypeLabel(item.tipo));
-    pushRow("Región", item.region);
-    pushRow("Minerales", (item.mineral || []).map((m) => toTitleCase(m)).join(", "));
-    pushRow("Estado", item.libre ? "Concesión disponible" : "Operación registrada");
-    if (typeof item.lat === "number" && typeof item.lng === "number") {
-      pushRow("Coordenadas", `${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`);
-    }
-
-    const links = (Array.isArray(item.sources) ? item.sources : [])
-      .filter((src) => src && typeof src.url === "string" && src.url.startsWith("http"))
-      .slice(0, 3)
-      .map((src) => `<a href="${escapeHtml(src.url)}" target="_blank" rel="noreferrer">${escapeHtml(src.name || "Fuente")}</a>`)
-      .join("");
-
-    els.selectedInfo.classList.remove("empty");
-    els.selectedInfo.innerHTML = [
-      `<div class="selected-title">${escapeHtml(item.nombre || "Yacimiento")}</div>`,
-      rows.length ? `<div class="selected-grid">${rows.join("")}</div>` : '<div class="selected-row">Sin metadatos adicionales útiles.</div>',
-      links ? `<div class="selected-links">${links}</div>` : ""
-    ].join("");
   }
 
   function addToIndex(indexMap, key, item) {
@@ -511,7 +473,6 @@
 
       if (selectedMarkerId !== null && !markerById.has(selectedMarkerId)) {
         selectedMarkerId = null;
-        renderSelectedSidebar(null);
       } else if (selectedMarkerId !== null) {
         requestAnimationFrame(() => setSelectedMarker(selectedMarkerId));
       }
@@ -623,25 +584,35 @@
       ? `<a class="link-btn" href="${item.web}" target="_blank" rel="noreferrer">Ver página corporativa</a>`
       : "";
 
-    const operationHtml = [
-      `Empresa: <strong>${item.empresa || "Disponible para concesión"}</strong><br>`,
-      `Superficie: <strong>${item.sup || "-"}</strong><br>`,
-      `Altitud: <strong>${item.alt || "-"}</strong><br>`,
-      `Produccion: <strong>${item.prod || "-"}</strong>`
-    ].join("");
+    const usefulRows = [];
+    const pushUseful = (label, value) => {
+      if (value === null || value === undefined) return;
+      const text = String(value).trim();
+      if (!text || text === "-" || text.toLowerCase() === "n/a") return;
+      usefulRows.push(`${label}: <strong>${escapeHtml(text)}</strong>`);
+    };
+    pushUseful("Tipo", prettyTypeLabel(item.tipo));
+    pushUseful("Región", item.region);
+    pushUseful("Empresa", item.empresa);
+    if (typeof item.lat === "number" && typeof item.lng === "number") {
+      pushUseful("Coordenadas", `${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`);
+    }
+    pushUseful("Producción", item.prod);
+    pushUseful("Superficie", item.sup);
+    pushUseful("Altitud", item.alt);
+    pushUseful("Dotación", item.dotacion);
+    pushUseful("Sueldos promedio", item.sueldos_promedio);
+    pushUseful("Ingresos anuales", item.ingresos);
+    pushUseful("Contrataciones futuras", item.contrataciones_futuras);
 
-    const marketHtml = [
-      `Dotacion: <strong>${item.dotacion || "-"}</strong><br>`,
-      `Sueldos promedio: <strong>${item.sueldos_promedio || "-"}</strong><br>`,
-      `Ingresos anuales: <strong>${item.ingresos || "-"}</strong><br>`,
-      `Contrataciones futuras: <strong>${item.contrataciones_futuras || "-"}</strong>`
-    ].join("");
+    const usefulHtml = usefulRows.length
+      ? usefulRows.join("<br>")
+      : "Sin datos operativos adicionales útiles para este registro.";
 
     els.modalContent.innerHTML = [
       `<div style="color:var(--gold);margin-bottom:10px">${item.tipo} · ${item.region}</div>`,
       `<div class="mineral-pill-row">${mineralPills}</div>`,
-      `<details class="detail-group" open><summary>Resumen de operación</summary><div class="detail-group-body">${operationHtml}</div></details>`,
-      `<details class="detail-group"><summary>Mercado laboral y económico</summary><div class="detail-group-body">${marketHtml}</div></details>`,
+      `<details class="detail-group" open><summary>Ficha del yacimiento</summary><div class="detail-group-body">${usefulHtml}</div></details>`,
       freeSection,
       `<details class="detail-group"><summary>Notas y noticias</summary><div class="detail-group-body">${item.noticias || "Sin novedades por ahora."}</div></details>`,
       sourcesHtml ? `<details class="detail-group" open><summary>Fuentes del pin</summary><div class="detail-group-body"><div id="pin-source-links" style="display:grid;gap:8px;">${sourcesHtml}</div></div></details>` : "",
@@ -810,7 +781,6 @@
 
       if (!mapEnabled || !map) {
         setSelectedMarker(id);
-        renderSelectedSidebar(item);
         if (isMobileViewport()) {
           setMobilePanelOpen(false);
         }
@@ -821,7 +791,6 @@
       const marker = markerById.get(id);
       if (!marker) {
         setSelectedMarker(id);
-        renderSelectedSidebar(item);
         openDetail(item);
         return;
       }
@@ -913,7 +882,6 @@
     initGtm();
     renderLegend();
     wireUi();
-    renderSelectedSidebar(null);
     els.status.textContent = "Inicializando visualizador...";
     void loadLinkHealth();
 
