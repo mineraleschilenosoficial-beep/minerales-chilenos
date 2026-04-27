@@ -1,36 +1,43 @@
 # minerales-chilenos
 
-Sitio estático frontend de `MineralesChilenos.cl`, listo para publicar en GitHub Pages.
+Aplicación web para `MineralesChilenos.cl` preparada para desplegar en Coolify con backend Python + PostgreSQL.
 
-## Archivos principales
+## Arquitectura actual
 
-- `index.html`: composición de UI y carga de recursos.
-- `assets/site.css`: estilos y responsive.
-- `assets/app.js`: lógica de mapa, filtros, modal y cache local.
-- `assets/config.js`: configuración central (data URL, cache y GTM).
-- `CNAME`: dominio personalizado (`www.mineraleschilenos.cl`).
-- `data/yacimientos.json`: fuente de datos editable del mapa (sin backend).
-- `404.html`: página de error para navegación rota.
-- `robots.txt`: reglas para motores de búsqueda.
-- `sitemap.xml`: sitemap básico del sitio.
-
-## Publicación en GitHub Pages
-
-1. Ve a `Settings > Pages` en el repositorio.
-2. En `Source`, selecciona `Deploy from a branch`.
-3. Elige la rama publicada y carpeta `/ (root)`.
-4. Guarda y espera la publicación.
-5. Verifica que el dominio personalizado esté activo con `CNAME`.
+- `api/server.py`: API HTTP y servidor de archivos estáticos.
+- `assets/app.js`: frontend (mapa, filtros, modal y cache local del navegador).
+- `assets/config.js`: endpoints de la API y configuración de cache/GTM.
+- `scripts/storage.py`: persistencia compartida en PostgreSQL (con respaldo en `data/yacimientos.json`).
+- `scripts/daily_refresh.py`: refresca dataset.
+- `scripts/validate_data.py`: valida esquema/calidad del dataset.
+- `scripts/link_audit.py`: audita enlaces y genera reporte.
+- `scripts/refresh_cycle.py`: ejecuta refresh + validación + auditoría.
+- `Dockerfile`: imagen para despliegue en Coolify.
+- `requirements.txt`: dependencias Python.
 
 ## Desarrollo local
 
-Como es estático, puedes abrir `index.html` directamente o servirlo con cualquier servidor simple.
-
-Ejemplo con Python:
+1. Instalar dependencias:
 
 ```bash
-python3 -m http.server 8080
+python3 -m pip install -r requirements.txt
 ```
+
+2. Definir base de datos (opcional en local):
+
+```bash
+export DATABASE_URL="postgresql://user:password@localhost:5432/minerales"
+```
+
+3. Ejecutar API:
+
+```bash
+python3 api/server.py
+```
+
+4. Abrir:
+
+- `http://localhost:8000`
 
 ## Google Tag Manager (GTM)
 
@@ -46,26 +53,38 @@ Con eso, el sitio carga automáticamente:
 - script de GTM (`gtm.js`) en `<head>`,
 - fallback `<noscript>` con `iframe` en `<body>`.
 
-## Actualización automática (frontend-only)
+## Flujo de datos
 
-El sitio carga datos desde `data/yacimientos.json` y usa cache local temporal del navegador:
+La UI consume:
 
-- Si hay conexión, intenta cargar la versión más nueva de `data/yacimientos.json`.
+- `GET /api/yacimientos`
+- `GET /api/link-report`
+
+Persistencia:
+
+- Primaria: PostgreSQL (`DATABASE_URL`, tabla `app_state`).
+- Respaldo: `data/yacimientos.json` y `reports/link-check-report.json`.
+
+Comportamiento de lectura frontend:
+
+- Si hay conexión, intenta cargar la versión más nueva de `/api/yacimientos`.
 - Si falla o está reciente, usa cache local para mantener continuidad.
 - La información de "Última actualización" se toma de `meta.updatedAt`.
 
-### Flujo sugerido para mantener datos organizados
+### Flujo recomendado para actualizar datos
 
-1. Editar solo `data/yacimientos.json`.
+1. Ejecutar:
+
+```bash
+python3 scripts/refresh_cycle.py
+```
+
 2. Mantener estructura:
    - `meta` con `updatedAt`, `version`, `source`.
    - `meta.sources` con enlaces exactos de fuentes oficiales.
    - `items[*].sources` con fuentes específicas por pin.
    - `items` con registros de yacimientos/concesiones.
-3. Hacer commit y push.
-4. GitHub Pages publica automáticamente.
-
-Esto permite actualizar contenido sin tocar lógica de UI.
+3. Verificar salida en logs y en `GET /api/yacimientos`.
 
 ## Verificación de enlaces
 
@@ -107,22 +126,38 @@ Chequeos incluidos:
 - `items[*].sources[*].url` también debe ser específica (no homepage/root).
 - advertencia si `meta.updatedAt` es antiguo.
 
-## Actualización diaria automática
+## Despliegue en Coolify
 
-Se incluyó workflow de GitHub Actions:
+### 1) Servicio principal
 
-- `.github/workflows/daily-data-refresh.yml`
+- Tipo: `Dockerfile`.
+- Puerto: `8000`.
+- Start command: usa `CMD` de Dockerfile (`gunicorn --bind 0.0.0.0:8000 api.server:app`).
+- Variables requeridas:
+  - `DATABASE_URL` (PostgreSQL de Coolify o externo).
+  - `DATA_JSON_SOURCE_URL` (opcional, JSON remoto con `{meta, items}`).
 
-Qué hace diariamente:
+### 2) Base de datos PostgreSQL
 
-1. Ejecuta `scripts/daily_refresh.py`.
-2. Ejecuta `scripts/validate_data.py`.
-3. Ejecuta `scripts/link_audit.py`.
-4. Si hay cambios, hace commit y push automático.
+- Crear servicio PostgreSQL en Coolify.
+- Conectar su URL al `DATABASE_URL` del servicio principal.
+- La tabla `app_state` se crea automáticamente al primer uso.
 
-Opcional (fuente remota de datos):
+### 3) Cronjob en Coolify (cada 4 horas)
 
-- Define el secreto `DATA_JSON_SOURCE_URL` con una URL JSON pública que entregue:
-  - `{ "meta": {...}, "items": [...] }`
+- Crear Cron Job en Coolify contra el mismo repositorio/imagen.
+- Schedule:
 
-Si no defines ese secreto, se mantiene `items` local y solo se actualizan metadatos de verificación.
+```cron
+0 */4 * * *
+```
+
+- Command:
+
+```bash
+python3 scripts/refresh_cycle.py
+```
+
+### 4) Workflows de GitHub
+
+- Se eliminó el workflow de GitHub Actions para refresh automático.
