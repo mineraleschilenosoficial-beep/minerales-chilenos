@@ -33,6 +33,8 @@ def main() -> int:
     except Exception:  # noqa: BLE001
         current = {"meta": {}, "items": []}
     current.setdefault("meta", {})
+    if not isinstance(current.get("items"), list):
+        current["items"] = []
 
     if source_url:
         try:
@@ -48,10 +50,12 @@ def main() -> int:
             current["meta"]["lastRemoteError"] = str(exc)
             source_mode = "remote-json-error"
 
-    if not source_url and not current.get("items"):
-        print("ERROR: dataset is empty in PostgreSQL and DATA_JSON_SOURCE_URL is not set")
-        return 1
+    if not source_url and not current["items"]:
+        source_mode = "db-bootstrap-empty"
 
+    current["meta"].setdefault("version", 1)
+    current["meta"].setdefault("source", "postgresql")
+    current["meta"]["updatedAt"] = utc_now_iso()
     current["meta"]["lastVerifiedAt"] = utc_now_iso()
     current["meta"]["refreshMode"] = source_mode
 

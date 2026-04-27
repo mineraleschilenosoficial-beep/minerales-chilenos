@@ -134,7 +134,9 @@ Chequeos incluidos:
 - Start command: usa `CMD` de Dockerfile (`gunicorn --bind 0.0.0.0:8000 api.server:app`).
 - Variables requeridas:
   - `DATABASE_URL` (PostgreSQL de Coolify o externo).
-  - `DATA_JSON_SOURCE_URL` (opcional, JSON remoto con `{meta, items}`).
+  - `DATA_JSON_SOURCE_URL` (opcional, JSON remoto con `{meta, items}` para poblar/actualizar datos).
+
+Si no defines `DATA_JSON_SOURCE_URL`, el refresh hace bootstrap automático en PostgreSQL con dataset vacío válido (sin depender de archivos JSON locales).
 
 ### 2) Base de datos PostgreSQL
 
