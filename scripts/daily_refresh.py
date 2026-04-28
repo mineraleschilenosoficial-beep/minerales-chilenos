@@ -10,7 +10,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from urllib.parse import urlencode
 
-from storage import save_dataset, utc_now_iso
+from storage import apply_manual_overrides, save_dataset, utc_now_iso
 
 
 MRDS_WFS_URL = "https://mrdata.usgs.gov/services/mrds"
@@ -419,11 +419,18 @@ def main() -> int:
         current["meta"]["scrapeSourceName"] = source_name
         source_mode = "scrape-rebuild"
 
+    current, applied_overrides = apply_manual_overrides(current)
+
     current["meta"].setdefault("version", 1)
     current["meta"].setdefault("source", "postgresql")
     current["meta"]["updatedAt"] = utc_now_iso()
     current["meta"]["lastVerifiedAt"] = utc_now_iso()
     current["meta"]["refreshMode"] = source_mode
+    stats = current["meta"].get("scrapeStats")
+    if not isinstance(stats, dict):
+        stats = {}
+        current["meta"]["scrapeStats"] = stats
+    stats["manualOverridesApplied"] = int(applied_overrides)
 
     save_dataset(current)
     print(f"daily refresh complete mode={source_mode}")

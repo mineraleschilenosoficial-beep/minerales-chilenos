@@ -49,7 +49,7 @@ Acceptance rule:
   - `confidence_score`
   - `enriched_at`
 - [x] Add override source (manual trusted corrections) for key records.
-- [ ] Merge overrides during refresh cycle without breaking existing flow.
+- [x] Merge overrides during refresh cycle without breaking existing flow.
 - [ ] Add reverse geocoding path for `city/commune` enrichment.
 - [ ] Keep provenance per enriched field (official/manual/inferred).
 
