@@ -7,7 +7,7 @@ import datetime as dt
 import os
 from typing import Any
 
-from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, Text, create_engine, delete, select
+from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, Text, create_engine, delete, select, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, selectinload
 
 
@@ -163,6 +163,9 @@ class LinkReportResult(Base):
 
 def ensure_schema(engine) -> None:
     Base.metadata.create_all(engine)
+    # Hard cutover: legacy JSON key-value table is no longer supported.
+    with engine.begin() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS app_state"))
 
 
 def _extract_link_rows(item: dict[str, Any]) -> list[dict[str, str]]:
