@@ -39,6 +39,36 @@ python3 api/server.py
 
 - `http://localhost:8000`
 
+## Desarrollo local con Docker
+
+1. Levantar PostgreSQL + API:
+
+```bash
+docker compose -f docker-compose.local.yml up -d --build
+```
+
+2. Inicializar/actualizar dataset dentro del contenedor:
+
+```bash
+docker compose -f docker-compose.local.yml run --rm app python3 scripts/daily_refresh.py
+```
+
+3. Validar dataset:
+
+```bash
+docker compose -f docker-compose.local.yml run --rm app python3 scripts/validate_data.py
+```
+
+4. Abrir:
+
+- `http://localhost:8000`
+
+5. Detener entorno:
+
+```bash
+docker compose -f docker-compose.local.yml down
+```
+
 ## Google Tag Manager (GTM)
 
 1. Abre `assets/config.js`.
@@ -65,6 +95,7 @@ Convención de campos del dataset:
 - Canónicos en inglés para almacenamiento/API (`name`, `minerals`, `latitude`, `longitude`, `site_type`, `mining_company`, `is_available_concession`).
 - No hay aliases en español: todos los consumidores deben usar la convención en inglés.
 - Si la DB tiene registros legacy en español, ejecutar `python3 scripts/daily_refresh.py` para migrar/reconstruir el dataset antes de levantar la API.
+- En UI se prioriza mostrar datos públicamente verificables. Campos sensibles (por ejemplo salarios/ingresos/dotación por faena) pueden venir como `not_public` o `not_disclosed`.
 
 Persistencia:
 
@@ -125,7 +156,7 @@ python3 scripts/validate_data.py
 Chequeos incluidos:
 
 - `meta.updatedAt`, `meta.version`, `meta.source` obligatorios.
-- `items[*]` con campos mínimos (`id`, `name`, `minerals`, `latitude`, `longitude`, `region`, `site_type`, `is_available_concession`).
+- `items[*]` con campos mínimos (`id`, `name`, `minerals`, `latitude`, `longitude`, `region`, `site_type`, `is_available_concession`, `mining_company`, `operation_since`, `website`).
 - `id` único, coordenadas válidas y URLs con formato correcto.
 - `meta.sources.url` y `items[*].docs[*].url` deben ser URLs específicas (no homepage/root).
 - `items[*].sources[*].url` también debe ser específica (no homepage/root).

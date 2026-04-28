@@ -1,0 +1,35 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: minerales-local-db
+    environment:
+      POSTGRES_DB: minerales
+      POSTGRES_USER: minerales
+      POSTGRES_PASSWORD: minerales
+    ports:
+      - "5432:5432"
+    volumes:
+      - minerales_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U minerales -d minerales"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: minerales-local-app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://minerales:minerales@db:5432/minerales
+      DATA_JSON_SOURCE_URL: ""
+    ports:
+      - "8000:8000"
+    command: ["gunicorn", "--bind", "0.0.0.0:8000", "api.server:app"]
+
+volumes:
+  minerales_pgdata:
