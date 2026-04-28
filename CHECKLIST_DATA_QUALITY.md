@@ -56,7 +56,7 @@ Acceptance rule:
 ## Phase 2.1 - Mandatory Data Acquisition Plan
 
 - [x] Define source priority matrix per mandatory field (official source first, then regulated reports, then verified corporate disclosures).
-- [ ] Create source catalog per record with stable URL and extraction method:
+- [x] Create source catalog per record with stable URL and extraction method:
   - `source_name`
   - `source_url`
   - `field_coverage`

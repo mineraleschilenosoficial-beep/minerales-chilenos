@@ -136,6 +136,7 @@ class MineRecord(Base):
     minerals: Mapped[list["MineMineral"]] = relationship(cascade="all, delete-orphan", back_populates="mine")
     links: Mapped[list["MineLink"]] = relationship(cascade="all, delete-orphan", back_populates="mine")
     field_provenance: Mapped[list["MineFieldProvenance"]] = relationship(cascade="all, delete-orphan", back_populates="mine")
+    source_catalog: Mapped[list["MineSourceCatalog"]] = relationship(cascade="all, delete-orphan", back_populates="mine")
 
 
 class MineMineral(Base):
@@ -182,6 +183,21 @@ class MineFieldProvenance(Base):
     updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=dt.datetime.now(dt.timezone.utc))
     note: Mapped[str] = mapped_column(Text, nullable=False, default="")
     mine: Mapped["MineRecord"] = relationship(back_populates="field_provenance")
+
+
+class MineSourceCatalog(Base):
+    __tablename__ = "mine_source_catalog"
+    __table_args__ = (
+        UniqueConstraint("mine_id", "source_url", "field_coverage", name="uq_mine_source_catalog_key"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    mine_id: Mapped[int] = mapped_column(ForeignKey("mine_records.id", ondelete="CASCADE"), nullable=False, index=True)
+    source_name: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    source_url: Mapped[str] = mapped_column(Text, nullable=False)
+    field_coverage: Mapped[str] = mapped_column(String(80), nullable=False, default="general")
+    last_checked_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=dt.datetime.now(dt.timezone.utc))
+    mine: Mapped["MineRecord"] = relationship(back_populates="source_catalog")
 
 
 class MineOverride(Base):
@@ -427,6 +443,18 @@ def ensure_schema(engine) -> None:
                 """
             )
         )
+        conn.execute(
+            text(
+                """
+                DELETE FROM mine_source_catalog a
+                USING mine_source_catalog b
+                WHERE a.id > b.id
+                  AND a.mine_id = b.mine_id
+                  AND a.source_url = b.source_url
+                  AND a.field_coverage = b.field_coverage
+                """
+            )
+        )
 
         # Enforce idempotent uniqueness at DB level (including existing deployments).
         conn.execute(
@@ -459,6 +487,12 @@ def ensure_schema(engine) -> None:
                 "ON mine_field_provenance (mine_id, field_name, source_type, source_url)"
             )
         )
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_mine_source_catalog_key_idx "
+                "ON mine_source_catalog (mine_id, source_url, field_coverage)"
+            )
+        )
 
         # Query-performance indexes for common API/filter paths.
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_mine_records_name ON mine_records (name)"))
@@ -474,6 +508,12 @@ def ensure_schema(engine) -> None:
             text(
                 "CREATE INDEX IF NOT EXISTS idx_mine_field_provenance_field_name "
                 "ON mine_field_provenance (field_name)"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS idx_mine_source_catalog_coverage "
+                "ON mine_source_catalog (field_coverage)"
             )
         )
 
@@ -800,6 +840,59 @@ def _extract_link_rows(item: dict[str, Any]) -> list[dict[str, str]]:
     return [row for row in links if row["url"]]
 
 
+def _extract_source_catalog_rows(item: dict[str, Any]) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+
+    for src in item.get("sources", []) or []:
+        if not isinstance(src, dict):
+            continue
+        url = str(src.get("url") or "").strip()
+        if not url:
+            continue
+        rows.append(
+            {
+                "source_name": str(src.get("name") or url).strip(),
+                "source_url": url,
+                "field_coverage": "general",
+            }
+        )
+
+    coverage_lists = (
+        "docs",
+        "environmental_reports",
+        "operating_authorizations",
+        "geology_studies",
+        "mineral_life_studies",
+        "mitigation_studies",
+    )
+    for coverage in coverage_lists:
+        for entry in item.get(coverage, []) or []:
+            if isinstance(entry, str):
+                url = entry.strip()
+                if not url:
+                    continue
+                rows.append({"source_name": url, "source_url": url, "field_coverage": coverage})
+                continue
+            if not isinstance(entry, dict):
+                continue
+            url = str(entry.get("url") or "").strip()
+            if not url:
+                continue
+            rows.append(
+                {
+                    "source_name": str(entry.get("name") or url).strip(),
+                    "source_url": url,
+                    "field_coverage": coverage,
+                }
+            )
+
+    dedup: dict[tuple[str, str], dict[str, str]] = {}
+    for row in rows:
+        key = (row["source_url"], row["field_coverage"])
+        dedup[key] = row
+    return list(dedup.values())
+
+
 def save_dataset(payload: dict[str, Any]) -> None:
     meta = payload.get("meta")
     items = payload.get("items")
@@ -811,6 +904,7 @@ def save_dataset(payload: dict[str, Any]) -> None:
 
     with Session(engine) as session:
         session.execute(delete(MineLink))
+        session.execute(delete(MineSourceCatalog))
         session.execute(delete(MineFieldProvenance))
         session.execute(delete(MineMineral))
         session.execute(delete(MineRecord))
@@ -910,6 +1004,16 @@ def save_dataset(payload: dict[str, Any]) -> None:
                     )
                 )
 
+            for row in _extract_source_catalog_rows(item):
+                mine.source_catalog.append(
+                    MineSourceCatalog(
+                        source_name=row["source_name"],
+                        source_url=row["source_url"],
+                        field_coverage=row["field_coverage"],
+                        last_checked_at=_parse_datetime(utc_now_iso()),
+                    )
+                )
+
             for row in item.get("field_provenance", []) or []:
                 if not isinstance(row, dict):
                     continue
@@ -953,6 +1057,7 @@ def get_dataset() -> dict[str, Any]:
                 selectinload(MineRecord.minerals),
                 selectinload(MineRecord.links),
                 selectinload(MineRecord.field_provenance),
+                selectinload(MineRecord.source_catalog),
             )
             .order_by(MineRecord.id.asc())
         ).all()
@@ -1016,6 +1121,15 @@ def get_dataset() -> dict[str, Any]:
                         "note": row.note,
                     }
                     for row in mine.field_provenance
+                ],
+                "source_catalog": [
+                    {
+                        "source_name": row.source_name,
+                        "source_url": row.source_url,
+                        "field_coverage": row.field_coverage,
+                        "last_checked_at": _datetime_to_iso(row.last_checked_at),
+                    }
+                    for row in mine.source_catalog
                 ],
                 "city": _display_or_default(mine.city, ""),
                 "commune": _display_or_default(mine.commune, ""),
