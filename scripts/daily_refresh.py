@@ -25,25 +25,6 @@ MRDS_QUERY_BBOXES = (
     (-76.5, -56.5, -66.0, -43.5),  # Sur
 )
 
-PUBLIC_FEASIBLE_FIELDS = (
-    "mining_company",
-    "website",
-    "operation_since",
-    "operating_authorizations",
-    "environmental_reports",
-    "geology_studies",
-    "mineral_life_studies",
-    "mitigation_studies",
-)
-
-SENSITIVE_FIELDS = (
-    "direct_workers",
-    "indirect_workers",
-    "average_salary",
-    "annual_revenue",
-    "hiring_plan_2026",
-)
-
 
 def fetch_optional_remote_source(url: str) -> dict | None:
     ctx = ssl.create_default_context()
@@ -173,74 +154,6 @@ def _pick_best(existing: dict | None, candidate: dict) -> dict:
     if _record_score(candidate) > _record_score(existing):
         return candidate
     return existing
-
-
-def _has_public_value(item: dict, field: str) -> bool:
-    value = item.get(field)
-    if field == "website":
-        return isinstance(value, str) and value.startswith("http")
-    if isinstance(value, str):
-        text = value.strip()
-        return bool(text and text not in {"-", "not_public", "not_disclosed"})
-    if isinstance(value, list):
-        return len(value) > 0
-    return value is not None
-
-
-def _build_coverage_report(items: list[dict]) -> dict:
-    total = len(items)
-    if total <= 0:
-        return {
-            "totalRecords": 0,
-            "feasibleFields": list(PUBLIC_FEASIBLE_FIELDS),
-            "sensitiveFields": list(SENSITIVE_FIELDS),
-            "achievedCoverageByFeasibleField": {},
-            "sensitiveStatusSummary": {},
-            "recordsWithAllFeasibleFieldsPct": 0.0,
-        }
-
-    achieved_counts: dict[str, int] = {field: 0 for field in PUBLIC_FEASIBLE_FIELDS}
-    all_feasible_ok = 0
-    sensitive_status_summary: dict[str, dict[str, int]] = {
-        field: {
-            "not_public": 0,
-            "not_disclosed": 0,
-            "pending_verification": 0,
-            "verified_public": 0,
-            "estimated_public_aggregate": 0,
-        }
-        for field in SENSITIVE_FIELDS
-    }
-
-    for item in items:
-        item_has_all = True
-        for field in PUBLIC_FEASIBLE_FIELDS:
-            if _has_public_value(item, field):
-                achieved_counts[field] += 1
-            else:
-                item_has_all = False
-        if item_has_all:
-            all_feasible_ok += 1
-
-        field_status = item.get("field_status") if isinstance(item.get("field_status"), dict) else {}
-        for sensitive_field in SENSITIVE_FIELDS:
-            raw_status = field_status.get(sensitive_field, "pending_verification")
-            status = raw_status if raw_status in sensitive_status_summary[sensitive_field] else "pending_verification"
-            sensitive_status_summary[sensitive_field][status] += 1
-
-    achieved_pct = {
-        field: round((count / total) * 100, 2)
-        for field, count in achieved_counts.items()
-    }
-
-    return {
-        "totalRecords": total,
-        "feasibleFields": list(PUBLIC_FEASIBLE_FIELDS),
-        "sensitiveFields": list(SENSITIVE_FIELDS),
-        "achievedCoverageByFeasibleField": achieved_pct,
-        "sensitiveStatusSummary": sensitive_status_summary,
-        "recordsWithAllFeasibleFieldsPct": round((all_feasible_ok / total) * 100, 2),
-    }
 
 
 def _iter_mrds_records() -> tuple[list[dict], list[str]]:
@@ -423,21 +336,6 @@ def scrape_mrds_chile_dataset() -> dict:
                 "notes": "Dato obtenido por scraping de USGS MRDS (Chile).",
                 "website": "#",
                 "is_available_concession": False,
-                "field_status": {
-                    "mining_company": "pending_verification",
-                    "website": "pending_verification",
-                    "operation_since": "pending_verification",
-                    "operating_authorizations": "pending_verification",
-                    "environmental_reports": "pending_verification",
-                    "geology_studies": "pending_verification",
-                    "mineral_life_studies": "pending_verification",
-                    "mitigation_studies": "pending_verification",
-                    "direct_workers": "not_disclosed",
-                    "indirect_workers": "not_disclosed",
-                    "average_salary": "not_public",
-                    "annual_revenue": "not_disclosed",
-                    "hiring_plan_2026": "not_disclosed",
-                },
                 "environmental_reports": [],
                 "operating_authorizations": [],
                 "geology_studies": [],
@@ -523,7 +421,6 @@ def main() -> int:
     current["meta"]["updatedAt"] = utc_now_iso()
     current["meta"]["lastVerifiedAt"] = utc_now_iso()
     current["meta"]["refreshMode"] = source_mode
-    current["meta"]["coverageReport"] = _build_coverage_report(current.get("items", []))
 
     save_dataset(current)
     print(f"daily refresh complete mode={source_mode}")

@@ -668,39 +668,11 @@
       `Desde cuándo opera: <strong>${textOrUnavailable(item.operation_since)}</strong>`,
       `Página web oficial: ${item.website && item.website !== "#" ? `<a href="${escapeHtml(item.website)}" target="_blank" rel="noreferrer">${escapeHtml(item.website)}</a>` : "<em>No disponible</em>"}`
     ].join("<br>");
-    const statusLabels = {
-      not_public: "No público",
-      not_disclosed: "No divulgado",
-      pending_verification: "Pendiente verificación",
-      verified_public: "Verificado público",
-      estimated_public_aggregate: "Estimado agregado público"
-    };
-    const statusTargets = [
-      "direct_workers",
-      "indirect_workers",
-      "average_salary",
-      "annual_revenue",
-      "hiring_plan_2026"
-    ];
-    const statusMap = (item.field_status && typeof item.field_status === "object") ? item.field_status : {};
-    const availabilityRows = statusTargets.map((field) => {
-      const labelByField = {
-        direct_workers: "Trabajadores directos",
-        indirect_workers: "Trabajadores indirectos",
-        average_salary: "Sueldo por cargos",
-        annual_revenue: "Ingresos por producción",
-        hiring_plan_2026: "Contrataciones 2026"
-      };
-      const status = statusMap[field] || "pending_verification";
-      const prettyStatus = statusLabels[status] || "Pendiente verificación";
-      return `${labelByField[field]}: <strong>${prettyStatus}</strong>`;
-    }).join("<br>");
 
     els.modalContent.innerHTML = [
       `<div style="color:var(--gold);margin-bottom:10px">${item.site_type} · ${item.region}</div>`,
       `<div class="mineral-pill-row">${mineralPills}</div>`,
       `<details class="detail-group" open><summary>Datos públicos disponibles</summary><div class="detail-group-body">${mandatoryInfoHtml}</div></details>`,
-      `<details class="detail-group"><summary>Disponibilidad de datos sensibles</summary><div class="detail-group-body">${availabilityRows}</div></details>`,
       `<details class="detail-group" open><summary>Ficha del yacimiento</summary><div class="detail-group-body">${usefulHtml}</div></details>`,
       freeSection,
       `<details class="detail-group"><summary>Informes ambientales</summary><div class="detail-group-body"><div id="pin-source-links" style="display:grid;gap:8px;">${renderLinks(environmentalReports)}</div></div></details>`,

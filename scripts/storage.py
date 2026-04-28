@@ -89,7 +89,6 @@ def _normalize_item_schema(raw_item: dict[str, Any]) -> dict[str, Any]:
         "notes": _coalesce(raw_item, ("notes",), ""),
         "website": _coalesce(raw_item, ("website",), "#"),
         "is_available_concession": _coalesce(raw_item, ("is_available_concession",), False),
-        "field_status": _coalesce(raw_item, ("field_status",), {}),
         "sources": _coalesce(raw_item, ("sources",), []),
         "docs": _coalesce(raw_item, ("docs",), []),
         "environmental_reports": _coalesce(raw_item, ("environmental_reports",), []),
