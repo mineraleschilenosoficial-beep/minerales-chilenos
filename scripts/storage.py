@@ -7,7 +7,20 @@ import datetime as dt
 import os
 from typing import Any
 
-from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, Text, create_engine, delete, select, text
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    create_engine,
+    delete,
+    select,
+    text,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, selectinload
 
 
@@ -68,6 +81,7 @@ class DatasetMetaSource(Base):
 
 class DatasetMetaStat(Base):
     __tablename__ = "dataset_meta_stats"
+    __table_args__ = (UniqueConstraint("meta_id", "key", name="uq_dataset_meta_stats_meta_key"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     meta_id: Mapped[int] = mapped_column(ForeignKey("dataset_meta.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -78,6 +92,7 @@ class DatasetMetaStat(Base):
 
 class MineRecord(Base):
     __tablename__ = "mine_records"
+    __table_args__ = (CheckConstraint("confidence_score >= 0 AND confidence_score <= 1", name="ck_mine_records_confidence_0_1"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
@@ -116,6 +131,7 @@ class MineRecord(Base):
 
 class MineMineral(Base):
     __tablename__ = "mine_minerals"
+    __table_args__ = (UniqueConstraint("mine_id", "mineral", name="uq_mine_minerals_mine_mineral"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     mine_id: Mapped[int] = mapped_column(ForeignKey("mine_records.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -125,6 +141,7 @@ class MineMineral(Base):
 
 class MineLink(Base):
     __tablename__ = "mine_links"
+    __table_args__ = (UniqueConstraint("mine_id", "category", "url", name="uq_mine_links_mine_category_url"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     mine_id: Mapped[int] = mapped_column(ForeignKey("mine_records.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -138,6 +155,12 @@ class MineLink(Base):
 
 class MineOverride(Base):
     __tablename__ = "mine_overrides"
+    __table_args__ = (
+        CheckConstraint(
+            "(confidence_score IS NULL) OR (confidence_score >= 0 AND confidence_score <= 1)",
+            name="ck_mine_overrides_confidence_0_1",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     target_name: Mapped[str] = mapped_column(Text, nullable=False)
@@ -191,6 +214,7 @@ class LinkReportResult(Base):
 
 class ReverseGeocodeCache(Base):
     __tablename__ = "reverse_geocode_cache"
+    __table_args__ = (UniqueConstraint("latitude_key", "longitude_key", name="uq_reverse_geocode_cache_coords"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     latitude_key: Mapped[float] = mapped_column(Float, nullable=False, index=True)
@@ -210,6 +234,89 @@ def ensure_schema(engine) -> None:
     # Hard cutover: legacy JSON key-value table is no longer supported.
     with engine.begin() as conn:
         conn.execute(text("DROP TABLE IF EXISTS app_state"))
+        # Clean pre-existing duplicates before creating unique indexes.
+        conn.execute(
+            text(
+                """
+                DELETE FROM mine_minerals a
+                USING mine_minerals b
+                WHERE a.id > b.id
+                  AND a.mine_id = b.mine_id
+                  AND a.mineral = b.mineral
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                DELETE FROM mine_links a
+                USING mine_links b
+                WHERE a.id > b.id
+                  AND a.mine_id = b.mine_id
+                  AND a.category = b.category
+                  AND a.url = b.url
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                DELETE FROM dataset_meta_stats a
+                USING dataset_meta_stats b
+                WHERE a.id > b.id
+                  AND a.meta_id = b.meta_id
+                  AND a.key = b.key
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                DELETE FROM reverse_geocode_cache a
+                USING reverse_geocode_cache b
+                WHERE a.id > b.id
+                  AND a.latitude_key = b.latitude_key
+                  AND a.longitude_key = b.longitude_key
+                """
+            )
+        )
+
+        # Enforce idempotent uniqueness at DB level (including existing deployments).
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_mine_minerals_mine_mineral_idx "
+                "ON mine_minerals (mine_id, mineral)"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_mine_links_mine_category_url_idx "
+                "ON mine_links (mine_id, category, url)"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_dataset_meta_stats_meta_key_idx "
+                "ON dataset_meta_stats (meta_id, key)"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_reverse_geocode_cache_coords_idx "
+                "ON reverse_geocode_cache (latitude_key, longitude_key)"
+            )
+        )
+
+        # Query-performance indexes for common API/filter paths.
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_mine_records_name ON mine_records (name)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_mine_records_city ON mine_records (city)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_mine_records_commune ON mine_records (commune)"))
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS idx_mine_records_available_concession "
+                "ON mine_records (is_available_concession)"
+            )
+        )
 
 
 def _normalize_name(value: str) -> str:
