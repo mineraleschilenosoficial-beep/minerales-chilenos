@@ -213,6 +213,21 @@ class MineCurationQueue(Base):
     last_detected_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=dt.datetime.now(dt.timezone.utc))
 
 
+class MineFieldAudit(Base):
+    __tablename__ = "mine_field_audit"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    mine_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    mine_name: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    field_name: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    old_value: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    new_value: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    source_type: Mapped[str] = mapped_column(String(40), nullable=False, default="unknown")
+    source_url: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    process_name: Mapped[str] = mapped_column(String(80), nullable=False, default="daily_refresh")
+    changed_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=dt.datetime.now(dt.timezone.utc))
+
+
 class MineOverride(Base):
     __tablename__ = "mine_overrides"
     __table_args__ = (
@@ -539,6 +554,12 @@ def ensure_schema(engine) -> None:
             text(
                 "CREATE INDEX IF NOT EXISTS idx_mine_curation_queue_status "
                 "ON mine_curation_queue (status)"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS idx_mine_field_audit_changed_at "
+                "ON mine_field_audit (changed_at)"
             )
         )
 
@@ -918,6 +939,40 @@ def _extract_source_catalog_rows(item: dict[str, Any]) -> list[dict[str, str]]:
     return list(dedup.values())
 
 
+AUDIT_TRACKED_FIELDS = (
+    "mining_company",
+    "website",
+    "operation_since",
+    "direct_workers",
+    "indirect_workers",
+    "average_salary",
+    "annual_revenue",
+    "hiring_plan_2026",
+    "is_available_concession",
+)
+
+
+def _audit_value(value: Any) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value or "").strip()
+
+
+def _get_item_source_for_field(item: dict[str, Any], field_name: str) -> tuple[str, str]:
+    rows = item.get("field_provenance")
+    if isinstance(rows, list):
+        for row in reversed(rows):
+            if not isinstance(row, dict):
+                continue
+            if str(row.get("field_name") or "").strip() != field_name:
+                continue
+            return (
+                str(row.get("source_type") or "unknown").strip() or "unknown",
+                str(row.get("source_url") or "").strip(),
+            )
+    return ("unknown", "")
+
+
 def _missing_mandatory_fields(item: dict[str, Any], mandatory_fields: tuple[str, ...]) -> list[str]:
     missing: list[str] = []
     for field in mandatory_fields:
@@ -1018,8 +1073,10 @@ def save_dataset(payload: dict[str, Any]) -> None:
 
     engine = _make_engine()
     ensure_schema(engine)
-
     with Session(engine) as session:
+        previous_rows = session.scalars(select(MineRecord)).all()
+        previous_by_id = {row.id: row for row in previous_rows}
+
         session.execute(delete(MineLink))
         session.execute(delete(MineSourceCatalog))
         session.execute(delete(MineFieldProvenance))
@@ -1104,6 +1161,28 @@ def save_dataset(payload: dict[str, Any]) -> None:
                 address=_null_if_sentinel(item.get("address")),
             )
             session.add(mine)
+
+            prev = previous_by_id.get(mine_id)
+            if prev is not None:
+                for field_name in AUDIT_TRACKED_FIELDS:
+                    old_value = _audit_value(getattr(prev, field_name, ""))
+                    new_value = _audit_value(item.get(field_name))
+                    if old_value == new_value:
+                        continue
+                    source_type, source_url = _get_item_source_for_field(item, field_name)
+                    session.add(
+                        MineFieldAudit(
+                            mine_id=mine_id,
+                            mine_name=str(item.get("name") or ""),
+                            field_name=field_name,
+                            old_value=old_value,
+                            new_value=new_value,
+                            source_type=source_type,
+                            source_url=source_url,
+                            process_name="save_dataset",
+                            changed_at=_parse_datetime(utc_now_iso()),
+                        )
+                    )
 
             for mineral in item.get("minerals", []) or []:
                 text = str(mineral).strip()
