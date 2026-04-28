@@ -259,6 +259,35 @@ button:hover {
   font-size: 12px;
 }
 
+.reliability-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  margin-bottom: 8px;
+}
+
+.reliability-high {
+  background: rgba(45, 122, 79, 0.2);
+  color: #bfe6cc;
+  border-color: rgba(45, 122, 79, 0.6);
+}
+
+.reliability-medium {
+  background: rgba(255, 184, 48, 0.18);
+  color: #ffe3a9;
+  border-color: rgba(255, 184, 48, 0.5);
+}
+
+.reliability-low {
+  background: rgba(220, 80, 80, 0.18);
+  color: #ffb8b8;
+  border-color: rgba(220, 80, 80, 0.5);
+}
+
 #pin-source-links .source-link {
   display: block;
   text-decoration: none;

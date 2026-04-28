@@ -582,6 +582,34 @@
       "</div>"
     ].join("") : "";
 
+    const concessionReliability = (() => {
+      const provenance = Array.isArray(item.field_provenance) ? item.field_provenance : [];
+      const concessionRows = provenance.filter((row) => row && row.field_name === "is_available_concession");
+      const hasManual = concessionRows.some((row) => String(row.source_type || "").toLowerCase() === "manual");
+      const hasOfficial = concessionRows.some((row) => String(row.source_type || "").toLowerCase() === "official");
+      const hasAuth = Array.isArray(item.operating_authorizations) && item.operating_authorizations.length > 0;
+
+      if (hasManual || hasOfficial) {
+        return {
+          className: "reliability-high",
+          label: "Confiabilidad alta",
+          note: "Estado respaldado por fuente manual/oficial trazable."
+        };
+      }
+      if (hasAuth) {
+        return {
+          className: "reliability-medium",
+          label: "Confiabilidad media",
+          note: "Derivado de autorizaciones de operación disponibles."
+        };
+      }
+      return {
+        className: "reliability-low",
+        label: "Confiabilidad baja",
+        note: "Sin evidencia oficial/manual suficiente para confirmar estado."
+      };
+    })();
+
     const docsList = Array.isArray(item.docs) ? item.docs : [];
     const renderLinks = (resources) => {
       const rows = (Array.isArray(resources) ? resources : [])
@@ -672,6 +700,8 @@
     els.modalContent.innerHTML = [
       `<div style="color:var(--gold);margin-bottom:10px">${item.site_type} · ${item.region}</div>`,
       `<div class="mineral-pill-row">${mineralPills}</div>`,
+      `<div class="reliability-badge ${concessionReliability.className}">${concessionReliability.label}</div>`,
+      `<div class="item-meta" style="margin:-4px 0 10px">${escapeHtml(concessionReliability.note)}</div>`,
       `<details class="detail-group" open><summary>Datos públicos disponibles</summary><div class="detail-group-body">${mandatoryInfoHtml}</div></details>`,
       `<details class="detail-group" open><summary>Ficha del yacimiento</summary><div class="detail-group-body">${usefulHtml}</div></details>`,
       freeSection,
