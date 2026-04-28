@@ -143,7 +143,7 @@ Acceptance rule:
 - [x] Define business rule for `is_available_concession` (single source of truth).
 - [x] Add source strategy for concession status (official/manual fallback).
 - [ ] Surface reliability badges in frontend.
-- [ ] Report coverage metrics after each refresh:
+- [x] Report coverage metrics after each refresh:
   - `% with city`
   - `% with mining company`
   - `% with reliable concession status`

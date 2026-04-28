@@ -179,14 +179,30 @@ def compute_refresh_kpis(payload: dict, pending_curation: int) -> dict[str, int]
 def apply_concession_business_rule(payload: dict) -> tuple[dict, dict[str, int]]:
     items = payload.get("items")
     if not isinstance(items, list):
-        return payload, {"concessionReliableCount": 0, "concessionTrueCount": 0}
+        return payload, {
+            "concessionReliableCount": 0,
+            "concessionTrueCount": 0,
+            "coverageCityCount": 0,
+            "coverageMiningCompanyCount": 0,
+            "coverageReliableConcessionCount": 0,
+            "coverageCityBp": 0,
+            "coverageMiningCompanyBp": 0,
+            "coverageReliableConcessionBp": 0,
+        }
 
     reliable_count = 0
     true_count = 0
+    city_count = 0
+    mining_company_count = 0
     now = utc_now_iso()
+    total = len(items)
     for item in items:
         if not isinstance(item, dict):
             continue
+        if _is_present(item.get("city")):
+            city_count += 1
+        if _is_present(item.get("mining_company")):
+            mining_company_count += 1
 
         reliable = False
         # 1) Manual/official field provenance for concession has highest precedence.
@@ -236,7 +252,19 @@ def apply_concession_business_rule(payload: dict) -> tuple[dict, dict[str, int]]
         if reliable:
             reliable_count += 1
 
-    return payload, {"concessionReliableCount": reliable_count, "concessionTrueCount": true_count}
+    def bp(count: int) -> int:
+        return int(round((count / total) * 10000)) if total > 0 else 0
+
+    return payload, {
+        "concessionReliableCount": reliable_count,
+        "concessionTrueCount": true_count,
+        "coverageCityCount": city_count,
+        "coverageMiningCompanyCount": mining_company_count,
+        "coverageReliableConcessionCount": reliable_count,
+        "coverageCityBp": bp(city_count),
+        "coverageMiningCompanyBp": bp(mining_company_count),
+        "coverageReliableConcessionBp": bp(reliable_count),
+    }
 
 
 def fetch_optional_remote_source(url: str) -> dict | None:
