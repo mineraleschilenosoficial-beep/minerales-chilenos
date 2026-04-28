@@ -176,6 +176,69 @@ def compute_refresh_kpis(payload: dict, pending_curation: int) -> dict[str, int]
     }
 
 
+def apply_concession_business_rule(payload: dict) -> tuple[dict, dict[str, int]]:
+    items = payload.get("items")
+    if not isinstance(items, list):
+        return payload, {"concessionReliableCount": 0, "concessionTrueCount": 0}
+
+    reliable_count = 0
+    true_count = 0
+    now = utc_now_iso()
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+
+        reliable = False
+        # 1) Manual/official field provenance for concession has highest precedence.
+        provenance = item.get("field_provenance")
+        if isinstance(provenance, list):
+            for row in provenance:
+                if not isinstance(row, dict):
+                    continue
+                if str(row.get("field_name") or "").strip() != "is_available_concession":
+                    continue
+                source_type = str(row.get("source_type") or "").strip().lower()
+                if source_type in {"manual", "official"}:
+                    reliable = True
+                    break
+
+        # 2) Official operating authorizations imply available concession.
+        authorizations = item.get("operating_authorizations")
+        has_authorizations = isinstance(authorizations, list) and len(authorizations) > 0
+        if has_authorizations:
+            item["is_available_concession"] = True
+            true_count += 1
+            reliable = True
+            source_url = ""
+            first_auth = authorizations[0]
+            if isinstance(first_auth, dict):
+                source_url = str(first_auth.get("url") or "").strip()
+            elif isinstance(first_auth, str):
+                source_url = first_auth.strip()
+            append_field_provenance(
+                item,
+                field_name="is_available_concession",
+                field_value="true",
+                source_type="official",
+                source_url=source_url,
+                confidence_score=0.85,
+                note="derived from operating_authorizations presence",
+                updated_at=now,
+            )
+        else:
+            # 3) Default false when there is no evidence for active concession.
+            current = bool(item.get("is_available_concession"))
+            if current:
+                true_count += 1
+            else:
+                item["is_available_concession"] = False
+
+        if reliable:
+            reliable_count += 1
+
+    return payload, {"concessionReliableCount": reliable_count, "concessionTrueCount": true_count}
+
+
 def fetch_optional_remote_source(url: str) -> dict | None:
     ctx = ssl.create_default_context()
     request = urllib.request.Request(
@@ -749,6 +812,7 @@ def main() -> int:
     current, geocode_stats = enrich_city_commune_with_reverse_geocoding(current)
     current, applied_overrides = apply_manual_overrides(current)
     current, seeded_provenance = seed_field_provenance(current)
+    current, concession_stats = apply_concession_business_rule(current)
 
     current["meta"].setdefault("version", 1)
     current["meta"].setdefault("source", "postgresql")
@@ -762,6 +826,8 @@ def main() -> int:
     stats["manualOverridesApplied"] = int(applied_overrides)
     stats["fieldProvenanceSeeded"] = int(seeded_provenance)
     for key, value in geocode_stats.items():
+        stats[key] = int(value)
+    for key, value in concession_stats.items():
         stats[key] = int(value)
 
     pending_curation = int(rebuild_manual_curation_queue(current))

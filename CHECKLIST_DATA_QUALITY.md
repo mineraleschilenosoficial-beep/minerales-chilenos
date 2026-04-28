@@ -140,7 +140,7 @@ Acceptance rule:
 
 ## Phase 3 - Concessions Reliability
 
-- [ ] Define business rule for `is_available_concession` (single source of truth).
+- [x] Define business rule for `is_available_concession` (single source of truth).
 - [ ] Add source strategy for concession status (official/manual fallback).
 - [ ] Surface reliability badges in frontend.
 - [ ] Report coverage metrics after each refresh:
