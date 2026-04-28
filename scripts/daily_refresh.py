@@ -13,6 +13,7 @@ from urllib.parse import urlencode
 
 from storage import (
     apply_manual_overrides,
+    append_field_provenance,
     get_reverse_geocode_cache,
     save_dataset,
     upsert_reverse_geocode_cache,
@@ -518,6 +519,7 @@ def enrich_city_commune_with_reverse_geocoding(payload: dict) -> tuple[dict, dic
 
     def apply_fields(target: dict, fields: dict[str, str], from_cache: bool) -> None:
         applied_any = False
+        source_url = str(fields.get("source_url") or "")
         for field in ("city", "commune", "province", "locality", "location", "address"):
             incoming = str(fields.get(field) or "").strip()
             if not incoming:
@@ -526,8 +528,17 @@ def enrich_city_commune_with_reverse_geocoding(payload: dict) -> tuple[dict, dic
             if _is_blank(current_value):
                 target[field] = incoming
                 applied_any = True
+                append_field_provenance(
+                    target,
+                    field_name=field,
+                    field_value=incoming,
+                    source_type="inferred",
+                    source_url=source_url,
+                    confidence_score=0.55 if from_cache else 0.6,
+                    note="reverse geocoding cache" if from_cache else "reverse geocoding",
+                    updated_at=now,
+                )
 
-        source_url = str(fields.get("source_url") or "")
         if applied_any:
             target["enriched_at"] = now
             _append_source(

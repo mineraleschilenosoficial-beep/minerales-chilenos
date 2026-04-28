@@ -132,6 +132,7 @@ class MineRecord(Base):
     address: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     minerals: Mapped[list["MineMineral"]] = relationship(cascade="all, delete-orphan", back_populates="mine")
     links: Mapped[list["MineLink"]] = relationship(cascade="all, delete-orphan", back_populates="mine")
+    field_provenance: Mapped[list["MineFieldProvenance"]] = relationship(cascade="all, delete-orphan", back_populates="mine")
 
 
 class MineMineral(Base):
@@ -156,6 +157,28 @@ class MineLink(Base):
     note: Mapped[str] = mapped_column(Text, nullable=False, default="")
     doc_type: Mapped[str] = mapped_column(String(80), nullable=False, default="")
     mine: Mapped["MineRecord"] = relationship(back_populates="links")
+
+
+class MineFieldProvenance(Base):
+    __tablename__ = "mine_field_provenance"
+    __table_args__ = (
+        UniqueConstraint("mine_id", "field_name", "source_type", "source_url", name="uq_mine_field_provenance_key"),
+        CheckConstraint(
+            "(confidence_score IS NULL) OR (confidence_score >= 0 AND confidence_score <= 1)",
+            name="ck_mine_field_provenance_confidence_0_1",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    mine_id: Mapped[int] = mapped_column(ForeignKey("mine_records.id", ondelete="CASCADE"), nullable=False, index=True)
+    field_name: Mapped[str] = mapped_column(String(80), nullable=False)
+    field_value: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    source_url: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    source_type: Mapped[str] = mapped_column(String(40), nullable=False, default="")
+    confidence_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    updated_at: Mapped[str] = mapped_column(Text, nullable=False, default=utc_now_iso)
+    note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    mine: Mapped["MineRecord"] = relationship(back_populates="field_provenance")
 
 
 class MineOverride(Base):
@@ -276,6 +299,59 @@ def _display_or_default(value: str | None, default: str = "-") -> str:
     return cleaned if cleaned else default
 
 
+def append_field_provenance(
+    item: dict[str, Any],
+    *,
+    field_name: str,
+    field_value: Any,
+    source_type: str,
+    source_url: str = "",
+    confidence_score: float | None = None,
+    note: str = "",
+    updated_at: str | None = None,
+) -> None:
+    if not isinstance(item, dict):
+        return
+    target_value = str(field_value or "").strip()
+    if not target_value:
+        return
+    provenance = item.get("field_provenance")
+    if not isinstance(provenance, list):
+        provenance = []
+        item["field_provenance"] = provenance
+
+    payload = {
+        "field_name": str(field_name).strip(),
+        "field_value": target_value,
+        "source_type": str(source_type).strip() or "inferred",
+        "source_url": str(source_url or "").strip(),
+        "updated_at": str(updated_at or utc_now_iso()),
+    }
+    if confidence_score is not None:
+        payload["confidence_score"] = float(confidence_score)
+    if note.strip():
+        payload["note"] = note.strip()
+
+    dedupe_key = (
+        payload["field_name"],
+        payload["source_type"],
+        payload["source_url"],
+        payload["field_value"],
+    )
+    for existing in provenance:
+        if not isinstance(existing, dict):
+            continue
+        existing_key = (
+            str(existing.get("field_name") or "").strip(),
+            str(existing.get("source_type") or "").strip(),
+            str(existing.get("source_url") or "").strip(),
+            str(existing.get("field_value") or "").strip(),
+        )
+        if existing_key == dedupe_key:
+            return
+    provenance.append(payload)
+
+
 def ensure_schema(engine) -> None:
     Base.metadata.create_all(engine)
     # Hard cutover: legacy JSON key-value table is no longer supported.
@@ -353,6 +429,12 @@ def ensure_schema(engine) -> None:
                 "ON reverse_geocode_cache (latitude_key, longitude_key)"
             )
         )
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_mine_field_provenance_key_idx "
+                "ON mine_field_provenance (mine_id, field_name, source_type, source_url)"
+            )
+        )
 
         # Query-performance indexes for common API/filter paths.
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_mine_records_name ON mine_records (name)"))
@@ -362,6 +444,12 @@ def ensure_schema(engine) -> None:
             text(
                 "CREATE INDEX IF NOT EXISTS idx_mine_records_available_concession "
                 "ON mine_records (is_available_concession)"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS idx_mine_field_provenance_field_name "
+                "ON mine_field_provenance (field_name)"
             )
         )
 
@@ -450,10 +538,31 @@ def apply_manual_overrides(payload: dict[str, Any]) -> tuple[dict[str, Any], int
         ):
             value = getattr(matched, field)
             if value is not None and str(value).strip():
-                item[field] = str(value).strip()
+                clean = str(value).strip()
+                item[field] = clean
+                append_field_provenance(
+                    item,
+                    field_name=field,
+                    field_value=clean,
+                    source_type="manual",
+                    source_url=matched.source_url.strip(),
+                    confidence_score=float(matched.confidence_score) if matched.confidence_score is not None else None,
+                    note=matched.source_note.strip() or f"override_id={matched.id}",
+                    updated_at=now,
+                )
 
         if matched.is_available_concession is not None:
             item["is_available_concession"] = bool(matched.is_available_concession)
+            append_field_provenance(
+                item,
+                field_name="is_available_concession",
+                field_value=str(bool(matched.is_available_concession)).lower(),
+                source_type="manual",
+                source_url=matched.source_url.strip(),
+                confidence_score=float(matched.confidence_score) if matched.confidence_score is not None else None,
+                note=matched.source_note.strip() or f"override_id={matched.id}",
+                updated_at=now,
+            )
         if matched.data_origin and matched.data_origin.strip():
             item["data_origin"] = matched.data_origin.strip()
         if matched.confidence_score is not None:
@@ -633,6 +742,7 @@ def save_dataset(payload: dict[str, Any]) -> None:
 
     with Session(engine) as session:
         session.execute(delete(MineLink))
+        session.execute(delete(MineFieldProvenance))
         session.execute(delete(MineMineral))
         session.execute(delete(MineRecord))
         session.execute(delete(DatasetMetaSource))
@@ -730,6 +840,31 @@ def save_dataset(payload: dict[str, Any]) -> None:
                         doc_type=row["doc_type"],
                     )
                 )
+
+            for row in item.get("field_provenance", []) or []:
+                if not isinstance(row, dict):
+                    continue
+                field_name = str(row.get("field_name") or "").strip()
+                field_value = str(row.get("field_value") or "").strip()
+                source_type = str(row.get("source_type") or "").strip()
+                updated_at = str(row.get("updated_at") or "").strip()
+                if not (field_name and source_type and updated_at):
+                    continue
+                mine.field_provenance.append(
+                    MineFieldProvenance(
+                        field_name=field_name,
+                        field_value=field_value,
+                        source_url=str(row.get("source_url") or ""),
+                        source_type=source_type,
+                        confidence_score=(
+                            float(row["confidence_score"])
+                            if row.get("confidence_score") is not None
+                            else None
+                        ),
+                        updated_at=updated_at,
+                        note=str(row.get("note") or ""),
+                    )
+                )
         session.commit()
 
 
@@ -744,7 +879,13 @@ def get_dataset() -> dict[str, Any]:
             raise RuntimeError("Dataset not found in PostgreSQL. Run daily refresh to bootstrap data.")
 
         mines = session.scalars(
-            select(MineRecord).options(selectinload(MineRecord.minerals), selectinload(MineRecord.links)).order_by(MineRecord.id.asc())
+            select(MineRecord)
+            .options(
+                selectinload(MineRecord.minerals),
+                selectinload(MineRecord.links),
+                selectinload(MineRecord.field_provenance),
+            )
+            .order_by(MineRecord.id.asc())
         ).all()
 
         def links_by_category(mine: MineRecord, category: str) -> list[dict[str, str]]:
@@ -795,6 +936,18 @@ def get_dataset() -> dict[str, Any]:
                 "geology_studies": links_by_category(mine, "geology_studies"),
                 "mineral_life_studies": links_by_category(mine, "mineral_life_studies"),
                 "mitigation_studies": links_by_category(mine, "mitigation_studies"),
+                "field_provenance": [
+                    {
+                        "field_name": row.field_name,
+                        "field_value": row.field_value,
+                        "source_url": row.source_url,
+                        "source_type": row.source_type,
+                        "confidence_score": row.confidence_score,
+                        "updated_at": row.updated_at,
+                        "note": row.note,
+                    }
+                    for row in mine.field_provenance
+                ],
                 "city": _display_or_default(mine.city, ""),
                 "commune": _display_or_default(mine.commune, ""),
                 "province": _display_or_default(mine.province, ""),
