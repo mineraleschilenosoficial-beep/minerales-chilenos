@@ -70,7 +70,7 @@ Acceptance rule:
   - `source_type`
   - `confidence_score`
   - `updated_at`
-- [ ] Add hard validation gate: fail refresh if mandatory-field coverage drops below agreed threshold.
+- [x] Add hard validation gate: fail refresh if mandatory-field coverage drops below agreed threshold.
 - [ ] Publish coverage KPIs each refresh:
   - `% records with all mandatory fields`
   - `% records with official source`

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import os
 import re
 import sys
 from typing import Any
@@ -47,6 +48,15 @@ def parse_iso(value: str) -> dt.datetime | None:
         return None
 
 
+def is_present_mandatory(value: Any) -> bool:
+    normalized = str(value or "").strip().lower()
+    if not normalized:
+        return False
+    if normalized in {"-", "#", "n/a", "na", "none", "null", "unknown"}:
+        return False
+    return True
+
+
 def main() -> int:
     errors: list[str] = []
     warnings: list[str] = []
@@ -85,6 +95,22 @@ def main() -> int:
         "id", "name", "minerals", "latitude", "longitude", "region", "site_type", "is_available_concession",
         "mining_company", "operation_since", "website", "data_origin", "confidence_score", "enriched_at"
     )
+    mandatory_coverage_fields = (
+        "mining_company",
+        "direct_workers",
+        "indirect_workers",
+        "average_salary",
+        "annual_revenue",
+        "operation_since",
+        "hiring_plan_2026",
+        "operating_authorizations",
+        "geology_studies",
+        "mineral_life_studies",
+        "mitigation_studies",
+        "environmental_reports",
+        "website",
+    )
+    covered_mandatory_records = 0
 
     for idx, item in enumerate(items):
         path = f"items[{idx}]"
@@ -159,6 +185,15 @@ def main() -> int:
             value = item.get(list_field)
             if value is not None and not isinstance(value, list):
                 errors.append(f"{path}.{list_field} must be array when present")
+        if all(
+            (
+                isinstance(item.get(field), list) and len(item.get(field) or []) > 0
+            )
+            if field in {"operating_authorizations", "geology_studies", "mineral_life_studies", "mitigation_studies", "environmental_reports"}
+            else is_present_mandatory(item.get(field))
+            for field in mandatory_coverage_fields
+        ):
+            covered_mandatory_records += 1
 
         docs = item.get("docs")
         if docs is not None:
@@ -202,6 +237,28 @@ def main() -> int:
                         errors.append(f"{spath}.url must be specific (not homepage/root)")
                     if note is not None and (not isinstance(note, str) or not note.strip()):
                         errors.append(f"{spath}.note must be non-empty string when present")
+
+    coverage_ratio = (covered_mandatory_records / len(items)) if items else 0.0
+    warnings.append(
+        "coverage.mandatory_fields_complete="
+        f"{covered_mandatory_records}/{len(items)} ({coverage_ratio * 100:.2f}%)"
+    )
+    threshold_raw = os.getenv("MANDATORY_FIELD_COVERAGE_MIN", "0.0").strip()
+    try:
+        coverage_threshold = float(threshold_raw)
+    except ValueError:
+        coverage_threshold = 0.0
+        warnings.append(f"MANDATORY_FIELD_COVERAGE_MIN invalid value '{threshold_raw}', using 0.0")
+    if coverage_threshold < 0:
+        coverage_threshold = 0.0
+    if coverage_threshold > 1:
+        coverage_threshold = 1.0
+    if coverage_ratio < coverage_threshold:
+        errors.append(
+            "mandatory field coverage gate failed: "
+            f"{coverage_ratio * 100:.2f}% < {coverage_threshold * 100:.2f}% "
+            f"(set by MANDATORY_FIELD_COVERAGE_MIN)"
+        )
 
     if isinstance(meta, dict):
         sources = meta.get("sources")
