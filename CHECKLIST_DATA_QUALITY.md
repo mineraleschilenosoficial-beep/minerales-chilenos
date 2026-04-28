@@ -38,7 +38,8 @@ Acceptance rule:
 - [x] Expand search index to include location-like fields when present.
 - [x] Update UI copy to clarify "results depend on available data quality".
 - [x] Improve visibility of "available concessions only" mode state.
-- [ ] Run quick manual verification scenarios and record outcomes.
+- [x] Run quick manual verification scenarios and record outcomes.
+  - 2026-04-28 scenarios logged: search by mine/city, concession-only toggle state, and map visibility behavior validated in local UI check.
 
 ## Phase 2 - Dataset Enrichment Baseline
 
