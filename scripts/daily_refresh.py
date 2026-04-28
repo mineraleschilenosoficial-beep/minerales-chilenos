@@ -329,9 +329,18 @@ def scrape_mrds_chile_dataset() -> dict:
                 "average_salary": "-",
                 "annual_revenue": "-",
                 "future_hirings": "-",
+                "operation_since": "-",
+                "direct_workers": "-",
+                "indirect_workers": "-",
+                "hiring_plan_2026": "-",
                 "notes": "Dato obtenido por scraping de USGS MRDS (Chile).",
                 "website": "#",
                 "is_available_concession": False,
+                "environmental_reports": [],
+                "operating_authorizations": [],
+                "geology_studies": [],
+                "mineral_life_studies": [],
+                "mitigation_studies": [],
                 "sources": [
                     {
                         "name": "USGS MRDS",

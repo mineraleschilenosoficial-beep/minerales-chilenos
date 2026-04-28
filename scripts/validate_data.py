@@ -81,7 +81,10 @@ def main() -> int:
 
     seen_ids: set[int] = set()
     seen_names: set[str] = set()
-    required_fields = ("id", "name", "minerals", "latitude", "longitude", "region", "site_type", "is_available_concession")
+    required_fields = (
+        "id", "name", "minerals", "latitude", "longitude", "region", "site_type", "is_available_concession",
+        "mining_company", "operation_since", "website"
+    )
 
     for idx, item in enumerate(items):
         path = f"items[{idx}]"
@@ -128,11 +131,24 @@ def main() -> int:
             errors.append(f"{path}.site_type must be non-empty string")
         if not isinstance(item.get("is_available_concession"), bool):
             errors.append(f"{path}.is_available_concession must be boolean")
+        if not isinstance(item.get("mining_company"), str):
+            errors.append(f"{path}.mining_company must be string")
+        if not isinstance(item.get("operation_since"), str):
+            errors.append(f"{path}.operation_since must be string")
+        for optional_text in ("average_salary", "annual_revenue", "hiring_plan_2026", "direct_workers", "indirect_workers"):
+            value = item.get(optional_text)
+            if value is not None and not isinstance(value, str):
+                errors.append(f"{path}.{optional_text} must be string when present")
 
         web = item.get("website")
         if web is not None and web != "#":
             if not isinstance(web, str) or not is_http_url(web):
                 errors.append(f"{path}.website must be http/https URL or '#'")
+
+        for list_field in ("environmental_reports", "operating_authorizations", "geology_studies", "mineral_life_studies", "mitigation_studies"):
+            value = item.get(list_field)
+            if value is not None and not isinstance(value, list):
+                errors.append(f"{path}.{list_field} must be array when present")
 
         docs = item.get("docs")
         if docs is not None:

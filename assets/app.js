@@ -582,8 +582,30 @@
       "</div>"
     ].join("") : "";
 
-    const docs = Array.isArray(item.docs)
-      ? item.docs.map((d) => `<a class="link-btn" style="margin-right:8px;background:#2b2b2b;color:#fff;border:1px solid var(--line)" href="${d.url}" target="_blank" rel="noreferrer">${d.name}</a>`).join("")
+    const docsList = Array.isArray(item.docs) ? item.docs : [];
+    const renderLinks = (resources) => {
+      const rows = (Array.isArray(resources) ? resources : [])
+        .map((entry) => {
+          if (typeof entry === "string") {
+            if (!entry.startsWith("http")) return "";
+            return `<a class="source-link" href="${escapeHtml(entry)}" target="_blank" rel="noreferrer">${escapeHtml(entry)}</a>`;
+          }
+          if (!entry || typeof entry !== "object") return "";
+          const url = typeof entry.url === "string" ? entry.url : "";
+          if (!url.startsWith("http")) return "";
+          const name = escapeHtml(entry.name || url);
+          const note = entry.note ? `<small>${escapeHtml(entry.note)}</small>` : "";
+          return `<a class="source-link" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${name}<small>${escapeHtml(url)}</small>${note}</a>`;
+        })
+        .filter(Boolean);
+      return rows.length ? rows.join("") : '<div class="item-meta">No disponible.</div>';
+    };
+    const docsByType = (docType) => {
+      const normalizedType = String(docType || "").trim().toLocaleLowerCase("es-CL");
+      return docsList.filter((doc) => String(doc && doc.doc_type || "").trim().toLocaleLowerCase("es-CL") === normalizedType);
+    };
+    const docs = docsList.length
+      ? docsList.map((d) => `<a class="link-btn" style="margin-right:8px;background:#2b2b2b;color:#fff;border:1px solid var(--line)" href="${d.url}" target="_blank" rel="noreferrer">${d.name || d.url}</a>`).join("")
       : "";
 
     const pinSources = Array.isArray(item.sources) ? item.sources : [];
@@ -600,6 +622,26 @@
     const webBtn = (item.website && item.website !== "#")
       ? `<a class="link-btn" href="${item.website}" target="_blank" rel="noreferrer">Ver página corporativa</a>`
       : "";
+    const textOrUnavailable = (value) => {
+      const text = String(value ?? "").trim();
+      return text && text !== "-" ? escapeHtml(text) : "<em>No disponible</em>";
+    };
+
+    const environmentalReports = (Array.isArray(item.environmental_reports) && item.environmental_reports.length)
+      ? item.environmental_reports
+      : docsByType("environmental_report");
+    const operatingAuthorizations = (Array.isArray(item.operating_authorizations) && item.operating_authorizations.length)
+      ? item.operating_authorizations
+      : docsByType("operating_authorization");
+    const geologyStudies = (Array.isArray(item.geology_studies) && item.geology_studies.length)
+      ? item.geology_studies
+      : docsByType("geology_study");
+    const mineralLifeStudies = (Array.isArray(item.mineral_life_studies) && item.mineral_life_studies.length)
+      ? item.mineral_life_studies
+      : docsByType("mineral_life_study");
+    const mitigationStudies = (Array.isArray(item.mitigation_studies) && item.mitigation_studies.length)
+      ? item.mitigation_studies
+      : docsByType("environmental_mitigation_study");
 
     const usefulRows = [];
     const pushUseful = (label, value) => {
@@ -625,12 +667,22 @@
     const usefulHtml = usefulRows.length
       ? usefulRows.join("<br>")
       : "Sin datos operativos adicionales útiles para este registro.";
+    const mandatoryInfoHtml = [
+      `Empresa operadora: <strong>${textOrUnavailable(item.mining_company)}</strong>`,
+      `Desde cuándo opera: <strong>${textOrUnavailable(item.operation_since)}</strong>`,
+      `Página web oficial: ${item.website && item.website !== "#" ? `<a href="${escapeHtml(item.website)}" target="_blank" rel="noreferrer">${escapeHtml(item.website)}</a>` : "<em>No disponible</em>"}`
+    ].join("<br>");
 
     els.modalContent.innerHTML = [
       `<div style="color:var(--gold);margin-bottom:10px">${item.site_type} · ${item.region}</div>`,
       `<div class="mineral-pill-row">${mineralPills}</div>`,
+      `<details class="detail-group" open><summary>Datos públicos disponibles</summary><div class="detail-group-body">${mandatoryInfoHtml}</div></details>`,
       `<details class="detail-group" open><summary>Ficha del yacimiento</summary><div class="detail-group-body">${usefulHtml}</div></details>`,
       freeSection,
+      `<details class="detail-group"><summary>Informes ambientales</summary><div class="detail-group-body"><div id="pin-source-links" style="display:grid;gap:8px;">${renderLinks(environmentalReports)}</div></div></details>`,
+      `<details class="detail-group"><summary>Autorizaciones de operación</summary><div class="detail-group-body"><div id="pin-source-links" style="display:grid;gap:8px;">${renderLinks(operatingAuthorizations)}</div></div></details>`,
+      `<details class="detail-group"><summary>Estudios geológicos y duración del mineral</summary><div class="detail-group-body"><div id="pin-source-links" style="display:grid;gap:8px;">${renderLinks([...geologyStudies, ...mineralLifeStudies])}</div></div></details>`,
+      `<details class="detail-group"><summary>Estudios de mitigación ambiental</summary><div class="detail-group-body"><div id="pin-source-links" style="display:grid;gap:8px;">${renderLinks(mitigationStudies)}</div></div></details>`,
       `<details class="detail-group"><summary>Notas y noticias</summary><div class="detail-group-body">${item.notes || "Sin novedades por ahora."}</div></details>`,
       sourcesHtml ? `<details class="detail-group" open><summary>Fuentes del pin</summary><div class="detail-group-body"><div id="pin-source-links" style="display:grid;gap:8px;">${sourcesHtml}</div></div></details>` : "",
       docs ? `<details class="detail-group"><summary>Documentos técnicos</summary><div class="detail-group-body">${docs}</div></details>` : "",
