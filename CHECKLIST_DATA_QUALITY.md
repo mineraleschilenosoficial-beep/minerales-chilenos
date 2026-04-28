@@ -55,7 +55,7 @@ Acceptance rule:
 
 ## Phase 2.1 - Mandatory Data Acquisition Plan
 
-- [ ] Define source priority matrix per mandatory field (official source first, then regulated reports, then verified corporate disclosures).
+- [x] Define source priority matrix per mandatory field (official source first, then regulated reports, then verified corporate disclosures).
 - [ ] Create source catalog per record with stable URL and extraction method:
   - `source_name`
   - `source_url`
@@ -78,7 +78,7 @@ Acceptance rule:
 
 ## Phase 2.2 - Execution Sequence
 
-- [ ] Sprint 1: source matrix + schema + provenance model.
+- [x] Sprint 1: source matrix + schema + provenance model.
 - [ ] Sprint 2: automatic extraction for top fields (company, website, authorizations, reports).
 - [ ] Sprint 3: extraction for workforce/salary/revenue/operation_since/hiring_plan_2026.
 - [ ] Sprint 4: geology/mineral-life/mitigation studies + QA and gap closure.
