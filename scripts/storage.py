@@ -25,6 +25,9 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, selectinload
 
+_ENGINE_CACHE: dict[str, Any] = {}
+_SCHEMA_READY_BY_DSN: set[str] = set()
+
 
 def utc_now_iso() -> str:
     return dt.datetime.now(dt.timezone.utc).isoformat()
@@ -47,9 +50,15 @@ def _required_database_url() -> str:
 
 def _make_engine():
     dsn = _required_database_url()
-    if dsn.startswith("postgresql://") and "postgresql+" not in dsn:
-        dsn = dsn.replace("postgresql://", "postgresql+psycopg://", 1)
-    return create_engine(dsn, future=True)
+    normalized = dsn
+    if normalized.startswith("postgresql://") and "postgresql+" not in normalized:
+        normalized = normalized.replace("postgresql://", "postgresql+psycopg://", 1)
+    engine = _ENGINE_CACHE.get(normalized)
+    if engine is not None:
+        return engine
+    engine = create_engine(normalized, future=True)
+    _ENGINE_CACHE[normalized] = engine
+    return engine
 
 
 class Base(DeclarativeBase):
@@ -422,7 +431,10 @@ def append_field_provenance(
     provenance.append(payload)
 
 
-def ensure_schema(engine) -> None:
+def ensure_schema(engine, *, force: bool = False) -> None:
+    cache_key = str(engine.url)
+    if not force and cache_key in _SCHEMA_READY_BY_DSN:
+        return
     Base.metadata.create_all(engine)
     # Hard cutover: legacy JSON key-value table is no longer supported.
     with engine.begin() as conn:
@@ -646,6 +658,7 @@ def ensure_schema(engine) -> None:
                     """
                 )
             )
+    _SCHEMA_READY_BY_DSN.add(cache_key)
 
 
 def _normalize_name(value: str) -> str:
@@ -1441,3 +1454,18 @@ def get_link_report() -> dict[str, Any] | None:
             "warnings": warnings,
             "failed": failed,
         }
+
+
+def run_schema_migrations() -> None:
+    """Ensure relational schema is up to date for the current code version."""
+    engine = _make_engine()
+    ensure_schema(engine, force=True)
+
+
+def dataset_exists() -> bool:
+    """Return True when a dataset snapshot is available in PostgreSQL."""
+    engine = _make_engine()
+    ensure_schema(engine)
+    with Session(engine) as session:
+        meta = session.scalar(select(DatasetMeta.id).where(DatasetMeta.id == 1))
+        return meta is not None

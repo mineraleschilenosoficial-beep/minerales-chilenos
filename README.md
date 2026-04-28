@@ -13,6 +13,8 @@ Aplicación web para `MineralesChilenos.cl` preparada para desplegar en Coolify 
 - `scripts/link_audit.py`: audita enlaces y genera reporte.
 - `scripts/manual_overrides.sql`: plantilla SQL para correcciones manuales confiables.
 - `scripts/source_extractor_rules.json`: reglas de extracción estructurada para campos mandatorios.
+- `scripts/bootstrap_runtime.py`: migración automática de esquema al iniciar runtime.
+- `scripts/missing_data_hunt.py`: auditoría de faltantes y búsqueda de URLs candidatas.
 - `scripts/refresh_cycle.py`: ejecuta refresh + validación + auditoría.
 - `Dockerfile`: imagen para despliegue en Coolify.
 - `requirements.txt`: dependencias Python.
@@ -141,6 +143,14 @@ Comportamiento de lectura frontend:
 python3 scripts/refresh_cycle.py
 ```
 
+Modo rápido local (iteraciones de desarrollo):
+
+```bash
+FAST_LOCAL_MODE=true python3 scripts/refresh_cycle.py
+```
+
+Este modo desactiva pasos costosos no críticos para feedback rápido local (`link_audit` y geocoding extendido).
+
 2. Mantener estructura:
    - `meta` con `updatedAt`, `version`, `source`.
    - `meta.sources` con enlaces exactos de fuentes oficiales.
@@ -200,12 +210,33 @@ Chequeos incluidos:
 
 - Tipo: `Dockerfile`.
 - Puerto: `8000`.
-- Start command: usa `CMD` de Dockerfile (`gunicorn --bind 0.0.0.0:8000 api.server:app`).
+- Start command: usa `CMD` de Dockerfile (`python3 scripts/bootstrap_runtime.py && gunicorn --bind 0.0.0.0:8000 api.server:app`).
 - Variables requeridas:
   - `DATABASE_URL` (PostgreSQL de Coolify o externo).
   - `DATA_JSON_SOURCE_URL` (opcional, JSON remoto con `{meta, items}` para poblar/actualizar datos).
+- Variables opcionales de bootstrap:
+  - `AUTO_BOOTSTRAP_DATASET` (`true` por defecto): si no hay dataset, ejecuta refresh+validate al iniciar.
 
 Si no defines `DATA_JSON_SOURCE_URL` y la DB está vacía, el sistema hace scraping con la fuente integrada verificada USGS MRDS (WFS para Chile).
+Antes de levantar API, el runtime ejecuta migraciones de esquema automáticamente.
+
+## Verificación de faltantes y búsqueda
+
+Para verificar faltantes reales y generar búsquedas de fuentes candidatas:
+
+```bash
+python3 scripts/missing_data_hunt.py
+```
+
+Salidas:
+
+- `reports/missing_data_hunt.json`
+- `reports/missing_data_hunt.md`
+
+Variables opcionales:
+
+- `MISSING_HUNT_MAX_RECORDS` (default `50`)
+- `MISSING_HUNT_WEB_SEARCH` (default `true`)
 
 ### 2) Base de datos PostgreSQL
 

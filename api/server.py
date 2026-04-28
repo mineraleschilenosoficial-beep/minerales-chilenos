@@ -13,7 +13,10 @@ ASSETS_ROOT = ROOT
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scripts.storage import get_dataset, get_link_report, utc_now_iso
+from scripts.storage import get_dataset, get_link_report, run_schema_migrations, utc_now_iso
+
+# Ensure schema is always migrated before serving requests.
+run_schema_migrations()
 
 app = Flask(__name__, static_folder=None)
 

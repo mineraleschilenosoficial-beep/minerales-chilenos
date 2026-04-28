@@ -6,6 +6,7 @@ from __future__ import annotations
 import subprocess
 import sys
 from pathlib import Path
+import os
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -16,10 +17,22 @@ def run_step(command: list[str]) -> None:
     subprocess.run(command, cwd=ROOT, check=True)
 
 
+def _env_true(name: str) -> bool:
+    return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
 def main() -> int:
+    fast_local_mode = _env_true("FAST_LOCAL_MODE")
+    if fast_local_mode:
+        # Keep local cycles fast: skip expensive geocoding loop and link audit.
+        os.environ.setdefault("REVERSE_GEOCODE_MAX_LOOKUPS", "0")
+        os.environ.setdefault("MISSING_HUNT_WEB_SEARCH", "false")
     run_step([sys.executable, "scripts/daily_refresh.py"])
     run_step([sys.executable, "scripts/validate_data.py"])
-    run_step([sys.executable, "scripts/link_audit.py"])
+    if not fast_local_mode:
+        run_step([sys.executable, "scripts/link_audit.py"])
+    else:
+        print("FAST_LOCAL_MODE enabled: skipping link_audit")
     print("refresh cycle completed")
     return 0
 
