@@ -20,6 +20,7 @@ from sqlalchemy import (
     delete,
     select,
     text,
+    tuple_,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, selectinload
 
@@ -92,7 +93,11 @@ class DatasetMetaStat(Base):
 
 class MineRecord(Base):
     __tablename__ = "mine_records"
-    __table_args__ = (CheckConstraint("confidence_score >= 0 AND confidence_score <= 1", name="ck_mine_records_confidence_0_1"),)
+    __table_args__ = (
+        CheckConstraint("confidence_score >= 0 AND confidence_score <= 1", name="ck_mine_records_confidence_0_1"),
+        CheckConstraint("latitude >= -90 AND latitude <= 90", name="ck_mine_records_latitude_range"),
+        CheckConstraint("longitude >= -180 AND longitude <= 180", name="ck_mine_records_longitude_range"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
@@ -100,31 +105,31 @@ class MineRecord(Base):
     longitude: Mapped[float] = mapped_column(Float, nullable=False)
     region: Mapped[str] = mapped_column(Text, nullable=False)
     site_type: Mapped[str] = mapped_column(Text, nullable=False)
-    mining_company: Mapped[str] = mapped_column(Text, nullable=False, default="-")
-    surface: Mapped[str] = mapped_column(Text, nullable=False, default="-")
-    altitude: Mapped[str] = mapped_column(Text, nullable=False, default="-")
-    production: Mapped[str] = mapped_column(Text, nullable=False, default="-")
-    workforce: Mapped[str] = mapped_column(Text, nullable=False, default="-")
-    average_salary: Mapped[str] = mapped_column(Text, nullable=False, default="-")
-    annual_revenue: Mapped[str] = mapped_column(Text, nullable=False, default="-")
-    future_hirings: Mapped[str] = mapped_column(Text, nullable=False, default="-")
-    operation_since: Mapped[str] = mapped_column(Text, nullable=False, default="-")
-    direct_workers: Mapped[str] = mapped_column(Text, nullable=False, default="-")
-    indirect_workers: Mapped[str] = mapped_column(Text, nullable=False, default="-")
-    hiring_plan_2026: Mapped[str] = mapped_column(Text, nullable=False, default="-")
+    mining_company: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    surface: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    altitude: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    production: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    workforce: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    average_salary: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    annual_revenue: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    future_hirings: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    operation_since: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    direct_workers: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    indirect_workers: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    hiring_plan_2026: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     data_origin: Mapped[str] = mapped_column(Text, nullable=False, default="source_unset")
     confidence_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     enriched_at: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    website: Mapped[str] = mapped_column(Text, nullable=False, default="#")
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    website: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     is_available_concession: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    city: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    commune: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    province: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    locality: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    location: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    operation_site: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    address: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    city: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    commune: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    province: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    locality: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    location: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    operation_site: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    address: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     minerals: Mapped[list["MineMineral"]] = relationship(cascade="all, delete-orphan", back_populates="mine")
     links: Mapped[list["MineLink"]] = relationship(cascade="all, delete-orphan", back_populates="mine")
 
@@ -229,6 +234,48 @@ class ReverseGeocodeCache(Base):
     updated_at: Mapped[str] = mapped_column(Text, nullable=False, default=utc_now_iso)
 
 
+MINE_RECORD_OPTIONAL_TEXT_COLUMNS = (
+    "mining_company",
+    "surface",
+    "altitude",
+    "production",
+    "workforce",
+    "average_salary",
+    "annual_revenue",
+    "future_hirings",
+    "operation_since",
+    "direct_workers",
+    "indirect_workers",
+    "hiring_plan_2026",
+    "notes",
+    "city",
+    "commune",
+    "province",
+    "locality",
+    "location",
+    "operation_site",
+    "address",
+)
+
+
+def _null_if_sentinel(value: Any, *, website_field: bool = False) -> str | None:
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    if raw == "-" or raw.lower() in {"n/a", "na", "none", "null"}:
+        return None
+    if website_field and raw == "#":
+        return None
+    return raw
+
+
+def _display_or_default(value: str | None, default: str = "-") -> str:
+    if value is None:
+        return default
+    cleaned = str(value).strip()
+    return cleaned if cleaned else default
+
+
 def ensure_schema(engine) -> None:
     Base.metadata.create_all(engine)
     # Hard cutover: legacy JSON key-value table is no longer supported.
@@ -315,6 +362,31 @@ def ensure_schema(engine) -> None:
             text(
                 "CREATE INDEX IF NOT EXISTS idx_mine_records_available_concession "
                 "ON mine_records (is_available_concession)"
+            )
+        )
+
+        # Normalize nullable semantics for optional text fields in mine_records.
+        for column_name in MINE_RECORD_OPTIONAL_TEXT_COLUMNS:
+            conn.execute(text(f"ALTER TABLE mine_records ALTER COLUMN {column_name} DROP NOT NULL"))
+            conn.execute(
+                text(
+                    f"""
+                    UPDATE mine_records
+                    SET {column_name} = NULL
+                    WHERE {column_name} IS NOT NULL
+                      AND btrim({column_name}) IN ('', '-', 'n/a', 'N/A', 'none', 'null')
+                    """
+                )
+            )
+        conn.execute(text("ALTER TABLE mine_records ALTER COLUMN website DROP NOT NULL"))
+        conn.execute(
+            text(
+                """
+                UPDATE mine_records
+                SET website = NULL
+                WHERE website IS NOT NULL
+                  AND btrim(website) IN ('', '#', '-', 'n/a', 'N/A', 'none', 'null')
+                """
             )
         )
 
@@ -418,7 +490,11 @@ def get_reverse_geocode_cache(points: list[tuple[float, float]]) -> dict[tuple[f
     engine = _make_engine()
     ensure_schema(engine)
     with Session(engine) as session:
-        rows = session.scalars(select(ReverseGeocodeCache)).all()
+        rows = session.scalars(
+            select(ReverseGeocodeCache).where(
+                tuple_(ReverseGeocodeCache.latitude_key, ReverseGeocodeCache.longitude_key).in_(list(target_keys))
+            )
+        ).all()
 
     result: dict[tuple[float, float], dict[str, str]] = {}
     for row in rows:
@@ -463,7 +539,11 @@ def upsert_reverse_geocode_cache(entries: list[dict[str, Any]]) -> int:
     engine = _make_engine()
     ensure_schema(engine)
     with Session(engine) as session:
-        rows = session.scalars(select(ReverseGeocodeCache)).all()
+        rows = session.scalars(
+            select(ReverseGeocodeCache).where(
+                tuple_(ReverseGeocodeCache.latitude_key, ReverseGeocodeCache.longitude_key).in_(list(normalized.keys()))
+            )
+        ).all()
         by_key = {_coord_cache_key(row.latitude_key, row.longitude_key): row for row in rows}
 
         written = 0
@@ -607,31 +687,31 @@ def save_dataset(payload: dict[str, Any]) -> None:
                 longitude=float(item.get("longitude")),
                 region=str(item.get("region") or ""),
                 site_type=str(item.get("site_type") or ""),
-                mining_company=str(item.get("mining_company") or "-"),
-                surface=str(item.get("surface") or "-"),
-                altitude=str(item.get("altitude") or "-"),
-                production=str(item.get("production") or "-"),
-                workforce=str(item.get("workforce") or "-"),
-                average_salary=str(item.get("average_salary") or "-"),
-                annual_revenue=str(item.get("annual_revenue") or "-"),
-                future_hirings=str(item.get("future_hirings") or "-"),
-                operation_since=str(item.get("operation_since") or "-"),
-                direct_workers=str(item.get("direct_workers") or "-"),
-                indirect_workers=str(item.get("indirect_workers") or "-"),
-                hiring_plan_2026=str(item.get("hiring_plan_2026") or "-"),
+                mining_company=_null_if_sentinel(item.get("mining_company")),
+                surface=_null_if_sentinel(item.get("surface")),
+                altitude=_null_if_sentinel(item.get("altitude")),
+                production=_null_if_sentinel(item.get("production")),
+                workforce=_null_if_sentinel(item.get("workforce")),
+                average_salary=_null_if_sentinel(item.get("average_salary")),
+                annual_revenue=_null_if_sentinel(item.get("annual_revenue")),
+                future_hirings=_null_if_sentinel(item.get("future_hirings")),
+                operation_since=_null_if_sentinel(item.get("operation_since")),
+                direct_workers=_null_if_sentinel(item.get("direct_workers")),
+                indirect_workers=_null_if_sentinel(item.get("indirect_workers")),
+                hiring_plan_2026=_null_if_sentinel(item.get("hiring_plan_2026")),
                 data_origin=str(item.get("data_origin") or "source_unset"),
                 confidence_score=float(item.get("confidence_score") or 0.0),
                 enriched_at=str(item.get("enriched_at") or ""),
-                notes=str(item.get("notes") or ""),
-                website=str(item.get("website") or "#"),
+                notes=_null_if_sentinel(item.get("notes")),
+                website=_null_if_sentinel(item.get("website"), website_field=True),
                 is_available_concession=bool(item.get("is_available_concession")),
-                city=str(item.get("city") or ""),
-                commune=str(item.get("commune") or ""),
-                province=str(item.get("province") or ""),
-                locality=str(item.get("locality") or ""),
-                location=str(item.get("location") or ""),
-                operation_site=str(item.get("operation_site") or ""),
-                address=str(item.get("address") or ""),
+                city=_null_if_sentinel(item.get("city")),
+                commune=_null_if_sentinel(item.get("commune")),
+                province=_null_if_sentinel(item.get("province")),
+                locality=_null_if_sentinel(item.get("locality")),
+                location=_null_if_sentinel(item.get("location")),
+                operation_site=_null_if_sentinel(item.get("operation_site")),
+                address=_null_if_sentinel(item.get("address")),
             )
             session.add(mine)
 
@@ -690,23 +770,23 @@ def get_dataset() -> dict[str, Any]:
                 "longitude": mine.longitude,
                 "region": mine.region,
                 "site_type": mine.site_type,
-                "mining_company": mine.mining_company,
-                "surface": mine.surface,
-                "altitude": mine.altitude,
-                "production": mine.production,
-                "workforce": mine.workforce,
-                "average_salary": mine.average_salary,
-                "annual_revenue": mine.annual_revenue,
-                "future_hirings": mine.future_hirings,
-                "operation_since": mine.operation_since,
-                "direct_workers": mine.direct_workers,
-                "indirect_workers": mine.indirect_workers,
-                "hiring_plan_2026": mine.hiring_plan_2026,
+                "mining_company": _display_or_default(mine.mining_company, "-"),
+                "surface": _display_or_default(mine.surface, "-"),
+                "altitude": _display_or_default(mine.altitude, "-"),
+                "production": _display_or_default(mine.production, "-"),
+                "workforce": _display_or_default(mine.workforce, "-"),
+                "average_salary": _display_or_default(mine.average_salary, "-"),
+                "annual_revenue": _display_or_default(mine.annual_revenue, "-"),
+                "future_hirings": _display_or_default(mine.future_hirings, "-"),
+                "operation_since": _display_or_default(mine.operation_since, "-"),
+                "direct_workers": _display_or_default(mine.direct_workers, "-"),
+                "indirect_workers": _display_or_default(mine.indirect_workers, "-"),
+                "hiring_plan_2026": _display_or_default(mine.hiring_plan_2026, "-"),
                 "data_origin": mine.data_origin,
                 "confidence_score": mine.confidence_score,
                 "enriched_at": mine.enriched_at,
-                "notes": mine.notes,
-                "website": mine.website,
+                "notes": _display_or_default(mine.notes, ""),
+                "website": _display_or_default(mine.website, "#"),
                 "is_available_concession": mine.is_available_concession,
                 "sources": links_by_category(mine, "sources"),
                 "docs": links_by_category(mine, "docs"),
@@ -715,13 +795,13 @@ def get_dataset() -> dict[str, Any]:
                 "geology_studies": links_by_category(mine, "geology_studies"),
                 "mineral_life_studies": links_by_category(mine, "mineral_life_studies"),
                 "mitigation_studies": links_by_category(mine, "mitigation_studies"),
-                "city": mine.city,
-                "commune": mine.commune,
-                "province": mine.province,
-                "locality": mine.locality,
-                "location": mine.location,
-                "operation_site": mine.operation_site,
-                "address": mine.address,
+                "city": _display_or_default(mine.city, ""),
+                "commune": _display_or_default(mine.commune, ""),
+                "province": _display_or_default(mine.province, ""),
+                "locality": _display_or_default(mine.locality, ""),
+                "location": _display_or_default(mine.location, ""),
+                "operation_site": _display_or_default(mine.operation_site, ""),
+                "address": _display_or_default(mine.address, ""),
             }
             items.append(item)
 
