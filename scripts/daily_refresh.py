@@ -38,6 +38,87 @@ DEFAULT_REVERSE_GEOCODE_MAX_LOOKUPS = 40
 DEFAULT_REVERSE_GEOCODE_DELAY_SECONDS = 1.0
 
 
+def _is_present(value) -> bool:
+    normalized = str(value or "").strip().lower()
+    return bool(normalized) and normalized not in {"-", "#", "n/a", "na", "none", "null", "unknown"}
+
+
+def _item_has_official_source(item: dict) -> bool:
+    sources = item.get("sources")
+    if not isinstance(sources, list):
+        return False
+    official_tokens = ("usgs", ".gov", ".gob.", "ministerio", "sernageomin")
+    for source in sources:
+        if not isinstance(source, dict):
+            continue
+        name = str(source.get("name") or "").lower()
+        url = str(source.get("url") or "").lower()
+        haystack = f"{name} {url}"
+        if any(token in haystack for token in official_tokens):
+            return True
+    return False
+
+
+def compute_refresh_kpis(payload: dict, pending_curation: int) -> dict[str, int]:
+    items = payload.get("items")
+    if not isinstance(items, list) or not items:
+        return {
+            "kpiRecordsTotal": 0,
+            "kpiRecordsWithAllMandatoryFields": 0,
+            "kpiRecordsWithOfficialSource": 0,
+            "kpiRecordsPendingManualCuration": max(0, int(pending_curation)),
+            "kpiPctAllMandatoryFieldsBp": 0,
+            "kpiPctOfficialSourceBp": 0,
+            "kpiPctPendingManualCurationBp": 0,
+        }
+
+    mandatory_scalar_fields = (
+        "mining_company",
+        "direct_workers",
+        "indirect_workers",
+        "average_salary",
+        "annual_revenue",
+        "operation_since",
+        "hiring_plan_2026",
+        "website",
+    )
+    mandatory_list_fields = (
+        "operating_authorizations",
+        "geology_studies",
+        "mineral_life_studies",
+        "mitigation_studies",
+        "environmental_reports",
+    )
+
+    total = len(items)
+    all_mandatory_count = 0
+    official_source_count = 0
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        has_scalars = all(_is_present(item.get(field)) for field in mandatory_scalar_fields)
+        has_lists = all(isinstance(item.get(field), list) and len(item.get(field) or []) > 0 for field in mandatory_list_fields)
+        if has_scalars and has_lists:
+            all_mandatory_count += 1
+        if _item_has_official_source(item):
+            official_source_count += 1
+
+    pending = max(0, min(int(pending_curation), total))
+
+    def bp(count: int) -> int:
+        return int(round((count / total) * 10000)) if total > 0 else 0
+
+    return {
+        "kpiRecordsTotal": total,
+        "kpiRecordsWithAllMandatoryFields": all_mandatory_count,
+        "kpiRecordsWithOfficialSource": official_source_count,
+        "kpiRecordsPendingManualCuration": pending,
+        "kpiPctAllMandatoryFieldsBp": bp(all_mandatory_count),
+        "kpiPctOfficialSourceBp": bp(official_source_count),
+        "kpiPctPendingManualCurationBp": bp(pending),
+    }
+
+
 def fetch_optional_remote_source(url: str) -> dict | None:
     ctx = ssl.create_default_context()
     request = urllib.request.Request(
@@ -624,9 +705,11 @@ def main() -> int:
     for key, value in geocode_stats.items():
         stats[key] = int(value)
 
-    save_dataset(current)
     pending_curation = int(rebuild_manual_curation_queue(current))
     stats["manualCurationPending"] = pending_curation
+    for key, value in compute_refresh_kpis(current, pending_curation).items():
+        stats[key] = int(value)
+    save_dataset(current)
     print(f"daily refresh complete mode={source_mode}")
     return 0
 

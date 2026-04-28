@@ -114,6 +114,7 @@ Convención de campos del dataset:
 - No hay aliases en español: todos los consumidores deben usar la convención en inglés.
 - Si la DB tiene registros legacy en español, ejecutar `python3 scripts/daily_refresh.py` para migrar/reconstruir el dataset antes de levantar la API.
 - En UI se prioriza mostrar datos públicamente verificables. Campos sensibles (por ejemplo salarios/ingresos/dotación por faena) pueden venir como `not_public` o `not_disclosed`.
+- `meta.scrapeStats` incluye KPIs por refresh en base points (`Bp`, donde `10000 = 100%`): cobertura de campos mandatorios, cobertura de fuente oficial y pendiente de curación manual.
 
 Persistencia:
 
@@ -178,6 +179,7 @@ Chequeos incluidos:
 - `id` único, coordenadas válidas y URLs con formato correcto.
 - `meta.sources.url` y `items[*].docs[*].url` deben ser URLs específicas (no homepage/root).
 - `items[*].sources[*].url` también debe ser específica (no homepage/root).
+- Gate opcional de cobertura mandatoria con `MANDATORY_FIELD_COVERAGE_MIN` (`0..1`).
 - advertencia si `meta.updatedAt` es antiguo.
 
 ## Despliegue en Coolify
