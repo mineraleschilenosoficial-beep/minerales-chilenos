@@ -59,6 +59,63 @@ def _item_has_official_source(item: dict) -> bool:
     return False
 
 
+def _first_source_url(item: dict) -> str:
+    sources = item.get("sources")
+    if not isinstance(sources, list):
+        return ""
+    for source in sources:
+        if not isinstance(source, dict):
+            continue
+        url = str(source.get("url") or "").strip()
+        if url:
+            return url
+    return ""
+
+
+def seed_field_provenance(payload: dict) -> tuple[dict, int]:
+    items = payload.get("items")
+    if not isinstance(items, list):
+        return payload, 0
+
+    target_fields = (
+        "mining_company",
+        "website",
+        "operation_since",
+        "direct_workers",
+        "indirect_workers",
+        "average_salary",
+        "annual_revenue",
+        "hiring_plan_2026",
+    )
+    changed = 0
+    now = utc_now_iso()
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        source_url = _first_source_url(item)
+        source_type = "official" if _item_has_official_source(item) else "source"
+        confidence = 0.75 if source_type == "official" else 0.65
+        for field in target_fields:
+            value = item.get(field)
+            if not _is_present(value):
+                continue
+            before = len(item.get("field_provenance") or []) if isinstance(item.get("field_provenance"), list) else 0
+            append_field_provenance(
+                item,
+                field_name=field,
+                field_value=str(value).strip(),
+                source_type=source_type,
+                source_url=source_url,
+                confidence_score=confidence,
+                note="seeded from dataset source",
+                updated_at=now,
+            )
+            after = len(item.get("field_provenance") or []) if isinstance(item.get("field_provenance"), list) else 0
+            if after > before:
+                changed += 1
+    return payload, changed
+
+
 def compute_refresh_kpis(payload: dict, pending_curation: int) -> dict[str, int]:
     items = payload.get("items")
     if not isinstance(items, list) or not items:
@@ -691,6 +748,7 @@ def main() -> int:
 
     current, geocode_stats = enrich_city_commune_with_reverse_geocoding(current)
     current, applied_overrides = apply_manual_overrides(current)
+    current, seeded_provenance = seed_field_provenance(current)
 
     current["meta"].setdefault("version", 1)
     current["meta"].setdefault("source", "postgresql")
@@ -702,6 +760,7 @@ def main() -> int:
         stats = {}
         current["meta"]["scrapeStats"] = stats
     stats["manualOverridesApplied"] = int(applied_overrides)
+    stats["fieldProvenanceSeeded"] = int(seeded_provenance)
     for key, value in geocode_stats.items():
         stats[key] = int(value)
 
