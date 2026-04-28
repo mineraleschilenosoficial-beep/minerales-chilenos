@@ -132,7 +132,7 @@ Acceptance rule:
 
 ## Public-Only Delivery Scope
 
-- [ ] Prioritize extraction for publicly feasible fields first (`mining_company`, `website`, `operation_since`, authorizations, environmental and technical studies).
+- [x] Prioritize extraction for publicly feasible fields first (`mining_company`, `website`, `operation_since`, authorizations, environmental and technical studies).
 - [x] Mark sensitive or non-public fields with explicit status (`not_public` / `not_disclosed`) instead of placeholders.
 - [x] Track feasibility separately from achieved coverage in each refresh report.
 
@@ -148,7 +148,8 @@ Acceptance rule:
 
 ## Validation And Release
 
-- [ ] Run data validation script after changes.
+- [x] Run data validation script after changes.
+  - 2026-04-28 local run OK via Dockerized PostgreSQL + `DATABASE_URL` (`Validation OK. Items: 3821. Warnings: 1054`).
 - [ ] Run focused UI checks for search and concession map behavior.
-- [ ] Update README if data contract or fields change.
-- [ ] Prepare a short rollout note with risks and follow-ups.
+- [x] Update README if data contract or fields change.
+- [x] Prepare a short rollout note with risks and follow-ups.
