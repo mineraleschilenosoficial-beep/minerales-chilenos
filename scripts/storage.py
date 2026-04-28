@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Shared PostgreSQL helpers for dataset and link report storage."""
+"""Shared relational PostgreSQL storage helpers using SQLAlchemy ORM."""
 
 from __future__ import annotations
 
@@ -7,14 +7,9 @@ import datetime as dt
 import os
 from typing import Any
 
-try:
-    import psycopg
-    from psycopg.rows import dict_row
-    from psycopg.types.json import Jsonb
-except ModuleNotFoundError:  # pragma: no cover - handled at runtime
-    psycopg = None
-    dict_row = None
-    Jsonb = None
+from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, Text, create_engine, delete, select
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, selectinload
+
 
 def utc_now_iso() -> str:
     return dt.datetime.now(dt.timezone.utc).isoformat()
@@ -35,151 +30,454 @@ def _required_database_url() -> str:
     return dsn
 
 
-def ensure_schema(conn: psycopg.Connection[Any]) -> None:
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS app_state (
-              key TEXT PRIMARY KEY,
-              value JSONB NOT NULL,
-              updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            )
-            """
+def _make_engine():
+    dsn = _required_database_url()
+    if dsn.startswith("postgresql://") and "postgresql+" not in dsn:
+        dsn = dsn.replace("postgresql://", "postgresql+psycopg://", 1)
+    return create_engine(dsn, future=True)
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class DatasetMeta(Base):
+    __tablename__ = "dataset_meta"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    updated_at: Mapped[str] = mapped_column(Text, nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    source: Mapped[str] = mapped_column(Text, nullable=False)
+    last_verified_at: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    refresh_mode: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    scrape_source_name: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    sources: Mapped[list["DatasetMetaSource"]] = relationship(cascade="all, delete-orphan", back_populates="meta")
+    stats: Mapped[list["DatasetMetaStat"]] = relationship(cascade="all, delete-orphan", back_populates="meta")
+
+
+class DatasetMetaSource(Base):
+    __tablename__ = "dataset_meta_sources"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    meta_id: Mapped[int] = mapped_column(ForeignKey("dataset_meta.id", ondelete="CASCADE"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    meta: Mapped["DatasetMeta"] = relationship(back_populates="sources")
+
+
+class DatasetMetaStat(Base):
+    __tablename__ = "dataset_meta_stats"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    meta_id: Mapped[int] = mapped_column(ForeignKey("dataset_meta.id", ondelete="CASCADE"), nullable=False, index=True)
+    key: Mapped[str] = mapped_column(String(120), nullable=False)
+    value: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    meta: Mapped["DatasetMeta"] = relationship(back_populates="stats")
+
+
+class MineRecord(Base):
+    __tablename__ = "mine_records"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    latitude: Mapped[float] = mapped_column(Float, nullable=False)
+    longitude: Mapped[float] = mapped_column(Float, nullable=False)
+    region: Mapped[str] = mapped_column(Text, nullable=False)
+    site_type: Mapped[str] = mapped_column(Text, nullable=False)
+    mining_company: Mapped[str] = mapped_column(Text, nullable=False, default="-")
+    surface: Mapped[str] = mapped_column(Text, nullable=False, default="-")
+    altitude: Mapped[str] = mapped_column(Text, nullable=False, default="-")
+    production: Mapped[str] = mapped_column(Text, nullable=False, default="-")
+    workforce: Mapped[str] = mapped_column(Text, nullable=False, default="-")
+    average_salary: Mapped[str] = mapped_column(Text, nullable=False, default="-")
+    annual_revenue: Mapped[str] = mapped_column(Text, nullable=False, default="-")
+    future_hirings: Mapped[str] = mapped_column(Text, nullable=False, default="-")
+    operation_since: Mapped[str] = mapped_column(Text, nullable=False, default="-")
+    direct_workers: Mapped[str] = mapped_column(Text, nullable=False, default="-")
+    indirect_workers: Mapped[str] = mapped_column(Text, nullable=False, default="-")
+    hiring_plan_2026: Mapped[str] = mapped_column(Text, nullable=False, default="-")
+    data_origin: Mapped[str] = mapped_column(Text, nullable=False, default="source_unset")
+    confidence_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    enriched_at: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    website: Mapped[str] = mapped_column(Text, nullable=False, default="#")
+    is_available_concession: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    city: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    commune: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    province: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    locality: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    location: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    operation_site: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    address: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    minerals: Mapped[list["MineMineral"]] = relationship(cascade="all, delete-orphan", back_populates="mine")
+    links: Mapped[list["MineLink"]] = relationship(cascade="all, delete-orphan", back_populates="mine")
+
+
+class MineMineral(Base):
+    __tablename__ = "mine_minerals"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    mine_id: Mapped[int] = mapped_column(ForeignKey("mine_records.id", ondelete="CASCADE"), nullable=False, index=True)
+    mineral: Mapped[str] = mapped_column(Text, nullable=False)
+    mine: Mapped["MineRecord"] = relationship(back_populates="minerals")
+
+
+class MineLink(Base):
+    __tablename__ = "mine_links"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    mine_id: Mapped[int] = mapped_column(ForeignKey("mine_records.id", ondelete="CASCADE"), nullable=False, index=True)
+    category: Mapped[str] = mapped_column(String(80), nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    doc_type: Mapped[str] = mapped_column(String(80), nullable=False, default="")
+    mine: Mapped["MineRecord"] = relationship(back_populates="links")
+
+
+class LinkReportRun(Base):
+    __tablename__ = "link_report_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    checked: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    ok_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    warning_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    failed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[str] = mapped_column(Text, nullable=False, default=utc_now_iso)
+    results: Mapped[list["LinkReportResult"]] = relationship(cascade="all, delete-orphan", back_populates="run")
+
+
+class LinkReportResult(Base):
+    __tablename__ = "link_report_results"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("link_report_runs.id", ondelete="CASCADE"), nullable=False, index=True)
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(40), nullable=False, default="")
+    final_url: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    error: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    run: Mapped["LinkReportRun"] = relationship(back_populates="results")
+
+
+def ensure_schema(engine) -> None:
+    Base.metadata.create_all(engine)
+
+
+def _extract_link_rows(item: dict[str, Any]) -> list[dict[str, str]]:
+    links: list[dict[str, str]] = []
+
+    for src in item.get("sources", []) or []:
+        if not isinstance(src, dict):
+            continue
+        links.append(
+            {
+                "category": "sources",
+                "name": str(src.get("name") or src.get("url") or ""),
+                "url": str(src.get("url") or ""),
+                "note": str(src.get("note") or ""),
+                "doc_type": "",
+            }
         )
 
-
-def _coalesce(item: dict[str, Any], keys: tuple[str, ...], default: Any = None) -> Any:
-    for key in keys:
-        if key in item:
-            return item[key]
-    return default
-
-
-def _normalize_item_schema(raw_item: dict[str, Any]) -> dict[str, Any]:
-    # Canonical DB/API fields in English only.
-    legacy_keys = {
-        "nombre", "mineral", "lat", "lng", "tipo", "empresa", "sup", "alt", "prod",
-        "dotacion", "sueldos_promedio", "ingresos", "contrataciones_futuras", "noticias",
-        "web", "libre", "ciudad", "comuna", "provincia", "localidad", "ubicacion", "faena",
-        "direccion"
-    }
-    if "name" not in raw_item and legacy_keys.intersection(raw_item.keys()):
-        raise ValueError("Legacy Spanish schema detected. Run daily refresh to migrate dataset to English schema.")
-
-    canonical = {
-        "id": _coalesce(raw_item, ("id",)),
-        "name": _coalesce(raw_item, ("name",), ""),
-        "minerals": _coalesce(raw_item, ("minerals",), []),
-        "latitude": _coalesce(raw_item, ("latitude",)),
-        "longitude": _coalesce(raw_item, ("longitude",)),
-        "region": _coalesce(raw_item, ("region",), ""),
-        "site_type": _coalesce(raw_item, ("site_type",), ""),
-        "mining_company": _coalesce(raw_item, ("mining_company",), "-"),
-        "surface": _coalesce(raw_item, ("surface",), "-"),
-        "altitude": _coalesce(raw_item, ("altitude",), "-"),
-        "production": _coalesce(raw_item, ("production",), "-"),
-        "workforce": _coalesce(raw_item, ("workforce",), "-"),
-        "average_salary": _coalesce(raw_item, ("average_salary",), "-"),
-        "annual_revenue": _coalesce(raw_item, ("annual_revenue",), "-"),
-        "future_hirings": _coalesce(raw_item, ("future_hirings",), "-"),
-        "operation_since": _coalesce(raw_item, ("operation_since",), "-"),
-        "direct_workers": _coalesce(raw_item, ("direct_workers",), "-"),
-        "indirect_workers": _coalesce(raw_item, ("indirect_workers",), "-"),
-        "hiring_plan_2026": _coalesce(raw_item, ("hiring_plan_2026",), "-"),
-        "data_origin": _coalesce(raw_item, ("data_origin",), "source_unset"),
-        "confidence_score": _coalesce(raw_item, ("confidence_score",), 0.0),
-        "enriched_at": _coalesce(raw_item, ("enriched_at",), ""),
-        "notes": _coalesce(raw_item, ("notes",), ""),
-        "website": _coalesce(raw_item, ("website",), "#"),
-        "is_available_concession": _coalesce(raw_item, ("is_available_concession",), False),
-        "sources": _coalesce(raw_item, ("sources",), []),
-        "docs": _coalesce(raw_item, ("docs",), []),
-        "environmental_reports": _coalesce(raw_item, ("environmental_reports",), []),
-        "operating_authorizations": _coalesce(raw_item, ("operating_authorizations",), []),
-        "geology_studies": _coalesce(raw_item, ("geology_studies",), []),
-        "mineral_life_studies": _coalesce(raw_item, ("mineral_life_studies",), []),
-        "mitigation_studies": _coalesce(raw_item, ("mitigation_studies",), []),
-        "city": _coalesce(raw_item, ("city",), ""),
-        "commune": _coalesce(raw_item, ("commune",), ""),
-        "province": _coalesce(raw_item, ("province",), ""),
-        "locality": _coalesce(raw_item, ("locality",), ""),
-        "location": _coalesce(raw_item, ("location",), ""),
-        "operation_site": _coalesce(raw_item, ("operation_site",), ""),
-        "address": _coalesce(raw_item, ("address",), ""),
-    }
-    result = {**raw_item, **canonical}
-    for key in legacy_keys:
-        result.pop(key, None)
-    return result
-
-
-def normalize_dataset_schema(payload: dict[str, Any]) -> dict[str, Any]:
-    items = payload.get("items")
-    if not isinstance(items, list):
-        return payload
-
-    normalized_items: list[dict[str, Any]] = []
-    for item in items:
-        if not isinstance(item, dict):
-            normalized_items.append(item)
+    for doc in item.get("docs", []) or []:
+        if not isinstance(doc, dict):
             continue
-        normalized_items.append(_normalize_item_schema(item))
+        links.append(
+            {
+                "category": "docs",
+                "name": str(doc.get("name") or doc.get("url") or ""),
+                "url": str(doc.get("url") or ""),
+                "note": "",
+                "doc_type": str(doc.get("doc_type") or ""),
+            }
+        )
 
-    result = dict(payload)
-    result["items"] = normalized_items
-    result.setdefault("meta", {})
-    return result
-
-
-def get_state_from_db(key: str) -> dict[str, Any] | None:
-    dsn = _required_database_url()
-    if psycopg is None or dict_row is None:
-        raise RuntimeError("psycopg is required when DATABASE_URL is set")
-    with psycopg.connect(dsn, row_factory=dict_row) as conn:
-        ensure_schema(conn)
-        with conn.cursor() as cur:
-            cur.execute("SELECT value FROM app_state WHERE key = %s", (key,))
-            row = cur.fetchone()
-            if not row:
-                return None
-            value = row.get("value")
-            return value if isinstance(value, dict) else None
-
-
-def upsert_state_to_db(key: str, payload: dict[str, Any]) -> None:
-    dsn = _required_database_url()
-    if psycopg is None or Jsonb is None:
-        raise RuntimeError("psycopg is required when DATABASE_URL is set")
-    with psycopg.connect(dsn) as conn:
-        ensure_schema(conn)
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO app_state (key, value, updated_at)
-                VALUES (%s, %s, NOW())
-                ON CONFLICT (key)
-                DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
-                """,
-                (key, Jsonb(payload)),
+    resource_categories = (
+        "environmental_reports",
+        "operating_authorizations",
+        "geology_studies",
+        "mineral_life_studies",
+        "mitigation_studies",
+    )
+    for category in resource_categories:
+        for entry in item.get(category, []) or []:
+            if isinstance(entry, str):
+                links.append({"category": category, "name": entry, "url": entry, "note": "", "doc_type": ""})
+                continue
+            if not isinstance(entry, dict):
+                continue
+            links.append(
+                {
+                    "category": category,
+                    "name": str(entry.get("name") or entry.get("url") or ""),
+                    "url": str(entry.get("url") or ""),
+                    "note": str(entry.get("note") or ""),
+                    "doc_type": str(entry.get("doc_type") or ""),
+                }
             )
-        conn.commit()
-
-
-def get_dataset() -> dict[str, Any]:
-    db_payload = get_state_from_db("dataset")
-    if db_payload and isinstance(db_payload.get("items"), list):
-        db_payload.setdefault("meta", {})
-        return normalize_dataset_schema(db_payload)
-    raise RuntimeError("Dataset not found in PostgreSQL. Run daily refresh to bootstrap data.")
+    return [row for row in links if row["url"]]
 
 
 def save_dataset(payload: dict[str, Any]) -> None:
-    upsert_state_to_db("dataset", normalize_dataset_schema(payload))
+    meta = payload.get("meta")
+    items = payload.get("items")
+    if not isinstance(meta, dict) or not isinstance(items, list):
+        raise ValueError("Payload must include 'meta' object and 'items' list.")
+
+    engine = _make_engine()
+    ensure_schema(engine)
+
+    with Session(engine) as session:
+        session.execute(delete(MineLink))
+        session.execute(delete(MineMineral))
+        session.execute(delete(MineRecord))
+        session.execute(delete(DatasetMetaSource))
+        session.execute(delete(DatasetMetaStat))
+        session.execute(delete(DatasetMeta))
+
+        meta_row = DatasetMeta(
+            id=1,
+            updated_at=str(meta.get("updatedAt") or utc_now_iso()),
+            version=int(meta.get("version") or 1),
+            source=str(meta.get("source") or "postgresql"),
+            last_verified_at=str(meta.get("lastVerifiedAt") or ""),
+            refresh_mode=str(meta.get("refreshMode") or ""),
+            scrape_source_name=str(meta.get("scrapeSourceName") or ""),
+        )
+        session.add(meta_row)
+
+        for src in meta.get("sources", []) or []:
+            if not isinstance(src, dict):
+                continue
+            if not src.get("url"):
+                continue
+            meta_row.sources.append(
+                DatasetMetaSource(
+                    name=str(src.get("name") or src["url"]),
+                    url=str(src["url"]),
+                    note=str(src.get("note") or ""),
+                )
+            )
+
+        scrape_stats = meta.get("scrapeStats")
+        if isinstance(scrape_stats, dict):
+            for key, value in scrape_stats.items():
+                try:
+                    numeric = int(value)
+                except Exception:  # noqa: BLE001
+                    continue
+                meta_row.stats.append(DatasetMetaStat(key=str(key), value=numeric))
+
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            mine_id = item.get("id")
+            if not isinstance(mine_id, int):
+                raise ValueError("Each item.id must be integer")
+
+            mine = MineRecord(
+                id=mine_id,
+                name=str(item.get("name") or ""),
+                minerals=[],
+                latitude=float(item.get("latitude")),
+                longitude=float(item.get("longitude")),
+                region=str(item.get("region") or ""),
+                site_type=str(item.get("site_type") or ""),
+                mining_company=str(item.get("mining_company") or "-"),
+                surface=str(item.get("surface") or "-"),
+                altitude=str(item.get("altitude") or "-"),
+                production=str(item.get("production") or "-"),
+                workforce=str(item.get("workforce") or "-"),
+                average_salary=str(item.get("average_salary") or "-"),
+                annual_revenue=str(item.get("annual_revenue") or "-"),
+                future_hirings=str(item.get("future_hirings") or "-"),
+                operation_since=str(item.get("operation_since") or "-"),
+                direct_workers=str(item.get("direct_workers") or "-"),
+                indirect_workers=str(item.get("indirect_workers") or "-"),
+                hiring_plan_2026=str(item.get("hiring_plan_2026") or "-"),
+                data_origin=str(item.get("data_origin") or "source_unset"),
+                confidence_score=float(item.get("confidence_score") or 0.0),
+                enriched_at=str(item.get("enriched_at") or ""),
+                notes=str(item.get("notes") or ""),
+                website=str(item.get("website") or "#"),
+                is_available_concession=bool(item.get("is_available_concession")),
+                city=str(item.get("city") or ""),
+                commune=str(item.get("commune") or ""),
+                province=str(item.get("province") or ""),
+                locality=str(item.get("locality") or ""),
+                location=str(item.get("location") or ""),
+                operation_site=str(item.get("operation_site") or ""),
+                address=str(item.get("address") or ""),
+            )
+            session.add(mine)
+
+            for mineral in item.get("minerals", []) or []:
+                text = str(mineral).strip()
+                if text:
+                    mine.minerals.append(MineMineral(mineral=text))
+
+            for row in _extract_link_rows(item):
+                mine.links.append(
+                    MineLink(
+                        category=row["category"],
+                        name=row["name"],
+                        url=row["url"],
+                        note=row["note"],
+                        doc_type=row["doc_type"],
+                    )
+                )
+        session.commit()
 
 
-def get_link_report() -> dict[str, Any] | None:
-    return get_state_from_db("link_report")
+def get_dataset() -> dict[str, Any]:
+    engine = _make_engine()
+    ensure_schema(engine)
+    with Session(engine) as session:
+        meta = session.scalar(
+            select(DatasetMeta).options(selectinload(DatasetMeta.sources), selectinload(DatasetMeta.stats)).where(DatasetMeta.id == 1)
+        )
+        if meta is None:
+            raise RuntimeError("Dataset not found in PostgreSQL. Run daily refresh to bootstrap data.")
+
+        mines = session.scalars(
+            select(MineRecord).options(selectinload(MineRecord.minerals), selectinload(MineRecord.links)).order_by(MineRecord.id.asc())
+        ).all()
+
+        def links_by_category(mine: MineRecord, category: str) -> list[dict[str, str]]:
+            result: list[dict[str, str]] = []
+            for link in mine.links:
+                if link.category != category:
+                    continue
+                row = {"name": link.name, "url": link.url}
+                if link.note:
+                    row["note"] = link.note
+                if link.doc_type:
+                    row["doc_type"] = link.doc_type
+                result.append(row)
+            return result
+
+        items = []
+        for mine in mines:
+            item = {
+                "id": mine.id,
+                "name": mine.name,
+                "minerals": [m.mineral for m in mine.minerals],
+                "latitude": mine.latitude,
+                "longitude": mine.longitude,
+                "region": mine.region,
+                "site_type": mine.site_type,
+                "mining_company": mine.mining_company,
+                "surface": mine.surface,
+                "altitude": mine.altitude,
+                "production": mine.production,
+                "workforce": mine.workforce,
+                "average_salary": mine.average_salary,
+                "annual_revenue": mine.annual_revenue,
+                "future_hirings": mine.future_hirings,
+                "operation_since": mine.operation_since,
+                "direct_workers": mine.direct_workers,
+                "indirect_workers": mine.indirect_workers,
+                "hiring_plan_2026": mine.hiring_plan_2026,
+                "data_origin": mine.data_origin,
+                "confidence_score": mine.confidence_score,
+                "enriched_at": mine.enriched_at,
+                "notes": mine.notes,
+                "website": mine.website,
+                "is_available_concession": mine.is_available_concession,
+                "sources": links_by_category(mine, "sources"),
+                "docs": links_by_category(mine, "docs"),
+                "environmental_reports": links_by_category(mine, "environmental_reports"),
+                "operating_authorizations": links_by_category(mine, "operating_authorizations"),
+                "geology_studies": links_by_category(mine, "geology_studies"),
+                "mineral_life_studies": links_by_category(mine, "mineral_life_studies"),
+                "mitigation_studies": links_by_category(mine, "mitigation_studies"),
+                "city": mine.city,
+                "commune": mine.commune,
+                "province": mine.province,
+                "locality": mine.locality,
+                "location": mine.location,
+                "operation_site": mine.operation_site,
+                "address": mine.address,
+            }
+            items.append(item)
+
+        scrape_stats = {row.key: row.value for row in meta.stats}
+        payload = {
+            "meta": {
+                "updatedAt": meta.updated_at,
+                "version": meta.version,
+                "source": meta.source,
+                "lastVerifiedAt": meta.last_verified_at,
+                "refreshMode": meta.refresh_mode,
+                "scrapeSourceName": meta.scrape_source_name,
+                "sources": [{"name": s.name, "url": s.url, "note": s.note} for s in meta.sources],
+                "scrapeStats": scrape_stats,
+            },
+            "items": items,
+        }
+        return payload
 
 
 def save_link_report(payload: dict[str, Any]) -> None:
-    upsert_state_to_db("link_report", payload)
+    engine = _make_engine()
+    ensure_schema(engine)
+    with Session(engine) as session:
+        run = LinkReportRun(
+            checked=int(payload.get("checked") or 0),
+            ok_count=int(payload.get("ok_count") or 0),
+            warning_count=int(payload.get("warning_count") or 0),
+            failed_count=int(payload.get("failed_count") or 0),
+            created_at=utc_now_iso(),
+        )
+        session.add(run)
+
+        for result in payload.get("results", []) or []:
+            if not isinstance(result, dict):
+                continue
+            run.results.append(
+                LinkReportResult(
+                    url=str(result.get("url") or ""),
+                    status=str(result.get("status") or ""),
+                    final_url=str(result.get("final_url") or ""),
+                    error=str(result.get("error") or ""),
+                    note=str(result.get("note") or ""),
+                )
+            )
+        session.commit()
+
+
+def get_link_report() -> dict[str, Any] | None:
+    engine = _make_engine()
+    ensure_schema(engine)
+    with Session(engine) as session:
+        run = session.scalar(
+            select(LinkReportRun).options(selectinload(LinkReportRun.results)).order_by(LinkReportRun.id.desc()).limit(1)
+        )
+        if run is None:
+            return None
+
+        results = [
+            {
+                "url": row.url,
+                "status": row.status,
+                "final_url": row.final_url,
+                "error": row.error,
+                "note": row.note,
+            }
+            for row in run.results
+        ]
+        warnings = [row for row in results if row["status"] == "ssl_warning"]
+        ok_statuses = {"200", "201", "301", "302", "307", "308", "401", "403", "skipped"}
+        failed = [row for row in results if row["status"] not in ok_statuses and row["status"] != "ssl_warning"]
+
+        return {
+            "checked": run.checked,
+            "ok_count": run.ok_count,
+            "warning_count": run.warning_count,
+            "failed_count": run.failed_count,
+            "results": results,
+            "warnings": warnings,
+            "failed": failed,
+        }

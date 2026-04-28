@@ -42,6 +42,7 @@ Acceptance rule:
 
 ## Phase 2 - Dataset Enrichment Baseline
 
+- [x] Migrate persistence to relational SQL + ORM (no JSON app_state storage, no legacy fallback).
 - [x] Complete migration to canonical dataset field names in English only (no Spanish aliases).
 - [x] Define enrichment fields for each record:
   - `data_origin`

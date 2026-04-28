@@ -7,7 +7,7 @@ Aplicación web para `MineralesChilenos.cl` preparada para desplegar en Coolify 
 - `api/server.py`: API HTTP y servidor de archivos estáticos.
 - `assets/app.js`: frontend (mapa, filtros, modal y cache local del navegador).
 - `assets/config.js`: endpoints de la API y configuración de cache/GTM.
-- `scripts/storage.py`: persistencia compartida exclusivamente en PostgreSQL.
+- `scripts/storage.py`: persistencia relacional en PostgreSQL mediante ORM (SQLAlchemy).
 - `scripts/daily_refresh.py`: refresca dataset.
 - `scripts/validate_data.py`: valida esquema/calidad del dataset.
 - `scripts/link_audit.py`: audita enlaces y genera reporte.
@@ -109,7 +109,7 @@ Convención de campos del dataset:
 
 Persistencia:
 
-- PostgreSQL (`DATABASE_URL`, tabla `app_state`) como única fuente de datos.
+- PostgreSQL (`DATABASE_URL`) como única fuente de datos (esquema relacional normalizado; sin `app_state` JSON).
 
 Comportamiento de lectura frontend:
 
