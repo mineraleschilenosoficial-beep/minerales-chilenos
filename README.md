@@ -41,29 +41,39 @@ python3 api/server.py
 
 ## Desarrollo local con Docker
 
-1. Levantar PostgreSQL + API:
+1. Levantar solo PostgreSQL:
 
 ```bash
-docker compose -f docker-compose.local.yml up -d --build
+docker compose -f docker-compose.local.yml up -d
 ```
 
-2. Inicializar/actualizar dataset dentro del contenedor:
+2. Definir conexión local a PostgreSQL:
 
 ```bash
-docker compose -f docker-compose.local.yml run --rm app python3 scripts/daily_refresh.py
+export DATABASE_URL="postgresql://minerales:minerales@localhost:5432/minerales"
 ```
 
-3. Validar dataset:
+3. Inicializar/actualizar dataset desde tu entorno local:
 
 ```bash
-docker compose -f docker-compose.local.yml run --rm app python3 scripts/validate_data.py
+python3 scripts/daily_refresh.py
 ```
 
-4. Abrir:
+4. Validar dataset:
+
+```bash
+python3 scripts/validate_data.py
+```
+
+5. (Opcional) Ejecutar API local:
+
+```bash
+python3 api/server.py
+```
 
 - `http://localhost:8000`
 
-5. Detener entorno:
+6. Detener entorno:
 
 ```bash
 docker compose -f docker-compose.local.yml down
