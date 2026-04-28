@@ -6,7 +6,7 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS_ROOT = ROOT
@@ -45,6 +45,13 @@ def serve_index():
 @app.get("/<path:path>")
 def serve_static(path: str):
     return send_from_directory(ASSETS_ROOT, path)
+
+
+@app.errorhandler(404)
+def not_found(_error):
+    if request.path.startswith("/api/"):
+        return jsonify({"error": "Not Found", "path": request.path}), 404
+    return send_from_directory(ASSETS_ROOT, "404.html"), 404
 
 
 if __name__ == "__main__":
