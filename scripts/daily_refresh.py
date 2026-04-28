@@ -309,6 +309,7 @@ def scrape_mrds_chile_dataset() -> dict:
     if not cleaned:
         raise ValueError("USGS MRDS produced records but all were dropped by quality/coordinate filters.")
 
+    now = utc_now_iso()
     items: list[dict] = []
     for next_id, record in enumerate(cleaned, start=1):
         dep_id = (record.get("dep_id") or "").strip()
@@ -333,6 +334,9 @@ def scrape_mrds_chile_dataset() -> dict:
                 "direct_workers": "-",
                 "indirect_workers": "-",
                 "hiring_plan_2026": "-",
+                "data_origin": "usgs-mrds",
+                "confidence_score": 0.55,
+                "enriched_at": now,
                 "notes": "Dato obtenido por scraping de USGS MRDS (Chile).",
                 "website": "#",
                 "is_available_concession": False,
@@ -365,7 +369,6 @@ def scrape_mrds_chile_dataset() -> dict:
         "failedWindows": len(errors),
     }
 
-    now = utc_now_iso()
     return {
         "meta": {
             "updatedAt": now,

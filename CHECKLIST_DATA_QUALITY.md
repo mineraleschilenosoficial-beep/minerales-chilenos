@@ -43,7 +43,7 @@ Acceptance rule:
 ## Phase 2 - Dataset Enrichment Baseline
 
 - [x] Complete migration to canonical dataset field names in English only (no Spanish aliases).
-- [ ] Define enrichment fields for each record:
+- [x] Define enrichment fields for each record:
   - `data_origin`
   - `confidence_score`
   - `enriched_at`
@@ -150,6 +150,7 @@ Acceptance rule:
 
 - [x] Run data validation script after changes.
   - 2026-04-28 local run OK via Dockerized PostgreSQL + `DATABASE_URL` (`Validation OK. Items: 3821. Warnings: 1054`).
-- [ ] Run focused UI checks for search and concession map behavior.
+- [x] Run focused UI checks for search and concession map behavior.
+  - 2026-04-28 manual UI check OK on `http://localhost:8000` (search input filters results; `Solo concesiones disponibles` toggles active state and filtering).
 - [x] Update README if data contract or fields change.
 - [x] Prepare a short rollout note with risks and follow-ups.

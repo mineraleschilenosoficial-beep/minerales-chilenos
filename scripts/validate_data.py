@@ -83,7 +83,7 @@ def main() -> int:
     seen_names: set[str] = set()
     required_fields = (
         "id", "name", "minerals", "latitude", "longitude", "region", "site_type", "is_available_concession",
-        "mining_company", "operation_since", "website"
+        "mining_company", "operation_since", "website", "data_origin", "confidence_score", "enriched_at"
     )
 
     for idx, item in enumerate(items):
@@ -135,6 +135,16 @@ def main() -> int:
             errors.append(f"{path}.mining_company must be string")
         if not isinstance(item.get("operation_since"), str):
             errors.append(f"{path}.operation_since must be string")
+        if not isinstance(item.get("data_origin"), str) or not item["data_origin"].strip():
+            errors.append(f"{path}.data_origin must be non-empty string")
+        confidence_score = item.get("confidence_score")
+        if not isinstance(confidence_score, (int, float)) or not (0 <= float(confidence_score) <= 1):
+            errors.append(f"{path}.confidence_score must be number between 0 and 1")
+        enriched_at = item.get("enriched_at")
+        if not isinstance(enriched_at, str) or not enriched_at.strip():
+            errors.append(f"{path}.enriched_at must be non-empty string")
+        elif parse_iso(enriched_at) is None:
+            errors.append(f"{path}.enriched_at must be ISO datetime")
         for optional_text in ("average_salary", "annual_revenue", "hiring_plan_2026", "direct_workers", "indirect_workers"):
             value = item.get(optional_text)
             if value is not None and not isinstance(value, str):
