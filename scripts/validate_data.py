@@ -131,6 +131,18 @@ def main() -> int:
             errors.append(f"{path}.site_type must be non-empty string")
         if not isinstance(item.get("is_available_concession"), bool):
             errors.append(f"{path}.is_available_concession must be boolean")
+        field_status = item.get("field_status")
+        if field_status is not None and not isinstance(field_status, dict):
+            errors.append(f"{path}.field_status must be object when present")
+            field_status = None
+        if isinstance(field_status, dict):
+            valid_status = {"not_public", "not_disclosed", "pending_verification", "verified_public", "estimated_public_aggregate"}
+            for key, status in field_status.items():
+                if not isinstance(key, str) or not key.strip():
+                    errors.append(f"{path}.field_status has invalid key")
+                    continue
+                if not isinstance(status, str) or status not in valid_status:
+                    errors.append(f"{path}.field_status.{key} has invalid status")
         if not isinstance(item.get("mining_company"), str):
             errors.append(f"{path}.mining_company must be string")
         if not isinstance(item.get("operation_since"), str):
