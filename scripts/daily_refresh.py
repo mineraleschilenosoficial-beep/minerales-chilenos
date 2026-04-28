@@ -45,6 +45,9 @@ EXCLUDED_WEBSITE_HOSTS = {
 AUTHORIZATION_KEYWORDS = ("autoriz", "authoriz", "permit", "licenc", "resolucion", "resolution", "rca")
 ENVIRONMENTAL_KEYWORDS = ("ambient", "environ", "eia", "dia", "impacto")
 COMPANY_HINT_KEYWORDS = ("minera", "mining", "corp", "company", "compania", "compañia", "ltd", "s.a")
+GEOLOGY_KEYWORDS = ("geolog", "jorc", "43-101", "resource", "reserv")
+MINERAL_LIFE_KEYWORDS = ("life of mine", "vida util", "life", "reserve life", "remaining years")
+MITIGATION_KEYWORDS = ("mitig", "compens", "monitor", "remedi", "rehabilit")
 
 
 def _is_present(value) -> bool:
@@ -382,6 +385,71 @@ def enrich_sprint3_fields_from_sources(payload: dict) -> tuple[dict, dict[str, i
                         updated_at=now,
                     )
                     stats["sprint3HiringPlan2026Extracted"] += 1
+
+    return payload, stats
+
+
+def enrich_sprint4_studies_from_docs(payload: dict) -> tuple[dict, dict[str, int]]:
+    items = payload.get("items")
+    if not isinstance(items, list):
+        return payload, {
+            "sprint4GeologyStudiesExtracted": 0,
+            "sprint4MineralLifeStudiesExtracted": 0,
+            "sprint4MitigationStudiesExtracted": 0,
+        }
+
+    stats = {
+        "sprint4GeologyStudiesExtracted": 0,
+        "sprint4MineralLifeStudiesExtracted": 0,
+        "sprint4MitigationStudiesExtracted": 0,
+    }
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        doc_rows = [_normalize_doc_entry(x) for x in (item.get("docs") or [])]
+        doc_rows = [x for x in doc_rows if x]
+        if not doc_rows:
+            continue
+
+        geology = item.get("geology_studies")
+        if not isinstance(geology, list):
+            geology = []
+            item["geology_studies"] = geology
+        mineral_life = item.get("mineral_life_studies")
+        if not isinstance(mineral_life, list):
+            mineral_life = []
+            item["mineral_life_studies"] = mineral_life
+        mitigation = item.get("mitigation_studies")
+        if not isinstance(mitigation, list):
+            mitigation = []
+            item["mitigation_studies"] = mitigation
+
+        geology_urls = {str((x.get("url") if isinstance(x, dict) else x) or "").strip() for x in geology if isinstance(x, (dict, str))}
+        mineral_life_urls = {
+            str((x.get("url") if isinstance(x, dict) else x) or "").strip()
+            for x in mineral_life
+            if isinstance(x, (dict, str))
+        }
+        mitigation_urls = {str((x.get("url") if isinstance(x, dict) else x) or "").strip() for x in mitigation if isinstance(x, (dict, str))}
+
+        for doc in doc_rows:
+            searchable = " ".join((doc["name"], doc["note"], doc["doc_type"], doc["url"])).lower()
+            url = doc["url"]
+            if any(token in searchable for token in GEOLOGY_KEYWORDS):
+                if url and url not in geology_urls:
+                    geology.append(doc)
+                    geology_urls.add(url)
+                    stats["sprint4GeologyStudiesExtracted"] += 1
+            if any(token in searchable for token in MINERAL_LIFE_KEYWORDS):
+                if url and url not in mineral_life_urls:
+                    mineral_life.append(doc)
+                    mineral_life_urls.add(url)
+                    stats["sprint4MineralLifeStudiesExtracted"] += 1
+            if any(token in searchable for token in MITIGATION_KEYWORDS):
+                if url and url not in mitigation_urls:
+                    mitigation.append(doc)
+                    mitigation_urls.add(url)
+                    stats["sprint4MitigationStudiesExtracted"] += 1
 
     return payload, stats
 
@@ -1168,6 +1236,7 @@ def main() -> int:
     current, applied_overrides = apply_manual_overrides(current)
     current, top_field_stats = enrich_top_fields_from_sources(current)
     current, sprint3_stats = enrich_sprint3_fields_from_sources(current)
+    current, sprint4_stats = enrich_sprint4_studies_from_docs(current)
     current, seeded_provenance = seed_field_provenance(current)
     current, concession_stats = apply_concession_business_rule(current)
 
@@ -1187,6 +1256,8 @@ def main() -> int:
     for key, value in top_field_stats.items():
         stats[key] = int(value)
     for key, value in sprint3_stats.items():
+        stats[key] = int(value)
+    for key, value in sprint4_stats.items():
         stats[key] = int(value)
     for key, value in concession_stats.items():
         stats[key] = int(value)
