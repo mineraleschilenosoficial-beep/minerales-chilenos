@@ -200,6 +200,19 @@ class MineSourceCatalog(Base):
     mine: Mapped["MineRecord"] = relationship(back_populates="source_catalog")
 
 
+class MineCurationQueue(Base):
+    __tablename__ = "mine_curation_queue"
+    __table_args__ = (UniqueConstraint("mine_id", name="uq_mine_curation_queue_mine_id"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    mine_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    mine_name: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    missing_fields: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    reason: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    status: Mapped[str] = mapped_column(String(40), nullable=False, default="pending")
+    last_detected_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=dt.datetime.now(dt.timezone.utc))
+
+
 class MineOverride(Base):
     __tablename__ = "mine_overrides"
     __table_args__ = (
@@ -493,6 +506,12 @@ def ensure_schema(engine) -> None:
                 "ON mine_source_catalog (mine_id, source_url, field_coverage)"
             )
         )
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_mine_curation_queue_mine_id_idx "
+                "ON mine_curation_queue (mine_id)"
+            )
+        )
 
         # Query-performance indexes for common API/filter paths.
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_mine_records_name ON mine_records (name)"))
@@ -514,6 +533,12 @@ def ensure_schema(engine) -> None:
             text(
                 "CREATE INDEX IF NOT EXISTS idx_mine_source_catalog_coverage "
                 "ON mine_source_catalog (field_coverage)"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS idx_mine_curation_queue_status "
+                "ON mine_curation_queue (status)"
             )
         )
 
@@ -891,6 +916,68 @@ def _extract_source_catalog_rows(item: dict[str, Any]) -> list[dict[str, str]]:
         key = (row["source_url"], row["field_coverage"])
         dedup[key] = row
     return list(dedup.values())
+
+
+def _missing_mandatory_fields(item: dict[str, Any], mandatory_fields: tuple[str, ...]) -> list[str]:
+    missing: list[str] = []
+    for field in mandatory_fields:
+        value = item.get(field)
+        normalized = str(value or "").strip().lower()
+        if not normalized:
+            missing.append(field)
+            continue
+        if normalized in {"-", "#", "n/a", "na", "none", "null", "unknown"}:
+            missing.append(field)
+            continue
+    return missing
+
+
+def rebuild_manual_curation_queue(payload: dict[str, Any]) -> int:
+    items = payload.get("items")
+    if not isinstance(items, list):
+        return 0
+
+    mandatory_fields = (
+        "mining_company",
+        "website",
+        "operation_since",
+        "operating_authorizations",
+        "environmental_reports",
+        "geology_studies",
+        "mineral_life_studies",
+        "mitigation_studies",
+    )
+
+    rows: list[dict[str, Any]] = []
+    now = _parse_datetime(utc_now_iso())
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        mine_id = item.get("id")
+        if not isinstance(mine_id, int):
+            continue
+        missing = _missing_mandatory_fields(item, mandatory_fields)
+        if not missing:
+            continue
+        rows.append(
+            {
+                "mine_id": mine_id,
+                "mine_name": str(item.get("name") or "").strip(),
+                "missing_fields": ",".join(sorted(set(missing))),
+                "reason": "missing_mandatory_public_fields",
+                "status": "pending",
+                "last_detected_at": now,
+            }
+        )
+
+    engine = _make_engine()
+    ensure_schema(engine)
+    with Session(engine) as session:
+        session.execute(delete(MineCurationQueue))
+        for row in rows:
+            session.add(MineCurationQueue(**row))
+        session.commit()
+    return len(rows)
 
 
 def save_dataset(payload: dict[str, Any]) -> None:

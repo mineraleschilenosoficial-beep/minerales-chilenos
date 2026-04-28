@@ -15,6 +15,7 @@ from storage import (
     apply_manual_overrides,
     append_field_provenance,
     get_reverse_geocode_cache,
+    rebuild_manual_curation_queue,
     save_dataset,
     upsert_reverse_geocode_cache,
     utc_now_iso,
@@ -624,6 +625,8 @@ def main() -> int:
         stats[key] = int(value)
 
     save_dataset(current)
+    pending_curation = int(rebuild_manual_curation_queue(current))
+    stats["manualCurationPending"] = pending_curation
     print(f"daily refresh complete mode={source_mode}")
     return 0
 
