@@ -133,8 +133,8 @@ Acceptance rule:
 ## Public-Only Delivery Scope
 
 - [ ] Prioritize extraction for publicly feasible fields first (`mining_company`, `website`, `operation_since`, authorizations, environmental and technical studies).
-- [ ] Mark sensitive or non-public fields with explicit status (`not_public` / `not_disclosed`) instead of placeholders.
-- [ ] Track feasibility separately from achieved coverage in each refresh report.
+- [x] Mark sensitive or non-public fields with explicit status (`not_public` / `not_disclosed`) instead of placeholders.
+- [x] Track feasibility separately from achieved coverage in each refresh report.
 
 ## Phase 3 - Concessions Reliability
 
