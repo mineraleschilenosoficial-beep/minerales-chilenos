@@ -115,6 +115,10 @@ Convención de campos del dataset:
 - Si la DB tiene registros legacy en español, ejecutar `python3 scripts/daily_refresh.py` para migrar/reconstruir el dataset antes de levantar la API.
 - En UI se prioriza mostrar datos públicamente verificables. Campos sensibles (por ejemplo salarios/ingresos/dotación por faena) pueden venir como `not_public` o `not_disclosed`.
 - `meta.scrapeStats` incluye KPIs por refresh en base points (`Bp`, donde `10000 = 100%`): cobertura de campos mandatorios, cobertura de fuente oficial y pendiente de curación manual.
+- En cada refresh se hace `seed` de `field_provenance` para campos escalares clave desde `sources` (`source_type`: `official` o `source`) y luego se complementa con `manual`/`inferred` según enriquecimiento.
+- Regla de negocio de `is_available_concession`: `true` solo con evidencia (override manual/official o `operating_authorizations`), en otro caso queda `false` por defecto.
+- En `meta.scrapeStats` se publican coberturas por refresh para Phase 3: ciudad (`coverageCityBp`), empresa minera (`coverageMiningCompanyBp`) y concesión confiable (`coverageReliableConcessionBp`).
+- Sprint 2 agrega extracción automática incremental de `website`, `mining_company`, `operating_authorizations` y `environmental_reports` desde `sources/docs` cuando hay evidencia trazable.
 
 Persistencia:
 
@@ -180,6 +184,7 @@ Chequeos incluidos:
 - `meta.sources.url` y `items[*].docs[*].url` deben ser URLs específicas (no homepage/root).
 - `items[*].sources[*].url` también debe ser específica (no homepage/root).
 - Gate opcional de cobertura mandatoria con `MANDATORY_FIELD_COVERAGE_MIN` (`0..1`).
+- Si un campo mandatorio viene informado, debe tener URL de fuente válida (`field_provenance` para campos escalares y URL válida en listas documentales).
 - advertencia si `meta.updatedAt` es antiguo.
 
 ## Despliegue en Coolify
