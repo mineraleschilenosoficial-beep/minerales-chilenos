@@ -60,6 +60,12 @@ La UI consume:
 - `GET /api/yacimientos`
 - `GET /api/link-report`
 
+Convención de campos del dataset:
+
+- Canónicos en inglés para almacenamiento/API (`name`, `minerals`, `latitude`, `longitude`, `site_type`, `mining_company`, `is_available_concession`).
+- No hay aliases en español: todos los consumidores deben usar la convención en inglés.
+- Si la DB tiene registros legacy en español, ejecutar `python3 scripts/daily_refresh.py` para migrar/reconstruir el dataset antes de levantar la API.
+
 Persistencia:
 
 - PostgreSQL (`DATABASE_URL`, tabla `app_state`) como única fuente de datos.
@@ -90,7 +96,7 @@ python3 scripts/refresh_cycle.py
 Audita enlaces externos de:
 
 - `index.html` (CDN/fuentes/scripts)
-- dataset almacenado en PostgreSQL (`items[*].web` y `items[*].docs[*].url`)
+- dataset almacenado en PostgreSQL (`items[*].website` y `items[*].docs[*].url`)
 
 Ejecutar:
 
@@ -119,7 +125,7 @@ python3 scripts/validate_data.py
 Chequeos incluidos:
 
 - `meta.updatedAt`, `meta.version`, `meta.source` obligatorios.
-- `items[*]` con campos mínimos (`id`, `nombre`, `mineral`, `lat`, `lng`, `region`, `tipo`, `libre`).
+- `items[*]` con campos mínimos (`id`, `name`, `minerals`, `latitude`, `longitude`, `region`, `site_type`, `is_available_concession`).
 - `id` único, coordenadas válidas y URLs con formato correcto.
 - `meta.sources.url` y `items[*].docs[*].url` deben ser URLs específicas (no homepage/root).
 - `items[*].sources[*].url` también debe ser específica (no homepage/root).

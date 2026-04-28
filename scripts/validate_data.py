@@ -81,7 +81,7 @@ def main() -> int:
 
     seen_ids: set[int] = set()
     seen_names: set[str] = set()
-    required_fields = ("id", "nombre", "mineral", "lat", "lng", "region", "tipo", "libre")
+    required_fields = ("id", "name", "minerals", "latitude", "longitude", "region", "site_type", "is_available_concession")
 
     for idx, item in enumerate(items):
         path = f"items[{idx}]"
@@ -101,38 +101,38 @@ def main() -> int:
         else:
             seen_ids.add(item_id)
 
-        name = item.get("nombre")
+        name = item.get("name")
         if not isinstance(name, str) or not name.strip():
-            errors.append(f"{path}.nombre must be non-empty string")
+            errors.append(f"{path}.name must be non-empty string")
         elif name.lower() in seen_names:
-            warnings.append(f"{path}.nombre duplicated by text: {name}")
+            warnings.append(f"{path}.name duplicated by text: {name}")
         else:
             seen_names.add(name.lower())
 
-        mineral = item.get("mineral")
+        mineral = item.get("minerals")
         if not isinstance(mineral, list) or not mineral:
-            errors.append(f"{path}.mineral must be non-empty array")
+            errors.append(f"{path}.minerals must be non-empty array")
         elif not all(isinstance(x, str) and x.strip() for x in mineral):
-            errors.append(f"{path}.mineral elements must be non-empty strings")
+            errors.append(f"{path}.minerals elements must be non-empty strings")
 
-        lat = item.get("lat")
-        lng = item.get("lng")
+        lat = item.get("latitude")
+        lng = item.get("longitude")
         if not isinstance(lat, (int, float)) or not (-90 <= float(lat) <= 90):
-            errors.append(f"{path}.lat must be number between -90 and 90")
+            errors.append(f"{path}.latitude must be number between -90 and 90")
         if not isinstance(lng, (int, float)) or not (-180 <= float(lng) <= 180):
-            errors.append(f"{path}.lng must be number between -180 and 180")
+            errors.append(f"{path}.longitude must be number between -180 and 180")
 
         if not isinstance(item.get("region"), str) or not item["region"].strip():
             errors.append(f"{path}.region must be non-empty string")
-        if not isinstance(item.get("tipo"), str) or not item["tipo"].strip():
-            errors.append(f"{path}.tipo must be non-empty string")
-        if not isinstance(item.get("libre"), bool):
-            errors.append(f"{path}.libre must be boolean")
+        if not isinstance(item.get("site_type"), str) or not item["site_type"].strip():
+            errors.append(f"{path}.site_type must be non-empty string")
+        if not isinstance(item.get("is_available_concession"), bool):
+            errors.append(f"{path}.is_available_concession must be boolean")
 
-        web = item.get("web")
+        web = item.get("website")
         if web is not None and web != "#":
             if not isinstance(web, str) or not is_http_url(web):
-                errors.append(f"{path}.web must be http/https URL or '#'")
+                errors.append(f"{path}.website must be http/https URL or '#'")
 
         docs = item.get("docs")
         if docs is not None:
@@ -144,15 +144,16 @@ def main() -> int:
                     if not isinstance(doc, dict):
                         errors.append(f"{dpath} must be object")
                         continue
-                    if not isinstance(doc.get("n"), str) or not doc["n"].strip():
-                        errors.append(f"{dpath}.n must be non-empty string")
+                    if not isinstance(doc.get("name"), str) or not doc["name"].strip():
+                        errors.append(f"{dpath}.name must be non-empty string")
                     url = doc.get("url")
                     if not isinstance(url, str) or not is_http_url(url):
                         errors.append(f"{dpath}.url must be valid http/https URL")
                     elif not is_specific_url(url):
                         errors.append(f"{dpath}.url must be specific (not homepage/root)")
-                    if not isinstance(doc.get("tipo"), str) or not doc["tipo"].strip():
-                        errors.append(f"{dpath}.tipo must be non-empty string")
+                    doc_type = doc.get("doc_type")
+                    if doc_type is not None and (not isinstance(doc_type, str) or not doc_type.strip()):
+                        errors.append(f"{dpath}.doc_type must be non-empty string when present")
 
         sources = item.get("sources")
         if sources is not None:

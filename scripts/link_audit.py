@@ -31,7 +31,7 @@ def collect_urls() -> List[str]:
         urls.extend(re.findall(pattern, index))
 
     for item in data.get("items", []):
-        web = item.get("web")
+        web = item.get("website")
         if isinstance(web, str) and web.startswith("http"):
             urls.append(web)
         for doc in item.get("docs", []) or []:

@@ -142,10 +142,10 @@ def _is_garbage_name(name: str) -> bool:
 
 def _record_score(record: dict) -> tuple[int, int, int]:
     has_dep_id = 1 if record.get("dep_id") else 0
-    named_bonus = 1 if not _is_garbage_name(str(record.get("nombre", ""))) else 0
-    mineral_bonus = 1 if record.get("mineral") and record.get("mineral") != ["desconocido"] else 0
+    named_bonus = 1 if not _is_garbage_name(str(record.get("name", ""))) else 0
+    mineral_bonus = 1 if record.get("minerals") and record.get("minerals") != ["desconocido"] else 0
     quality = has_dep_id + named_bonus + mineral_bonus
-    return (quality, len(str(record.get("nombre", ""))), len(str(record.get("source_url", ""))))
+    return (quality, len(str(record.get("name", ""))), len(str(record.get("source_url", ""))))
 
 
 def _pick_best(existing: dict | None, candidate: dict) -> dict:
@@ -205,11 +205,11 @@ def _iter_mrds_records() -> tuple[list[dict], list[str]]:
                     {
                         "dep_id": dep_id,
                         "fips_code": fips_code,
-                        "nombre": site_name,
-                        "mineral": _decode_mrds_minerals(code_list),
-                        "lat": lat,
-                        "lng": lng,
-                        "tipo": _translate_dev_status(dev_stat or "Yacimiento"),
+                        "name": site_name,
+                        "minerals": _decode_mrds_minerals(code_list),
+                        "latitude": lat,
+                        "longitude": lng,
+                        "site_type": _translate_dev_status(dev_stat or "Yacimiento"),
                         "source_url": source_url or "https://mrdata.usgs.gov/mrds/",
                     }
                 )
@@ -237,12 +237,12 @@ def scrape_mrds_chile_dataset() -> dict:
         if record.get("fips_code") != "fCI":
             non_chile_drop += 1
             continue
-        lat = record["lat"]
-        lng = record["lng"]
+        lat = record["latitude"]
+        lng = record["longitude"]
         if not _is_valid_chile_coordinate(lat, lng):
             invalid_coord_drop += 1
             continue
-        if _is_garbage_name(record["nombre"]):
+        if _is_garbage_name(record["name"]):
             garbage_drop += 1
             continue
         dep_id = record.get("dep_id", "").strip()
@@ -263,7 +263,7 @@ def scrape_mrds_chile_dataset() -> dict:
     survivors = list(by_dep_id.values()) + without_dep_id
     by_name_coord: dict[tuple[str, float, float], dict] = {}
     for record in survivors:
-        key = (_normalize_name(record["nombre"]), round(record["lat"], 4), round(record["lng"], 4))
+        key = (_normalize_name(record["name"]), round(record["latitude"], 4), round(record["longitude"], 4))
         previous = by_name_coord.get(key)
         chosen = _pick_best(previous, record)
         if previous is not None and chosen is previous:
@@ -274,7 +274,7 @@ def scrape_mrds_chile_dataset() -> dict:
 
     by_coord_mineral: dict[tuple[float, float, tuple[str, ...]], dict] = {}
     for record in by_name_coord.values():
-        key = (round(record["lat"], 3), round(record["lng"], 3), tuple(sorted(record["mineral"])))
+        key = (round(record["latitude"], 3), round(record["longitude"], 3), tuple(sorted(record["minerals"])))
         previous = by_coord_mineral.get(key)
         chosen = _pick_best(previous, record)
         if previous is not None and chosen is previous:
@@ -285,7 +285,7 @@ def scrape_mrds_chile_dataset() -> dict:
 
     by_exact_coord: dict[tuple[float, float], dict] = {}
     for record in by_coord_mineral.values():
-        key = (record["lat"], record["lng"])
+        key = (record["latitude"], record["longitude"])
         previous = by_exact_coord.get(key)
         chosen = _pick_best(previous, record)
         if previous is not None and chosen is previous:
@@ -296,7 +296,7 @@ def scrape_mrds_chile_dataset() -> dict:
 
     by_name_area: dict[tuple[str, float, float], dict] = {}
     for record in by_exact_coord.values():
-        key = (_normalize_name(record["nombre"]), round(record["lat"], 2), round(record["lng"], 2))
+        key = (_normalize_name(record["name"]), round(record["latitude"], 2), round(record["longitude"], 2))
         previous = by_name_area.get(key)
         chosen = _pick_best(previous, record)
         if previous is not None and chosen is previous:
@@ -305,7 +305,7 @@ def scrape_mrds_chile_dataset() -> dict:
             dedup_name_area_drop += 1
         by_name_area[key] = chosen
 
-    cleaned = sorted(by_name_area.values(), key=lambda x: (_normalize_name(x["nombre"]), x["lat"], x["lng"]))
+    cleaned = sorted(by_name_area.values(), key=lambda x: (_normalize_name(x["name"]), x["latitude"], x["longitude"]))
     if not cleaned:
         raise ValueError("USGS MRDS produced records but all were dropped by quality/coordinate filters.")
 
@@ -315,23 +315,23 @@ def scrape_mrds_chile_dataset() -> dict:
         items.append(
             {
                 "id": next_id,
-                "nombre": record["nombre"],
-                "mineral": record["mineral"],
-                "lat": record["lat"],
-                "lng": record["lng"],
+                "name": record["name"],
+                "minerals": record["minerals"],
+                "latitude": record["latitude"],
+                "longitude": record["longitude"],
                 "region": "Chile",
-                "tipo": record["tipo"] or "Yacimiento",
-                "empresa": "-",
-                "sup": "-",
-                "alt": "-",
-                "prod": "-",
-                "dotacion": "-",
-                "sueldos_promedio": "-",
-                "ingresos": "-",
-                "contrataciones_futuras": "-",
-                "noticias": "Dato obtenido por scraping de USGS MRDS (Chile).",
-                "web": "#",
-                "libre": False,
+                "site_type": record["site_type"] or "Yacimiento",
+                "mining_company": "-",
+                "surface": "-",
+                "altitude": "-",
+                "production": "-",
+                "workforce": "-",
+                "average_salary": "-",
+                "annual_revenue": "-",
+                "future_hirings": "-",
+                "notes": "Dato obtenido por scraping de USGS MRDS (Chile).",
+                "website": "#",
+                "is_available_concession": False,
                 "sources": [
                     {
                         "name": "USGS MRDS",

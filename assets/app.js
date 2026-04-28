@@ -16,23 +16,23 @@
     items: [
       {
         id: 9001,
-        nombre: "Punto de respaldo - Antofagasta",
-        mineral: ["cobre"],
-        lat: -23.65,
-        lng: -70.4,
+        name: "Punto de respaldo - Antofagasta",
+        minerals: ["cobre"],
+        latitude: -23.65,
+        longitude: -70.4,
         region: "Antofagasta",
-        tipo: "Referencia",
-        empresa: "MineralesChilenos.cl",
-        sup: "-",
-        alt: "-",
-        prod: "-",
-        dotacion: "-",
-        sueldos_promedio: "-",
-        ingresos: "-",
-        contrataciones_futuras: "-",
-        noticias: "Carga en modo respaldo local.",
-        web: "#",
-        libre: false
+        site_type: "Referencia",
+        mining_company: "MineralesChilenos.cl",
+        surface: "-",
+        altitude: "-",
+        production: "-",
+        workforce: "-",
+        average_salary: "-",
+        annual_revenue: "-",
+        future_hirings: "-",
+        notes: "Carga en modo respaldo local.",
+        website: "#",
+        is_available_concession: false
       }
     ]
   };
@@ -126,6 +126,14 @@
     return String(value || "").trim().toLocaleLowerCase("es-CL");
   }
 
+  function normalizeSearchValue(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLocaleLowerCase("es-CL")
+      .trim();
+  }
+
   function mineralStyle(value) {
     const normalized = normalizeMineral(value);
     for (const style of MINERAL_STYLES) {
@@ -135,14 +143,14 @@
   }
 
   function colorFor(item) {
-    if (item.libre) return "#2D7A4F";
-    const primary = (item.mineral && item.mineral[0]) || "desconocido";
+    if (item.is_available_concession) return "#2D7A4F";
+    const primary = (item.minerals && item.minerals[0]) || "desconocido";
     return mineralStyle(primary).color;
   }
 
   function symbolFor(item) {
-    if (item.libre) return "L";
-    const primary = (item.mineral && item.mineral[0]) || "desconocido";
+    if (item.is_available_concession) return "L";
+    const primary = (item.minerals && item.minerals[0]) || "desconocido";
     return mineralStyle(primary).symbol;
   }
 
@@ -215,7 +223,7 @@
   }
 
   function setTopKpis(meta, items) {
-    const libres = items.filter((x) => x.libre).length;
+    const libres = items.filter((x) => x.is_available_concession).length;
     const activos = items.length - libres;
     els.topKpis.innerHTML = [
       `<div class="kpi">${items.length} puntos</div>`,
@@ -230,7 +238,7 @@
       : origin === "cache-stale" ? "cache local (desactualizada)"
       : origin === "fallback" ? "respaldo local"
       : "fuente remota";
-    els.status.textContent = `Mostrando ${shown} de ${total}. Fuente: ${source}. Última actualización: ${formatDate(updatedAt)}.`;
+    els.status.textContent = `Mostrando ${shown} de ${total}. Fuente: ${source}. Última actualización: ${formatDate(updatedAt)}. Nota: los datos de minera y ciudad dependen de la cobertura de la fuente.`;
   }
 
   function setHealthBadge(statusClass, text) {
@@ -329,7 +337,7 @@
       "</div>"
     ].join("");
     const icon = L.divIcon({ html, className: "", iconSize: [36, 36], iconAnchor: [18, 36] });
-    const marker = L.marker([item.lat, item.lng], { icon });
+    const marker = L.marker([item.latitude, item.longitude], { icon });
     marker.on("click", () => {
       setSelectedMarker(item.id);
       openDetail(item);
@@ -377,9 +385,9 @@
     const htmlRows = visibleItems.map((x) => {
       return [
         `<article class="item" data-id="${x.id}">`,
-        `<div class="item-title">${x.nombre}</div>`,
-        `<div class="item-meta">${x.tipo} · ${x.region}</div>`,
-        `<div class="item-meta">${(x.mineral || []).join(", ").toUpperCase()}</div>`,
+        `<div class="item-title">${x.name}</div>`,
+        `<div class="item-meta">${x.site_type} · ${x.region}</div>`,
+        `<div class="item-meta">${(x.minerals || []).join(", ").toUpperCase()}</div>`,
         "</article>"
       ].join("");
     });
@@ -415,7 +423,7 @@
     els.mobileFilterBar.querySelectorAll("[data-action='clear-filters']").forEach((node) => {
       node.addEventListener("click", () => {
         onlyLibres = false;
-        els.btnLibres.classList.remove("btn-gold");
+        syncLibresButton();
         els.q.value = "";
         els.mineral.value = "";
         els.region.value = "";
@@ -423,6 +431,15 @@
         applyFilters();
       });
     });
+  }
+
+  function syncLibresButton() {
+    if (!els.btnLibres) return;
+    const active = Boolean(onlyLibres);
+    els.btnLibres.classList.toggle("btn-gold", active);
+    els.btnLibres.classList.toggle("is-active", active);
+    els.btnLibres.setAttribute("aria-pressed", active ? "true" : "false");
+    els.btnLibres.textContent = active ? "Solo concesiones disponibles (activo)" : "Solo concesiones disponibles";
   }
 
   function debounce(fn, waitMs) {
@@ -482,7 +499,7 @@
   }
 
   function applyFilters() {
-    const q = els.q.value.trim().toLowerCase();
+    const q = normalizeSearchValue(els.q.value);
     const queryTokens = q ? q.split(/\s+/).filter(Boolean) : [];
     const fMineral = els.mineral.value;
     const fRegion = els.region.value;
@@ -499,10 +516,10 @@
     const nextFiltered = [];
     for (let i = 0; i < baseItems.length; i += 1) {
       const x = baseItems[i];
-      if (onlyLibres && !x.libre) continue;
-      if (fMineral && !(x.mineral || []).includes(fMineral)) continue;
+      if (onlyLibres && !x.is_available_concession) continue;
+      if (fMineral && !(x.minerals || []).includes(fMineral)) continue;
       if (fRegion && x.region !== fRegion) continue;
-      if (fTipo && x.tipo !== fTipo) continue;
+      if (fTipo && x.site_type !== fTipo) continue;
       if (queryTokens.length) {
         let allTokensFound = true;
         const haystack = x._searchText;
@@ -527,7 +544,7 @@
 
   function fitToFiltered() {
     if (!mapEnabled || !map || !filtered.length) return;
-    const bounds = L.latLngBounds(filtered.map((x) => [x.lat, x.lng]));
+    const bounds = L.latLngBounds(filtered.map((x) => [x.latitude, x.longitude]));
     map.fitBounds(bounds.pad(0.25), { animate: true, duration: 0.55 });
   }
 
@@ -545,8 +562,8 @@
   }
 
   function openDetail(item) {
-    els.modalTitle.textContent = item.nombre;
-    const mineralPills = (item.mineral || []).map((m) => {
+    els.modalTitle.textContent = item.name;
+    const mineralPills = (item.minerals || []).map((m) => {
       const style = mineralStyle(m);
       return [
         `<span class="mineral-pill" style="--mineral-color:${style.color}">`,
@@ -556,17 +573,17 @@
       ].join("");
     }).join("");
 
-    const freeSection = item.libre ? [
+    const freeSection = item.is_available_concession ? [
       '<div class="card" style="border-color:rgba(45,122,79,0.45);background:rgba(45,122,79,0.2)">',
       "<strong>Concesión disponible</strong><br>",
-      `Potencial: ${item.potencial || "-"}<br>`,
-      `Profundidad: ${item.prof || "-"}<br>`,
-      `Ultimo estudio: ${(item.estudioFecha || "-")} ${(item.estudioFuente ? "· " + item.estudioFuente : "")}`,
+      `Potencial: ${item.potential || "-"}<br>`,
+      `Profundidad: ${item.depth || "-"}<br>`,
+      `Ultimo estudio: ${(item.study_date || "-")} ${(item.study_source ? "· " + item.study_source : "")}`,
       "</div>"
     ].join("") : "";
 
     const docs = Array.isArray(item.docs)
-      ? item.docs.map((d) => `<a class="link-btn" style="margin-right:8px;background:#2b2b2b;color:#fff;border:1px solid var(--line)" href="${d.url}" target="_blank" rel="noreferrer">${d.n}</a>`).join("")
+      ? item.docs.map((d) => `<a class="link-btn" style="margin-right:8px;background:#2b2b2b;color:#fff;border:1px solid var(--line)" href="${d.url}" target="_blank" rel="noreferrer">${d.name}</a>`).join("")
       : "";
 
     const pinSources = Array.isArray(item.sources) ? item.sources : [];
@@ -580,8 +597,8 @@
       })
       .join("");
 
-    const webBtn = (item.web && item.web !== "#")
-      ? `<a class="link-btn" href="${item.web}" target="_blank" rel="noreferrer">Ver página corporativa</a>`
+    const webBtn = (item.website && item.website !== "#")
+      ? `<a class="link-btn" href="${item.website}" target="_blank" rel="noreferrer">Ver página corporativa</a>`
       : "";
 
     const usefulRows = [];
@@ -591,30 +608,30 @@
       if (!text || text === "-" || text.toLowerCase() === "n/a") return;
       usefulRows.push(`${label}: <strong>${escapeHtml(text)}</strong>`);
     };
-    pushUseful("Tipo", prettyTypeLabel(item.tipo));
+    pushUseful("Tipo", prettyTypeLabel(item.site_type));
     pushUseful("Región", item.region);
-    pushUseful("Empresa", item.empresa);
-    if (typeof item.lat === "number" && typeof item.lng === "number") {
-      pushUseful("Coordenadas", `${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`);
+    pushUseful("Empresa", item.mining_company);
+    if (typeof item.latitude === "number" && typeof item.longitude === "number") {
+      pushUseful("Coordenadas", `${item.latitude.toFixed(4)}, ${item.longitude.toFixed(4)}`);
     }
-    pushUseful("Producción", item.prod);
-    pushUseful("Superficie", item.sup);
-    pushUseful("Altitud", item.alt);
-    pushUseful("Dotación", item.dotacion);
-    pushUseful("Sueldos promedio", item.sueldos_promedio);
-    pushUseful("Ingresos anuales", item.ingresos);
-    pushUseful("Contrataciones futuras", item.contrataciones_futuras);
+    pushUseful("Producción", item.production);
+    pushUseful("Superficie", item.surface);
+    pushUseful("Altitud", item.altitude);
+    pushUseful("Dotación", item.workforce);
+    pushUseful("Sueldos promedio", item.average_salary);
+    pushUseful("Ingresos anuales", item.annual_revenue);
+    pushUseful("Contrataciones futuras", item.future_hirings);
 
     const usefulHtml = usefulRows.length
       ? usefulRows.join("<br>")
       : "Sin datos operativos adicionales útiles para este registro.";
 
     els.modalContent.innerHTML = [
-      `<div style="color:var(--gold);margin-bottom:10px">${item.tipo} · ${item.region}</div>`,
+      `<div style="color:var(--gold);margin-bottom:10px">${item.site_type} · ${item.region}</div>`,
       `<div class="mineral-pill-row">${mineralPills}</div>`,
       `<details class="detail-group" open><summary>Ficha del yacimiento</summary><div class="detail-group-body">${usefulHtml}</div></details>`,
       freeSection,
-      `<details class="detail-group"><summary>Notas y noticias</summary><div class="detail-group-body">${item.noticias || "Sin novedades por ahora."}</div></details>`,
+      `<details class="detail-group"><summary>Notas y noticias</summary><div class="detail-group-body">${item.notes || "Sin novedades por ahora."}</div></details>`,
       sourcesHtml ? `<details class="detail-group" open><summary>Fuentes del pin</summary><div class="detail-group-body"><div id="pin-source-links" style="display:grid;gap:8px;">${sourcesHtml}</div></div></details>` : "",
       docs ? `<details class="detail-group"><summary>Documentos técnicos</summary><div class="detail-group-body">${docs}</div></details>` : "",
       webBtn
@@ -757,13 +774,13 @@
 
     els.btnLibres.addEventListener("click", () => {
       onlyLibres = !onlyLibres;
-      els.btnLibres.classList.toggle("btn-gold", onlyLibres);
+      syncLibresButton();
       applyFilters();
     });
 
     els.btnReset.addEventListener("click", () => {
       onlyLibres = false;
-      els.btnLibres.classList.remove("btn-gold");
+      syncLibresButton();
       els.q.value = "";
       els.mineral.value = "";
       els.region.value = "";
@@ -795,7 +812,7 @@
         return;
       }
 
-      map.flyTo([item.lat, item.lng], Math.max(7, map.getZoom()), { duration: 0.45 });
+      map.flyTo([item.latitude, item.longitude], Math.max(7, map.getZoom()), { duration: 0.45 });
       marker.fire("click");
       if (isMobileViewport()) {
         setMobilePanelOpen(false);
@@ -896,7 +913,23 @@
     try {
       const payload = await loadData();
       allItems = payload.items.map((x) => {
-        const searchText = `${x.nombre || ""} ${x.region || ""} ${x.empresa || ""} ${(x.mineral || []).join(" ")}`.toLowerCase();
+        const locationParts = [
+          x.region,
+          x.city,
+          x.commune,
+          x.province,
+          x.locality,
+          x.location,
+          x.operation_site,
+          x.address
+        ];
+        const searchText = normalizeSearchValue([
+          x.name || "",
+          x.mining_company || "",
+          x.site_type || "",
+          ...(x.minerals || []),
+          ...locationParts.filter(Boolean)
+        ].join(" "));
         return { ...x, _searchText: searchText };
       });
       window.__dataUpdatedAt = payload.meta && payload.meta.updatedAt;
@@ -909,20 +942,21 @@
       allMarkerById.clear();
       allItems.forEach((item) => {
         itemById.set(item.id, item);
-        if (item.libre) libresItems.push(item);
+        if (item.is_available_concession) libresItems.push(item);
         addToIndex(regionIndex, item.region, item);
-        addToIndex(tipoIndex, item.tipo, item);
-        (item.mineral || []).forEach((mineral) => addToIndex(mineralIndex, mineral, item));
+        addToIndex(tipoIndex, item.site_type, item);
+        (item.minerals || []).forEach((mineral) => addToIndex(mineralIndex, mineral, item));
       });
 
-      const minerals = new Set(allItems.flatMap((x) => x.mineral || []));
+      const minerals = new Set(allItems.flatMap((x) => x.minerals || []));
       const regions = new Set(allItems.map((x) => x.region).filter(Boolean));
-      const tipos = new Set(allItems.map((x) => x.tipo).filter(Boolean));
+      const tipos = new Set(allItems.map((x) => x.site_type).filter(Boolean));
 
       fillSelect(els.mineral, minerals, "Todos", toTitleCase);
       fillSelect(els.region, regions, "Todas", toTitleCase);
       fillSelect(els.tipo, tipos, "Todos", prettyTypeLabel);
       setTopKpis(payload.meta || {}, allItems);
+      syncLibresButton();
       applyFilters();
       fitToFiltered();
 
