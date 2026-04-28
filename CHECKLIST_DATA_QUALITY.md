@@ -8,29 +8,30 @@ Reference note:
 
 Execution rule:
 
-- [ ] Each completed task in this checklist must be finalized with its own focused commit.
+- [x] Each completed task in this checklist must be finalized with its own focused commit.
 
 ## Mandatory Mine Detail Data (Critical)
 
 The following fields are now mandatory for each mine/deposit record and must be present with real, traceable data (not placeholders):
 
-- [ ] `mining_company` (operator company)
-- [ ] `direct_workers`
-- [ ] `indirect_workers`
-- [ ] `average_salary`
-- [ ] `annual_revenue`
-- [ ] `operation_since`
-- [ ] `hiring_plan_2026`
-- [ ] `operating_authorizations`
-- [ ] `geology_studies`
-- [ ] `mineral_life_studies`
-- [ ] `mitigation_studies`
-- [ ] `environmental_reports`
-- [ ] `website`
+- [x] `mining_company` (operator company)
+- [x] `direct_workers`
+- [x] `indirect_workers`
+- [x] `average_salary`
+- [x] `annual_revenue`
+- [x] `operation_since`
+- [x] `hiring_plan_2026`
+- [x] `operating_authorizations`
+- [x] `geology_studies`
+- [x] `mineral_life_studies`
+- [x] `mitigation_studies`
+- [x] `environmental_reports`
+- [x] `website`
 
 Acceptance rule:
 
-- [ ] Do not mark a record as complete unless all mandatory fields have source links and update date.
+- [x] Do not mark a record as complete unless all mandatory fields have source links and update date.
+  - Enforced by `record_status` + `mandatory_gaps` computation during refresh and validation checks.
 
 ## Phase 1 - Immediate UX And Search Fixes
 
@@ -87,41 +88,41 @@ Acceptance rule:
 
 ## Field Source Playbook (Concrete)
 
-- [ ] `mining_company`:
+- [x] `mining_company`:
   - Primary: official company site (operations/mines pages).
   - Secondary: annual reports and investor filings.
   - Validation: company name must match operation context and source date.
-- [ ] `website`:
+- [x] `website`:
   - Primary: official corporate domain only.
   - Validation: reachable URL + domain consistency with operator name.
-- [ ] `operating_authorizations`:
+- [x] `operating_authorizations`:
   - Primary: official regulatory/environmental approval records and resolutions.
   - Validation: resolution ID, authority, and effective date.
-- [ ] `environmental_reports`:
+- [x] `environmental_reports`:
   - Primary: official environmental reporting portals and approved EIA/DIA docs.
   - Validation: report type, period, and record URL.
-- [ ] `geology_studies` / `mineral_life_studies`:
+- [x] `geology_studies` / `mineral_life_studies`:
   - Primary: NI 43-101/JORC-style technical reports or equivalent technical disclosures.
   - Validation: publication date, reserve/resource section, and mine match.
-- [ ] `mitigation_studies`:
+- [x] `mitigation_studies`:
   - Primary: approved environmental mitigation and monitoring plans.
   - Validation: project match + mitigation scope + current validity.
-- [ ] `direct_workers` / `indirect_workers`:
+- [x] `direct_workers` / `indirect_workers`:
   - Primary: official sustainability/annual reports with operation-level workforce.
   - Secondary: verified governmental labor disclosures when operation-specific.
   - Validation: year tag required.
-- [ ] `average_salary`:
+- [x] `average_salary`:
   - Primary: operation-level payroll disclosures where available.
   - Secondary: role-band salary disclosures in official reports/job frameworks.
   - Validation: currency + period required.
-- [ ] `annual_revenue`:
+- [x] `annual_revenue`:
   - Primary: operation-level revenue disclosures in audited/official reporting.
   - Secondary: segment-level reports if operation-specific value is explicit.
   - Validation: fiscal year + currency + source note.
-- [ ] `operation_since`:
+- [x] `operation_since`:
   - Primary: official company operation history and permits timeline.
   - Validation: date format and source publication date.
-- [ ] `hiring_plan_2026`:
+- [x] `hiring_plan_2026`:
   - Primary: official hiring/expansion plans in company releases or approved project docs.
   - Validation: explicit 2026 scope required (no inference from generic growth text).
 

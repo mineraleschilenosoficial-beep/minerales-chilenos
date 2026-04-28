@@ -119,6 +119,9 @@ Convención de campos del dataset:
 - Regla de negocio de `is_available_concession`: `true` solo con evidencia (override manual/official o `operating_authorizations`), en otro caso queda `false` por defecto.
 - En `meta.scrapeStats` se publican coberturas por refresh para Phase 3: ciudad (`coverageCityBp`), empresa minera (`coverageMiningCompanyBp`) y concesión confiable (`coverageReliableConcessionBp`).
 - Sprint 2 agrega extracción automática incremental de `website`, `mining_company`, `operating_authorizations` y `environmental_reports` desde `sources/docs` cuando hay evidencia trazable.
+- Sprint 3 agrega extracción de baja confianza (con `field_provenance` `source_type=inferred`) para `direct_workers`, `indirect_workers`, `average_salary`, `annual_revenue`, `operation_since` y `hiring_plan_2026`.
+- Sprint 4 agrega clasificación automática de `docs` hacia `geology_studies`, `mineral_life_studies` y `mitigation_studies` con deduplicación por URL.
+- Sprint 5 agrega hardening productivo en refresh: alertas por umbral (`ALERT_*_MIN_BP`) y rollback por caída de volumen (`ROLLBACK_MAX_ITEM_DROP_RATIO`).
 
 Persistencia:
 
@@ -185,6 +188,10 @@ Chequeos incluidos:
 - `items[*].sources[*].url` también debe ser específica (no homepage/root).
 - Gate opcional de cobertura mandatoria con `MANDATORY_FIELD_COVERAGE_MIN` (`0..1`).
 - Si un campo mandatorio viene informado, debe tener URL de fuente válida (`field_provenance` para campos escalares y URL válida en listas documentales).
+- Valores `inferred` de baja confianza en campos mandatorios se mantienen en cola de curación manual para revisión.
+- Ventana de frescura de fuentes validable con `SOURCE_FRESHNESS_MAX_DAYS` (por defecto `7`) usando `source_catalog.last_checked_at`.
+- Se registra auditoría inmutable por campo en `mine_field_audit` con `old_value`, `new_value`, `source_type`, `source_url`, `process_name` y `changed_at`.
+- Cada registro ahora expone `record_status` (`complete`/`incomplete`) y `mandatory_gaps`; el estado solo puede ser `complete` si todos los campos mandatorios tienen fuente y fecha de actualización válidas.
 - advertencia si `meta.updatedAt` es antiguo.
 
 ## Despliegue en Coolify

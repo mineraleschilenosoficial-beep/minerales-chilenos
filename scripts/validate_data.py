@@ -191,6 +191,20 @@ def main() -> int:
         confidence_score = item.get("confidence_score")
         if not isinstance(confidence_score, (int, float)) or not (0 <= float(confidence_score) <= 1):
             errors.append(f"{path}.confidence_score must be number between 0 and 1")
+        record_status = item.get("record_status")
+        mandatory_gaps = item.get("mandatory_gaps")
+        if record_status is not None:
+            if not isinstance(record_status, str) or record_status not in {"complete", "incomplete"}:
+                errors.append(f"{path}.record_status must be 'complete' or 'incomplete' when present")
+            if mandatory_gaps is not None and not isinstance(mandatory_gaps, list):
+                errors.append(f"{path}.mandatory_gaps must be array when present")
+            if (
+                isinstance(record_status, str)
+                and record_status == "complete"
+                and isinstance(mandatory_gaps, list)
+                and len(mandatory_gaps) > 0
+            ):
+                errors.append(f"{path}.record_status=complete but mandatory_gaps is not empty")
         enriched_at = item.get("enriched_at")
         if not isinstance(enriched_at, str) or not enriched_at.strip():
             errors.append(f"{path}.enriched_at must be non-empty string")

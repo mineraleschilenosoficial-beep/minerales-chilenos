@@ -468,6 +468,90 @@ def _first_source_url(item: dict) -> str:
     return ""
 
 
+def evaluate_record_completeness(payload: dict) -> tuple[dict, dict[str, int]]:
+    items = payload.get("items")
+    if not isinstance(items, list):
+        return payload, {"recordsCompleteCount": 0, "recordsIncompleteCount": 0}
+
+    mandatory_scalar = (
+        "mining_company",
+        "direct_workers",
+        "indirect_workers",
+        "average_salary",
+        "annual_revenue",
+        "operation_since",
+        "hiring_plan_2026",
+        "website",
+    )
+    mandatory_list = (
+        "operating_authorizations",
+        "geology_studies",
+        "mineral_life_studies",
+        "mitigation_studies",
+        "environmental_reports",
+    )
+
+    complete_count = 0
+    incomplete_count = 0
+
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        gaps: list[str] = []
+        provenance = item.get("field_provenance")
+        provenance_rows = provenance if isinstance(provenance, list) else []
+
+        def scalar_has_link_and_date(field_name: str) -> bool:
+            if not _is_present(item.get(field_name)):
+                return False
+            for row in provenance_rows:
+                if not isinstance(row, dict):
+                    continue
+                if str(row.get("field_name") or "").strip() != field_name:
+                    continue
+                url = str(row.get("source_url") or "").strip()
+                updated_at = str(row.get("updated_at") or "").strip()
+                if url.startswith("http://") or url.startswith("https://"):
+                    if updated_at:
+                        return True
+            return False
+
+        for field in mandatory_scalar:
+            if not scalar_has_link_and_date(field):
+                gaps.append(field)
+
+        enriched_at = str(item.get("enriched_at") or "").strip()
+        for field in mandatory_list:
+            rows = item.get(field)
+            if not isinstance(rows, list) or len(rows) == 0:
+                gaps.append(field)
+                continue
+            has_url = False
+            for entry in rows:
+                if isinstance(entry, str):
+                    if entry.startswith("http://") or entry.startswith("https://"):
+                        has_url = True
+                        break
+                elif isinstance(entry, dict):
+                    url = str(entry.get("url") or "").strip()
+                    if url.startswith("http://") or url.startswith("https://"):
+                        has_url = True
+                        break
+            if not has_url or not enriched_at:
+                gaps.append(field)
+
+        if gaps:
+            item["record_status"] = "incomplete"
+            item["mandatory_gaps"] = sorted(set(gaps))
+            incomplete_count += 1
+        else:
+            item["record_status"] = "complete"
+            item["mandatory_gaps"] = []
+            complete_count += 1
+
+    return payload, {"recordsCompleteCount": complete_count, "recordsIncompleteCount": incomplete_count}
+
+
 def seed_field_provenance(payload: dict) -> tuple[dict, int]:
     items = payload.get("items")
     if not isinstance(items, list):
@@ -1290,6 +1374,7 @@ def main() -> int:
     current, sprint4_stats = enrich_sprint4_studies_from_docs(current)
     current, seeded_provenance = seed_field_provenance(current)
     current, concession_stats = apply_concession_business_rule(current)
+    current, completeness_stats = evaluate_record_completeness(current)
 
     current["meta"].setdefault("version", 1)
     current["meta"].setdefault("source", "postgresql")
@@ -1311,6 +1396,8 @@ def main() -> int:
     for key, value in sprint4_stats.items():
         stats[key] = int(value)
     for key, value in concession_stats.items():
+        stats[key] = int(value)
+    for key, value in completeness_stats.items():
         stats[key] = int(value)
 
     pending_curation = int(rebuild_manual_curation_queue(current))

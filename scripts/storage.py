@@ -133,6 +133,8 @@ class MineRecord(Base):
     location: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     operation_site: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     address: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    record_status: Mapped[str] = mapped_column(String(20), nullable=False, default="incomplete")
+    mandatory_gaps: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     minerals: Mapped[list["MineMineral"]] = relationship(cascade="all, delete-orphan", back_populates="mine")
     links: Mapped[list["MineLink"]] = relationship(cascade="all, delete-orphan", back_populates="mine")
     field_provenance: Mapped[list["MineFieldProvenance"]] = relationship(cascade="all, delete-orphan", back_populates="mine")
@@ -548,6 +550,18 @@ def ensure_schema(engine) -> None:
             text(
                 "CREATE INDEX IF NOT EXISTS idx_mine_source_catalog_coverage "
                 "ON mine_source_catalog (field_coverage)"
+            )
+        )
+        conn.execute(
+            text("ALTER TABLE mine_records ADD COLUMN IF NOT EXISTS record_status TEXT DEFAULT 'incomplete'")
+        )
+        conn.execute(
+            text("ALTER TABLE mine_records ADD COLUMN IF NOT EXISTS mandatory_gaps TEXT")
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS idx_mine_records_record_status "
+                "ON mine_records (record_status)"
             )
         )
         conn.execute(
@@ -1159,6 +1173,12 @@ def save_dataset(payload: dict[str, Any]) -> None:
                 location=_null_if_sentinel(item.get("location")),
                 operation_site=_null_if_sentinel(item.get("operation_site")),
                 address=_null_if_sentinel(item.get("address")),
+                record_status=str(item.get("record_status") or "incomplete"),
+                mandatory_gaps=(
+                    ",".join([str(x).strip() for x in (item.get("mandatory_gaps") or []) if str(x).strip()])
+                    if isinstance(item.get("mandatory_gaps"), list)
+                    else _null_if_sentinel(item.get("mandatory_gaps"))
+                ),
             )
             session.add(mine)
 
@@ -1334,6 +1354,12 @@ def get_dataset() -> dict[str, Any]:
                 "location": _display_or_default(mine.location, ""),
                 "operation_site": _display_or_default(mine.operation_site, ""),
                 "address": _display_or_default(mine.address, ""),
+                "record_status": str(mine.record_status or "incomplete"),
+                "mandatory_gaps": [
+                    token.strip()
+                    for token in str(mine.mandatory_gaps or "").split(",")
+                    if token.strip()
+                ],
             }
             items.append(item)
 
