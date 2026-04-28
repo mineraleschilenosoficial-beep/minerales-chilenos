@@ -50,7 +50,7 @@ Acceptance rule:
   - `enriched_at`
 - [x] Add override source (manual trusted corrections) for key records.
 - [x] Merge overrides during refresh cycle without breaking existing flow.
-- [ ] Add reverse geocoding path for `city/commune` enrichment.
+- [x] Add reverse geocoding path for `city/commune` enrichment.
 - [ ] Keep provenance per enriched field (official/manual/inferred).
 
 ## Phase 2.1 - Mandatory Data Acquisition Plan

@@ -189,6 +189,22 @@ class LinkReportResult(Base):
     run: Mapped["LinkReportRun"] = relationship(back_populates="results")
 
 
+class ReverseGeocodeCache(Base):
+    __tablename__ = "reverse_geocode_cache"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    latitude_key: Mapped[float] = mapped_column(Float, nullable=False, index=True)
+    longitude_key: Mapped[float] = mapped_column(Float, nullable=False, index=True)
+    city: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    commune: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    province: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    locality: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    location: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    address: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    source_url: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    updated_at: Mapped[str] = mapped_column(Text, nullable=False, default=utc_now_iso)
+
+
 def ensure_schema(engine) -> None:
     Base.metadata.create_all(engine)
     # Hard cutover: legacy JSON key-value table is no longer supported.
@@ -281,6 +297,87 @@ def apply_manual_overrides(payload: dict[str, Any]) -> tuple[dict[str, Any], int
         applied += 1
 
     return payload, applied
+
+
+def _coord_cache_key(lat: float, lng: float) -> tuple[float, float]:
+    return (round(float(lat), 4), round(float(lng), 4))
+
+
+def get_reverse_geocode_cache(points: list[tuple[float, float]]) -> dict[tuple[float, float], dict[str, str]]:
+    if not points:
+        return {}
+
+    target_keys = {_coord_cache_key(lat, lng) for lat, lng in points}
+    engine = _make_engine()
+    ensure_schema(engine)
+    with Session(engine) as session:
+        rows = session.scalars(select(ReverseGeocodeCache)).all()
+
+    result: dict[tuple[float, float], dict[str, str]] = {}
+    for row in rows:
+        key = _coord_cache_key(row.latitude_key, row.longitude_key)
+        if key not in target_keys:
+            continue
+        result[key] = {
+            "city": row.city,
+            "commune": row.commune,
+            "province": row.province,
+            "locality": row.locality,
+            "location": row.location,
+            "address": row.address,
+            "source_url": row.source_url,
+        }
+    return result
+
+
+def upsert_reverse_geocode_cache(entries: list[dict[str, Any]]) -> int:
+    if not entries:
+        return 0
+
+    normalized: dict[tuple[float, float], dict[str, str]] = {}
+    for entry in entries:
+        try:
+            key = _coord_cache_key(float(entry["latitude"]), float(entry["longitude"]))
+        except Exception:  # noqa: BLE001
+            continue
+        normalized[key] = {
+            "city": str(entry.get("city") or ""),
+            "commune": str(entry.get("commune") or ""),
+            "province": str(entry.get("province") or ""),
+            "locality": str(entry.get("locality") or ""),
+            "location": str(entry.get("location") or ""),
+            "address": str(entry.get("address") or ""),
+            "source_url": str(entry.get("source_url") or ""),
+        }
+
+    if not normalized:
+        return 0
+
+    engine = _make_engine()
+    ensure_schema(engine)
+    with Session(engine) as session:
+        rows = session.scalars(select(ReverseGeocodeCache)).all()
+        by_key = {_coord_cache_key(row.latitude_key, row.longitude_key): row for row in rows}
+
+        written = 0
+        now = utc_now_iso()
+        for key, data in normalized.items():
+            row = by_key.get(key)
+            if row is None:
+                row = ReverseGeocodeCache(latitude_key=key[0], longitude_key=key[1])
+                session.add(row)
+            row.city = data["city"]
+            row.commune = data["commune"]
+            row.province = data["province"]
+            row.locality = data["locality"]
+            row.location = data["location"]
+            row.address = data["address"]
+            row.source_url = data["source_url"]
+            row.updated_at = now
+            written += 1
+
+        session.commit()
+        return written
 
 
 def _extract_link_rows(item: dict[str, Any]) -> list[dict[str, str]]:

@@ -11,6 +11,7 @@ Aplicación web para `MineralesChilenos.cl` preparada para desplegar en Coolify 
 - `scripts/daily_refresh.py`: refresca dataset.
 - `scripts/validate_data.py`: valida esquema/calidad del dataset.
 - `scripts/link_audit.py`: audita enlaces y genera reporte.
+- `scripts/manual_overrides.sql`: plantilla SQL para correcciones manuales confiables.
 - `scripts/refresh_cycle.py`: ejecuta refresh + validación + auditoría.
 - `Dockerfile`: imagen para despliegue en Coolify.
 - `requirements.txt`: dependencias Python.
@@ -57,6 +58,12 @@ export DATABASE_URL="postgresql://minerales:minerales@localhost:5432/minerales"
 
 ```bash
 python3 scripts/daily_refresh.py
+```
+
+Opcional: cargar overrides manuales confiables antes del refresh:
+
+```bash
+psql "$DATABASE_URL" -f scripts/manual_overrides.sql
 ```
 
 4. Validar dataset:
@@ -147,7 +154,7 @@ python3 scripts/link_audit.py
 
 Resultado:
 
-- reporte persistido en PostgreSQL (`key = link_report`).
+- reporte persistido en tablas relacionales (`link_report_runs` / `link_report_results`).
 
 Notas:
 
@@ -189,7 +196,7 @@ Si no defines `DATA_JSON_SOURCE_URL` y la DB está vacía, el sistema hace scrap
 
 - Crear servicio PostgreSQL en Coolify.
 - Conectar su URL al `DATABASE_URL` del servicio principal.
-- La tabla `app_state` se crea automáticamente al primer uso.
+- Las tablas relacionales se crean automáticamente al primer uso (sin almacenamiento JSON legacy).
 
 ### 3) Cronjob en Coolify (cada 4 horas)
 
