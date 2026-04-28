@@ -136,6 +136,34 @@ class MineLink(Base):
     mine: Mapped["MineRecord"] = relationship(back_populates="links")
 
 
+class MineOverride(Base):
+    __tablename__ = "mine_overrides"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    target_name: Mapped[str] = mapped_column(Text, nullable=False)
+    target_name_normalized: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    target_latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    target_longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    match_radius_deg: Mapped[float] = mapped_column(Float, nullable=False, default=0.05)
+    mining_company: Mapped[str | None] = mapped_column(Text, nullable=True)
+    website: Mapped[str | None] = mapped_column(Text, nullable=True)
+    operation_since: Mapped[str | None] = mapped_column(Text, nullable=True)
+    city: Mapped[str | None] = mapped_column(Text, nullable=True)
+    commune: Mapped[str | None] = mapped_column(Text, nullable=True)
+    province: Mapped[str | None] = mapped_column(Text, nullable=True)
+    locality: Mapped[str | None] = mapped_column(Text, nullable=True)
+    location: Mapped[str | None] = mapped_column(Text, nullable=True)
+    operation_site: Mapped[str | None] = mapped_column(Text, nullable=True)
+    address: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_available_concession: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    data_origin: Mapped[str | None] = mapped_column(Text, nullable=True)
+    confidence_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    source_url: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    source_note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    updated_at: Mapped[str] = mapped_column(Text, nullable=False, default=utc_now_iso)
+
+
 class LinkReportRun(Base):
     __tablename__ = "link_report_runs"
 
@@ -166,6 +194,93 @@ def ensure_schema(engine) -> None:
     # Hard cutover: legacy JSON key-value table is no longer supported.
     with engine.begin() as conn:
         conn.execute(text("DROP TABLE IF EXISTS app_state"))
+
+
+def _normalize_name(value: str) -> str:
+    lowered = "".join(ch.lower() if ch.isalnum() else " " for ch in (value or ""))
+    return " ".join(lowered.split())
+
+
+def _override_matches(item: dict[str, Any], override: MineOverride) -> bool:
+    item_name_norm = _normalize_name(str(item.get("name") or ""))
+    if item_name_norm != override.target_name_normalized:
+        return False
+
+    if override.target_latitude is None or override.target_longitude is None:
+        return True
+
+    lat = item.get("latitude")
+    lng = item.get("longitude")
+    if not isinstance(lat, (int, float)) or not isinstance(lng, (int, float)):
+        return False
+
+    radius = override.match_radius_deg if override.match_radius_deg > 0 else 0.05
+    return abs(float(lat) - float(override.target_latitude)) <= radius and abs(float(lng) - float(override.target_longitude)) <= radius
+
+
+def apply_manual_overrides(payload: dict[str, Any]) -> tuple[dict[str, Any], int]:
+    items = payload.get("items")
+    if not isinstance(items, list) or not items:
+        return payload, 0
+
+    engine = _make_engine()
+    ensure_schema(engine)
+    with Session(engine) as session:
+        overrides = session.scalars(select(MineOverride).where(MineOverride.active.is_(True))).all()
+
+    if not overrides:
+        return payload, 0
+
+    applied = 0
+    now = utc_now_iso()
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+
+        matched = next((ov for ov in overrides if _override_matches(item, ov)), None)
+        if matched is None:
+            continue
+
+        for field in (
+            "mining_company",
+            "website",
+            "operation_since",
+            "city",
+            "commune",
+            "province",
+            "locality",
+            "location",
+            "operation_site",
+            "address",
+        ):
+            value = getattr(matched, field)
+            if value is not None and str(value).strip():
+                item[field] = str(value).strip()
+
+        if matched.is_available_concession is not None:
+            item["is_available_concession"] = bool(matched.is_available_concession)
+        if matched.data_origin and matched.data_origin.strip():
+            item["data_origin"] = matched.data_origin.strip()
+        if matched.confidence_score is not None:
+            item["confidence_score"] = float(matched.confidence_score)
+
+        item["enriched_at"] = now
+
+        if matched.source_url.strip():
+            src = {
+                "name": "Manual override",
+                "url": matched.source_url.strip(),
+                "note": matched.source_note.strip() or f"override_id={matched.id}",
+            }
+            existing_sources = item.get("sources")
+            if not isinstance(existing_sources, list):
+                existing_sources = []
+                item["sources"] = existing_sources
+            if not any(isinstance(row, dict) and row.get("url") == src["url"] for row in existing_sources):
+                existing_sources.append(src)
+        applied += 1
+
+    return payload, applied
 
 
 def _extract_link_rows(item: dict[str, Any]) -> list[dict[str, str]]:
