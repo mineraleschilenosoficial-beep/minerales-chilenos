@@ -61,7 +61,7 @@ Acceptance rule:
   - `source_url`
   - `field_coverage`
   - `last_checked_at`
-- [ ] Build extractor rules for structured sources (tables/CSV/API/PDF where possible).
+- [x] Build extractor rules for structured sources (tables/CSV/API/PDF where possible).
 - [ ] Build manual curation queue for records that fail automatic extraction.
 - [ ] Store field-level provenance:
   - `field_name`

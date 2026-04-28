@@ -12,6 +12,7 @@ Aplicación web para `MineralesChilenos.cl` preparada para desplegar en Coolify 
 - `scripts/validate_data.py`: valida esquema/calidad del dataset.
 - `scripts/link_audit.py`: audita enlaces y genera reporte.
 - `scripts/manual_overrides.sql`: plantilla SQL para correcciones manuales confiables.
+- `scripts/source_extractor_rules.json`: reglas de extracción estructurada para campos mandatorios.
 - `scripts/refresh_cycle.py`: ejecuta refresh + validación + auditoría.
 - `Dockerfile`: imagen para despliegue en Coolify.
 - `requirements.txt`: dependencias Python.

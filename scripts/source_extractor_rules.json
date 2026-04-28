@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "description": "Structured extraction rules for mandatory mine fields.",
+  "rules": [
+    {
+      "field": "mining_company",
+      "source_priority": ["official", "regulated", "corporate_verified", "manual_verified"],
+      "structured_strategies": ["api", "table", "csv"],
+      "required_tokens": ["operator", "company", "mine"],
+      "normalization": ["trim", "collapse_spaces"],
+      "validators": ["non_empty_string", "mine_context_match"]
+    },
+    {
+      "field": "website",
+      "source_priority": ["official", "regulated", "corporate_verified", "manual_verified"],
+      "structured_strategies": ["api", "table"],
+      "normalization": ["trim", "url_canonicalize"],
+      "validators": ["http_url", "domain_matches_operator"]
+    },
+    {
+      "field": "operation_since",
+      "source_priority": ["official", "regulated", "corporate_verified", "manual_verified"],
+      "structured_strategies": ["api", "table", "pdf"],
+      "normalization": ["trim", "year_or_iso_date"],
+      "validators": ["has_date", "mine_context_match"]
+    },
+    {
+      "field": "direct_workers",
+      "source_priority": ["official", "regulated", "corporate_verified", "manual_verified"],
+      "structured_strategies": ["api", "table", "csv", "pdf"],
+      "required_tokens": ["direct", "workers"],
+      "normalization": ["trim", "to_integer_string"],
+      "validators": ["non_negative_number", "has_reference_year"]
+    },
+    {
+      "field": "indirect_workers",
+      "source_priority": ["official", "regulated", "corporate_verified", "manual_verified"],
+      "structured_strategies": ["api", "table", "csv", "pdf"],
+      "required_tokens": ["indirect", "workers"],
+      "normalization": ["trim", "to_integer_string"],
+      "validators": ["non_negative_number", "has_reference_year"]
+    },
+    {
+      "field": "average_salary",
+      "source_priority": ["official", "regulated", "corporate_verified", "manual_verified"],
+      "structured_strategies": ["table", "csv", "pdf"],
+      "required_tokens": ["salary", "average"],
+      "normalization": ["trim", "currency_and_period_format"],
+      "validators": ["has_currency", "has_period"]
+    },
+    {
+      "field": "annual_revenue",
+      "source_priority": ["official", "regulated", "corporate_verified", "manual_verified"],
+      "structured_strategies": ["api", "table", "csv", "pdf"],
+      "required_tokens": ["revenue", "annual"],
+      "normalization": ["trim", "currency_and_year_format"],
+      "validators": ["has_currency", "has_fiscal_year"]
+    },
+    {
+      "field": "hiring_plan_2026",
+      "source_priority": ["official", "regulated", "corporate_verified", "manual_verified"],
+      "structured_strategies": ["api", "table", "pdf"],
+      "required_tokens": ["hiring", "2026"],
+      "normalization": ["trim", "collapse_spaces"],
+      "validators": ["contains_2026_scope", "mine_context_match"]
+    },
+    {
+      "field": "operating_authorizations",
+      "source_priority": ["official", "regulated", "corporate_verified", "manual_verified"],
+      "structured_strategies": ["api", "table", "pdf"],
+      "required_tokens": ["authorization", "resolution"],
+      "normalization": ["trim", "collapse_spaces"],
+      "validators": ["has_resolution_id", "has_authority", "has_effective_date"]
+    },
+    {
+      "field": "environmental_reports",
+      "source_priority": ["official", "regulated", "corporate_verified", "manual_verified"],
+      "structured_strategies": ["api", "table", "pdf"],
+      "required_tokens": ["environmental", "report"],
+      "normalization": ["trim", "collapse_spaces"],
+      "validators": ["has_report_type", "has_period_or_date", "has_valid_url"]
+    },
+    {
+      "field": "geology_studies",
+      "source_priority": ["official", "regulated", "corporate_verified", "manual_verified"],
+      "structured_strategies": ["table", "pdf"],
+      "required_tokens": ["geology", "study"],
+      "normalization": ["trim", "collapse_spaces"],
+      "validators": ["has_publication_date", "mine_context_match"]
+    },
+    {
+      "field": "mineral_life_studies",
+      "source_priority": ["official", "regulated", "corporate_verified", "manual_verified"],
+      "structured_strategies": ["table", "pdf"],
+      "required_tokens": ["life", "reserve"],
+      "normalization": ["trim", "collapse_spaces"],
+      "validators": ["has_publication_date", "has_life_or_reserve_section"]
+    },
+    {
+      "field": "mitigation_studies",
+      "source_priority": ["official", "regulated", "corporate_verified", "manual_verified"],
+      "structured_strategies": ["api", "table", "pdf"],
+      "required_tokens": ["mitigation", "plan"],
+      "normalization": ["trim", "collapse_spaces"],
+      "validators": ["has_scope", "has_validity", "mine_context_match"]
+    }
+  ]
+}
