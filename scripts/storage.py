@@ -932,6 +932,27 @@ def _missing_mandatory_fields(item: dict[str, Any], mandatory_fields: tuple[str,
     return missing
 
 
+def _has_low_confidence_inferred_provenance(item: dict[str, Any], field_name: str) -> bool:
+    rows = item.get("field_provenance")
+    if not isinstance(rows, list):
+        return False
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        if str(row.get("field_name") or "").strip() != field_name:
+            continue
+        source_type = str(row.get("source_type") or "").strip().lower()
+        if source_type != "inferred":
+            continue
+        try:
+            confidence = float(row.get("confidence_score"))
+        except Exception:  # noqa: BLE001
+            confidence = 0.0
+        if confidence <= 0.6:
+            return True
+    return False
+
+
 def rebuild_manual_curation_queue(payload: dict[str, Any]) -> int:
     items = payload.get("items")
     if not isinstance(items, list):
@@ -957,14 +978,23 @@ def rebuild_manual_curation_queue(payload: dict[str, Any]) -> int:
         if not isinstance(mine_id, int):
             continue
         missing = _missing_mandatory_fields(item, mandatory_fields)
+        low_conf_inferred: list[str] = []
+        for field in ("mining_company", "website", "operation_since"):
+            if _has_low_confidence_inferred_provenance(item, field):
+                low_conf_inferred.append(field)
         if not missing:
-            continue
+            if not low_conf_inferred:
+                continue
         rows.append(
             {
                 "mine_id": mine_id,
                 "mine_name": str(item.get("name") or "").strip(),
-                "missing_fields": ",".join(sorted(set(missing))),
-                "reason": "missing_mandatory_public_fields",
+                "missing_fields": ",".join(sorted(set(missing + low_conf_inferred))),
+                "reason": (
+                    "low_confidence_inferred_fields"
+                    if low_conf_inferred and not missing
+                    else "missing_or_low_confidence_mandatory_fields"
+                ),
                 "status": "pending",
                 "last_detected_at": now,
             }

@@ -48,6 +48,14 @@ def parse_iso(value: str) -> dt.datetime | None:
         return None
 
 
+def is_recent_iso(value: str, max_age_days: int) -> bool:
+    parsed = parse_iso(value)
+    if parsed is None:
+        return False
+    now = dt.datetime.now(dt.timezone.utc)
+    return (now - parsed) <= dt.timedelta(days=max_age_days)
+
+
 def is_present_mandatory(value: Any) -> bool:
     normalized = str(value or "").strip().lower()
     if not normalized:
@@ -313,6 +321,35 @@ def main() -> int:
             f"{coverage_ratio * 100:.2f}% < {coverage_threshold * 100:.2f}% "
             f"(set by MANDATORY_FIELD_COVERAGE_MIN)"
         )
+
+    freshness_days_raw = os.getenv("SOURCE_FRESHNESS_MAX_DAYS", "7").strip()
+    try:
+        freshness_days = max(1, int(freshness_days_raw))
+    except ValueError:
+        freshness_days = 7
+        warnings.append(f"SOURCE_FRESHNESS_MAX_DAYS invalid value '{freshness_days_raw}', using 7")
+
+    for idx, item in enumerate(items):
+        path = f"items[{idx}]"
+        catalog = item.get("source_catalog")
+        if catalog is None:
+            continue
+        if not isinstance(catalog, list):
+            errors.append(f"{path}.source_catalog must be array when present")
+            continue
+        for sidx, row in enumerate(catalog):
+            spath = f"{path}.source_catalog[{sidx}]"
+            if not isinstance(row, dict):
+                errors.append(f"{spath} must be object")
+                continue
+            last_checked = str(row.get("last_checked_at") or "").strip()
+            if not last_checked:
+                errors.append(f"{spath}.last_checked_at is required")
+                continue
+            if not is_recent_iso(last_checked, freshness_days):
+                errors.append(
+                    f"{spath}.last_checked_at is stale (> {freshness_days} days) under SOURCE_FRESHNESS_MAX_DAYS"
+                )
 
     if isinstance(meta, dict):
         sources = meta.get("sources")
