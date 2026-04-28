@@ -110,6 +110,23 @@ def main() -> int:
         "environmental_reports",
         "website",
     )
+    mandatory_scalar_with_source = (
+        "mining_company",
+        "direct_workers",
+        "indirect_workers",
+        "average_salary",
+        "annual_revenue",
+        "operation_since",
+        "hiring_plan_2026",
+        "website",
+    )
+    mandatory_list_with_source = (
+        "operating_authorizations",
+        "geology_studies",
+        "mineral_life_studies",
+        "mitigation_studies",
+        "environmental_reports",
+    )
     covered_mandatory_records = 0
 
     for idx, item in enumerate(items):
@@ -185,6 +202,43 @@ def main() -> int:
             value = item.get(list_field)
             if value is not None and not isinstance(value, list):
                 errors.append(f"{path}.{list_field} must be array when present")
+
+        provenance_rows = item.get("field_provenance")
+        if provenance_rows is not None and not isinstance(provenance_rows, list):
+            errors.append(f"{path}.field_provenance must be array when present")
+            provenance_rows = []
+        if provenance_rows is None:
+            provenance_rows = []
+
+        def has_source_for_field(field_name: str) -> bool:
+            for row in provenance_rows:
+                if not isinstance(row, dict):
+                    continue
+                if str(row.get("field_name") or "").strip() != field_name:
+                    continue
+                url = str(row.get("source_url") or "").strip()
+                if is_http_url(url):
+                    return True
+            return False
+
+        for field in mandatory_scalar_with_source:
+            if is_present_mandatory(item.get(field)) and not has_source_for_field(field):
+                errors.append(f"{path}.{field} requires at least one field_provenance source_url")
+
+        for field in mandatory_list_with_source:
+            rows = item.get(field)
+            if not isinstance(rows, list) or not rows:
+                continue
+            has_any_url = False
+            for entry in rows:
+                if isinstance(entry, str) and is_http_url(entry):
+                    has_any_url = True
+                    break
+                if isinstance(entry, dict) and is_http_url(str(entry.get("url") or "")):
+                    has_any_url = True
+                    break
+            if not has_any_url:
+                errors.append(f"{path}.{field} requires at least one valid source URL")
         if all(
             (
                 isinstance(item.get(field), list) and len(item.get(field) or []) > 0

@@ -128,7 +128,7 @@ Acceptance rule:
 ## Data Quality Policy (Strict)
 
 - [ ] Reject inferred values for mandatory fields unless marked with explicit low confidence and queued for review.
-- [ ] Require at least one valid source URL per mandatory field.
+- [x] Require at least one valid source URL per mandatory field.
 - [ ] Require freshness window (re-check sources every refresh cycle or configurable period).
 - [ ] Keep immutable audit trail per field update (before/after, who/what process, timestamp).
 
