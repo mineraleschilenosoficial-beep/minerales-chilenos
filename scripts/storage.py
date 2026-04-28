@@ -10,6 +10,7 @@ from typing import Any
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    DateTime,
     Float,
     ForeignKey,
     Integer,
@@ -59,10 +60,12 @@ class DatasetMeta(Base):
     __tablename__ = "dataset_meta"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    updated_at: Mapped[str] = mapped_column(Text, nullable=False)
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=dt.datetime.now(dt.timezone.utc))
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     source: Mapped[str] = mapped_column(Text, nullable=False)
-    last_verified_at: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    last_verified_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=dt.datetime.now(dt.timezone.utc)
+    )
     refresh_mode: Mapped[str] = mapped_column(Text, nullable=False, default="")
     scrape_source_name: Mapped[str] = mapped_column(Text, nullable=False, default="")
     sources: Mapped[list["DatasetMetaSource"]] = relationship(cascade="all, delete-orphan", back_populates="meta")
@@ -119,7 +122,7 @@ class MineRecord(Base):
     hiring_plan_2026: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     data_origin: Mapped[str] = mapped_column(Text, nullable=False, default="source_unset")
     confidence_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
-    enriched_at: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    enriched_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=dt.datetime.now(dt.timezone.utc))
     notes: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     website: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     is_available_concession: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -176,7 +179,7 @@ class MineFieldProvenance(Base):
     source_url: Mapped[str] = mapped_column(Text, nullable=False, default="")
     source_type: Mapped[str] = mapped_column(String(40), nullable=False, default="")
     confidence_score: Mapped[float | None] = mapped_column(Float, nullable=True)
-    updated_at: Mapped[str] = mapped_column(Text, nullable=False, default=utc_now_iso)
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=dt.datetime.now(dt.timezone.utc))
     note: Mapped[str] = mapped_column(Text, nullable=False, default="")
     mine: Mapped["MineRecord"] = relationship(back_populates="field_provenance")
 
@@ -212,7 +215,7 @@ class MineOverride(Base):
     source_url: Mapped[str] = mapped_column(Text, nullable=False, default="")
     source_note: Mapped[str] = mapped_column(Text, nullable=False, default="")
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    updated_at: Mapped[str] = mapped_column(Text, nullable=False, default=utc_now_iso)
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=dt.datetime.now(dt.timezone.utc))
 
 
 class LinkReportRun(Base):
@@ -223,7 +226,7 @@ class LinkReportRun(Base):
     ok_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     warning_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     failed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    created_at: Mapped[str] = mapped_column(Text, nullable=False, default=utc_now_iso)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=dt.datetime.now(dt.timezone.utc))
     results: Mapped[list["LinkReportResult"]] = relationship(cascade="all, delete-orphan", back_populates="run")
 
 
@@ -254,7 +257,7 @@ class ReverseGeocodeCache(Base):
     location: Mapped[str] = mapped_column(Text, nullable=False, default="")
     address: Mapped[str] = mapped_column(Text, nullable=False, default="")
     source_url: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    updated_at: Mapped[str] = mapped_column(Text, nullable=False, default=utc_now_iso)
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=dt.datetime.now(dt.timezone.utc))
 
 
 MINE_RECORD_OPTIONAL_TEXT_COLUMNS = (
@@ -299,6 +302,27 @@ def _display_or_default(value: str | None, default: str = "-") -> str:
     return cleaned if cleaned else default
 
 
+def _parse_datetime(value: Any) -> dt.datetime:
+    if isinstance(value, dt.datetime):
+        parsed = value
+    else:
+        raw = str(value or "").strip()
+        if not raw:
+            return dt.datetime.now(dt.timezone.utc)
+        parsed = dt.datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=dt.timezone.utc)
+    return parsed.astimezone(dt.timezone.utc)
+
+
+def _datetime_to_iso(value: dt.datetime | None) -> str:
+    if value is None:
+        return ""
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=dt.timezone.utc)
+    return value.astimezone(dt.timezone.utc).isoformat()
+
+
 def append_field_provenance(
     item: dict[str, Any],
     *,
@@ -325,7 +349,7 @@ def append_field_provenance(
         "field_value": target_value,
         "source_type": str(source_type).strip() or "inferred",
         "source_url": str(source_url or "").strip(),
-        "updated_at": str(updated_at or utc_now_iso()),
+        "updated_at": _datetime_to_iso(_parse_datetime(updated_at or utc_now_iso())),
     }
     if confidence_score is not None:
         payload["confidence_score"] = float(confidence_score)
@@ -477,6 +501,51 @@ def ensure_schema(engine) -> None:
                 """
             )
         )
+
+        # Convert legacy TEXT timestamp columns to TIMESTAMPTZ when needed.
+        timestamp_columns = (
+            ("dataset_meta", "updated_at"),
+            ("dataset_meta", "last_verified_at"),
+            ("mine_records", "enriched_at"),
+            ("mine_overrides", "updated_at"),
+            ("link_report_runs", "created_at"),
+            ("reverse_geocode_cache", "updated_at"),
+            ("mine_field_provenance", "updated_at"),
+        )
+        for table_name, column_name in timestamp_columns:
+            column_type = conn.execute(
+                text(
+                    """
+                    SELECT data_type
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = :table_name
+                      AND column_name = :column_name
+                    """
+                ),
+                {"table_name": table_name, "column_name": column_name},
+            ).scalar_one_or_none()
+            if column_type == "timestamp with time zone":
+                continue
+
+            conn.execute(
+                text(
+                    f"""
+                    UPDATE {table_name}
+                    SET {column_name} = NOW()::text
+                    WHERE {column_name} IS NULL OR btrim({column_name}::text) = ''
+                    """
+                )
+            )
+            conn.execute(
+                text(
+                    f"""
+                    ALTER TABLE {table_name}
+                    ALTER COLUMN {column_name} TYPE TIMESTAMPTZ
+                    USING ({column_name}::timestamptz)
+                    """
+                )
+            )
 
 
 def _normalize_name(value: str) -> str:
@@ -751,10 +820,10 @@ def save_dataset(payload: dict[str, Any]) -> None:
 
         meta_row = DatasetMeta(
             id=1,
-            updated_at=str(meta.get("updatedAt") or utc_now_iso()),
+            updated_at=_parse_datetime(meta.get("updatedAt") or utc_now_iso()),
             version=int(meta.get("version") or 1),
             source=str(meta.get("source") or "postgresql"),
-            last_verified_at=str(meta.get("lastVerifiedAt") or ""),
+            last_verified_at=_parse_datetime(meta.get("lastVerifiedAt") or utc_now_iso()),
             refresh_mode=str(meta.get("refreshMode") or ""),
             scrape_source_name=str(meta.get("scrapeSourceName") or ""),
         )
@@ -811,7 +880,7 @@ def save_dataset(payload: dict[str, Any]) -> None:
                 hiring_plan_2026=_null_if_sentinel(item.get("hiring_plan_2026")),
                 data_origin=str(item.get("data_origin") or "source_unset"),
                 confidence_score=float(item.get("confidence_score") or 0.0),
-                enriched_at=str(item.get("enriched_at") or ""),
+                enriched_at=_parse_datetime(item.get("enriched_at") or utc_now_iso()),
                 notes=_null_if_sentinel(item.get("notes")),
                 website=_null_if_sentinel(item.get("website"), website_field=True),
                 is_available_concession=bool(item.get("is_available_concession")),
@@ -861,7 +930,7 @@ def save_dataset(payload: dict[str, Any]) -> None:
                             if row.get("confidence_score") is not None
                             else None
                         ),
-                        updated_at=updated_at,
+                        updated_at=_parse_datetime(updated_at),
                         note=str(row.get("note") or ""),
                     )
                 )
@@ -925,7 +994,7 @@ def get_dataset() -> dict[str, Any]:
                 "hiring_plan_2026": _display_or_default(mine.hiring_plan_2026, "-"),
                 "data_origin": mine.data_origin,
                 "confidence_score": mine.confidence_score,
-                "enriched_at": mine.enriched_at,
+                "enriched_at": _datetime_to_iso(mine.enriched_at),
                 "notes": _display_or_default(mine.notes, ""),
                 "website": _display_or_default(mine.website, "#"),
                 "is_available_concession": mine.is_available_concession,
@@ -943,7 +1012,7 @@ def get_dataset() -> dict[str, Any]:
                         "source_url": row.source_url,
                         "source_type": row.source_type,
                         "confidence_score": row.confidence_score,
-                        "updated_at": row.updated_at,
+                        "updated_at": _datetime_to_iso(row.updated_at),
                         "note": row.note,
                     }
                     for row in mine.field_provenance
@@ -961,10 +1030,10 @@ def get_dataset() -> dict[str, Any]:
         scrape_stats = {row.key: row.value for row in meta.stats}
         payload = {
             "meta": {
-                "updatedAt": meta.updated_at,
                 "version": meta.version,
                 "source": meta.source,
-                "lastVerifiedAt": meta.last_verified_at,
+                "updatedAt": _datetime_to_iso(meta.updated_at),
+                "lastVerifiedAt": _datetime_to_iso(meta.last_verified_at),
                 "refreshMode": meta.refresh_mode,
                 "scrapeSourceName": meta.scrape_source_name,
                 "sources": [{"name": s.name, "url": s.url, "note": s.note} for s in meta.sources],
@@ -984,7 +1053,7 @@ def save_link_report(payload: dict[str, Any]) -> None:
             ok_count=int(payload.get("ok_count") or 0),
             warning_count=int(payload.get("warning_count") or 0),
             failed_count=int(payload.get("failed_count") or 0),
-            created_at=utc_now_iso(),
+            created_at=_parse_datetime(utc_now_iso()),
         )
         session.add(run)
 
