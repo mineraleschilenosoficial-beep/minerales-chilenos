@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import ssl
 import time
 import urllib.request
@@ -207,6 +208,180 @@ def enrich_top_fields_from_sources(payload: dict) -> tuple[dict, dict[str, int]]
                     existing_env.append(doc)
                     env_urls.add(doc["url"])
                     stats["topFieldEnvironmentalReportsExtracted"] += 1
+
+    return payload, stats
+
+
+def _extract_first_year(text: str) -> str | None:
+    match = re.search(r"\b(19\d{2}|20\d{2})\b", text)
+    return match.group(1) if match else None
+
+
+def _extract_number_from_keyword(text: str, keyword: str) -> str | None:
+    pattern = rf"{keyword}\D{{0,24}}(\d{{1,7}})"
+    match = re.search(pattern, text, flags=re.IGNORECASE)
+    return match.group(1) if match else None
+
+
+def _extract_salary(text: str) -> str | None:
+    # Examples: CLP 1200000 / USD 2500 / $ 800000
+    match = re.search(r"\b(CLP|USD)\s*([\d\.\,]{3,})\b", text, flags=re.IGNORECASE)
+    if match:
+        return f"{match.group(1).upper()} {match.group(2)}"
+    match = re.search(r"\$\s*([\d\.\,]{3,})\b", text)
+    if match:
+        return f"CLP {match.group(1)}"
+    return None
+
+
+def _extract_revenue(text: str) -> str | None:
+    # Examples: revenue USD 120M / ingresos CLP 5000000000
+    match = re.search(r"\b(revenue|ingresos?)\b.{0,20}\b(CLP|USD)\s*([\d\.\,]+(?:m|mm|bn)?)", text, flags=re.IGNORECASE)
+    if not match:
+        return None
+    return f"{match.group(2).upper()} {match.group(3)}"
+
+
+def _extract_hiring_2026(text: str) -> str | None:
+    if "2026" not in text:
+        return None
+    match = re.search(r"\b(?:hiring|contrataci[oó]n|contrataciones?)\b.{0,24}(\d{1,6})", text, flags=re.IGNORECASE)
+    if not match:
+        return None
+    return f"{match.group(1)} planned hires (2026)"
+
+
+def enrich_sprint3_fields_from_sources(payload: dict) -> tuple[dict, dict[str, int]]:
+    items = payload.get("items")
+    if not isinstance(items, list):
+        return payload, {
+            "sprint3DirectWorkersExtracted": 0,
+            "sprint3IndirectWorkersExtracted": 0,
+            "sprint3AverageSalaryExtracted": 0,
+            "sprint3AnnualRevenueExtracted": 0,
+            "sprint3OperationSinceExtracted": 0,
+            "sprint3HiringPlan2026Extracted": 0,
+        }
+
+    stats = {
+        "sprint3DirectWorkersExtracted": 0,
+        "sprint3IndirectWorkersExtracted": 0,
+        "sprint3AverageSalaryExtracted": 0,
+        "sprint3AnnualRevenueExtracted": 0,
+        "sprint3OperationSinceExtracted": 0,
+        "sprint3HiringPlan2026Extracted": 0,
+    }
+    now = utc_now_iso()
+
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        rows = [_normalize_doc_entry(x) for x in (item.get("sources") or [])]
+        rows += [_normalize_doc_entry(x) for x in (item.get("docs") or [])]
+        rows = [x for x in rows if x]
+        if not rows:
+            continue
+
+        for row in rows:
+            source_url = row["url"]
+            text_blob = " ".join((row["name"], row["note"], row["doc_type"], source_url))
+            lower_blob = text_blob.lower()
+
+            if not _is_present(item.get("direct_workers")):
+                direct = _extract_number_from_keyword(lower_blob, r"(direct|directos?)")
+                if direct:
+                    item["direct_workers"] = direct
+                    append_field_provenance(
+                        item,
+                        field_name="direct_workers",
+                        field_value=direct,
+                        source_type="inferred",
+                        source_url=source_url,
+                        confidence_score=0.45,
+                        note="sprint3 keyword extraction",
+                        updated_at=now,
+                    )
+                    stats["sprint3DirectWorkersExtracted"] += 1
+
+            if not _is_present(item.get("indirect_workers")):
+                indirect = _extract_number_from_keyword(lower_blob, r"(indirect|indirectos?)")
+                if indirect:
+                    item["indirect_workers"] = indirect
+                    append_field_provenance(
+                        item,
+                        field_name="indirect_workers",
+                        field_value=indirect,
+                        source_type="inferred",
+                        source_url=source_url,
+                        confidence_score=0.45,
+                        note="sprint3 keyword extraction",
+                        updated_at=now,
+                    )
+                    stats["sprint3IndirectWorkersExtracted"] += 1
+
+            if not _is_present(item.get("average_salary")):
+                salary = _extract_salary(text_blob)
+                if salary:
+                    item["average_salary"] = salary
+                    append_field_provenance(
+                        item,
+                        field_name="average_salary",
+                        field_value=salary,
+                        source_type="inferred",
+                        source_url=source_url,
+                        confidence_score=0.4,
+                        note="sprint3 salary extraction",
+                        updated_at=now,
+                    )
+                    stats["sprint3AverageSalaryExtracted"] += 1
+
+            if not _is_present(item.get("annual_revenue")):
+                revenue = _extract_revenue(text_blob)
+                if revenue:
+                    item["annual_revenue"] = revenue
+                    append_field_provenance(
+                        item,
+                        field_name="annual_revenue",
+                        field_value=revenue,
+                        source_type="inferred",
+                        source_url=source_url,
+                        confidence_score=0.4,
+                        note="sprint3 revenue extraction",
+                        updated_at=now,
+                    )
+                    stats["sprint3AnnualRevenueExtracted"] += 1
+
+            if not _is_present(item.get("operation_since")):
+                year = _extract_first_year(text_blob)
+                if year:
+                    item["operation_since"] = year
+                    append_field_provenance(
+                        item,
+                        field_name="operation_since",
+                        field_value=year,
+                        source_type="inferred",
+                        source_url=source_url,
+                        confidence_score=0.42,
+                        note="sprint3 year extraction",
+                        updated_at=now,
+                    )
+                    stats["sprint3OperationSinceExtracted"] += 1
+
+            if not _is_present(item.get("hiring_plan_2026")):
+                hiring = _extract_hiring_2026(lower_blob)
+                if hiring:
+                    item["hiring_plan_2026"] = hiring
+                    append_field_provenance(
+                        item,
+                        field_name="hiring_plan_2026",
+                        field_value=hiring,
+                        source_type="inferred",
+                        source_url=source_url,
+                        confidence_score=0.4,
+                        note="sprint3 hiring extraction",
+                        updated_at=now,
+                    )
+                    stats["sprint3HiringPlan2026Extracted"] += 1
 
     return payload, stats
 
@@ -992,6 +1167,7 @@ def main() -> int:
     current, geocode_stats = enrich_city_commune_with_reverse_geocoding(current)
     current, applied_overrides = apply_manual_overrides(current)
     current, top_field_stats = enrich_top_fields_from_sources(current)
+    current, sprint3_stats = enrich_sprint3_fields_from_sources(current)
     current, seeded_provenance = seed_field_provenance(current)
     current, concession_stats = apply_concession_business_rule(current)
 
@@ -1009,6 +1185,8 @@ def main() -> int:
     for key, value in geocode_stats.items():
         stats[key] = int(value)
     for key, value in top_field_stats.items():
+        stats[key] = int(value)
+    for key, value in sprint3_stats.items():
         stats[key] = int(value)
     for key, value in concession_stats.items():
         stats[key] = int(value)
