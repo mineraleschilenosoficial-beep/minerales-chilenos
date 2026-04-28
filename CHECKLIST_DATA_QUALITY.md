@@ -83,7 +83,7 @@ Acceptance rule:
 - [x] Sprint 2: automatic extraction for top fields (company, website, authorizations, reports).
 - [x] Sprint 3: extraction for workforce/salary/revenue/operation_since/hiring_plan_2026.
 - [x] Sprint 4: geology/mineral-life/mitigation studies + QA and gap closure.
-- [ ] Sprint 5: production hardening (alerts, quality thresholds, rollback policy).
+- [x] Sprint 5: production hardening (alerts, quality thresholds, rollback policy).
 
 ## Field Source Playbook (Concrete)
 

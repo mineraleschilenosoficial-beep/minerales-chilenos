@@ -15,6 +15,7 @@ from urllib.parse import urlencode, urlparse
 from storage import (
     apply_manual_overrides,
     append_field_provenance,
+    get_dataset,
     get_reverse_geocode_cache,
     rebuild_manual_curation_queue,
     save_dataset,
@@ -569,6 +570,55 @@ def compute_refresh_kpis(payload: dict, pending_curation: int) -> dict[str, int]
         "kpiPctOfficialSourceBp": bp(official_source_count),
         "kpiPctPendingManualCurationBp": bp(pending),
     }
+
+
+def load_existing_dataset_safe() -> dict | None:
+    try:
+        return get_dataset()
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def apply_production_alerts(stats: dict[str, int]) -> int:
+    alerts = 0
+    mandatory_min_bp = int(os.getenv("ALERT_MANDATORY_COVERAGE_MIN_BP", "2000"))
+    official_min_bp = int(os.getenv("ALERT_OFFICIAL_SOURCE_MIN_BP", "5000"))
+    reliable_concession_min_bp = int(os.getenv("ALERT_RELIABLE_CONCESSION_MIN_BP", "2000"))
+    if int(stats.get("kpiPctAllMandatoryFieldsBp", 0)) < mandatory_min_bp:
+        alerts += 1
+    if int(stats.get("kpiPctOfficialSourceBp", 0)) < official_min_bp:
+        alerts += 1
+    if int(stats.get("coverageReliableConcessionBp", 0)) < reliable_concession_min_bp:
+        alerts += 1
+    stats["alertsTriggered"] = alerts
+    return alerts
+
+
+def enforce_rollback_policy(previous: dict | None, current: dict, stats: dict[str, int]) -> None:
+    if not previous:
+        stats["rollbackChecked"] = 0
+        return
+
+    prev_items = previous.get("items")
+    cur_items = current.get("items")
+    if not isinstance(prev_items, list) or not isinstance(cur_items, list) or not prev_items:
+        stats["rollbackChecked"] = 0
+        return
+
+    prev_count = len(prev_items)
+    cur_count = len(cur_items)
+    drop_ratio = max(0.0, (prev_count - cur_count) / prev_count)
+    stats["rollbackChecked"] = 1
+    stats["rollbackPrevCount"] = prev_count
+    stats["rollbackCurrentCount"] = cur_count
+    stats["rollbackDropRatioBp"] = int(round(drop_ratio * 10000))
+
+    max_drop_ratio = float(os.getenv("ROLLBACK_MAX_ITEM_DROP_RATIO", "0.40"))
+    if drop_ratio > max_drop_ratio:
+        raise RuntimeError(
+            "Rollback policy triggered: new dataset item count dropped too much "
+            f"({cur_count}/{prev_count}, drop={drop_ratio:.2%}, limit={max_drop_ratio:.2%})."
+        )
 
 
 def apply_concession_business_rule(payload: dict) -> tuple[dict, dict[str, int]]:
@@ -1231,6 +1281,7 @@ def main() -> int:
         current.setdefault("meta", {})
         current["meta"]["scrapeSourceName"] = source_name
         source_mode = "scrape-rebuild"
+    previous_snapshot = load_existing_dataset_safe()
 
     current, geocode_stats = enrich_city_commune_with_reverse_geocoding(current)
     current, applied_overrides = apply_manual_overrides(current)
@@ -1266,6 +1317,8 @@ def main() -> int:
     stats["manualCurationPending"] = pending_curation
     for key, value in compute_refresh_kpis(current, pending_curation).items():
         stats[key] = int(value)
+    apply_production_alerts(stats)
+    enforce_rollback_policy(previous_snapshot, current, stats)
     save_dataset(current)
     print(f"daily refresh complete mode={source_mode}")
     return 0
