@@ -10,6 +10,7 @@ window.APP_CONFIG = {
   CONCESSIONS_URL: `${API_BASE_URL}/api/concesiones`,
   DATA_URL: `${API_BASE_URL}/api/yacimientos`,
   LINK_REPORT_URL: `${API_BASE_URL}/api/link-report`,
+  CONCESSIONS_PAGE_SIZE: 8000,
   GTM_ID: "GTM-MRGDC2RP",
   CACHE_KEY: "mineraleschilenos:data:v3",
   CACHE_TTL_MS: 1000 * 60 * 60 * 6

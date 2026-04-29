@@ -14,6 +14,7 @@
   const CACHE_TTL_MS = cfg.CACHE_TTL_MS || 1000 * 60 * 60 * 6;
   const FETCH_TIMEOUT_MS = cfg.FETCH_TIMEOUT_MS || 12000;
   const FETCH_TIMEOUT_MS_CONCESSIONS = cfg.FETCH_TIMEOUT_MS_CONCESSIONS || 120000;
+  const CONCESSIONS_PAGE_SIZE = cfg.CONCESSIONS_PAGE_SIZE || 8000;
   const MOBILE_SHEET_KEY = "mineraleschilenos:mobile-sheet-state";
 
   const FALLBACK_CONCESSIONS_DATASET = {
@@ -308,6 +309,55 @@
           });
       }
     });
+  }
+
+  async function fetchConcessionsPaginated(baseUrl, timeoutMs = FETCH_TIMEOUT_MS_CONCESSIONS) {
+    const pageSize = Math.max(500, Number(CONCESSIONS_PAGE_SIZE) || 8000);
+    const stamp = Date.now();
+    let offset = 0;
+    let mergedItems = [];
+    let mergedMeta = null;
+    let safetyPages = 0;
+    const maxPages = 1000;
+
+    while (safetyPages < maxPages) {
+      safetyPages += 1;
+      const pageUrl = `${baseUrl}?offset=${offset}&limit=${pageSize}&v=${stamp}-${offset}`;
+      const page = await fetchJsonWithTimeout(pageUrl, timeoutMs);
+      if (!page || !Array.isArray(page.items)) {
+        return mergedItems.length ? { meta: mergedMeta || {}, items: mergedItems } : null;
+      }
+      if (!mergedMeta) {
+        mergedMeta = page.meta && typeof page.meta === "object" ? { ...page.meta } : {};
+      }
+      mergedItems = mergedItems.concat(page.items);
+
+      const pagination = page.meta && page.meta.pagination && typeof page.meta.pagination === "object"
+        ? page.meta.pagination
+        : null;
+      if (!pagination) {
+        // Non-paginated backend response, use as-is.
+        return page;
+      }
+      const returned = Number(pagination.returned || page.items.length || 0);
+      const hasMore = Boolean(pagination.hasMore);
+      if (!hasMore || returned <= 0) {
+        break;
+      }
+      offset += returned;
+    }
+
+    return {
+      meta: {
+        ...(mergedMeta || {}),
+        pagination: {
+          mode: "aggregated",
+          pageSize,
+          returned: mergedItems.length,
+        },
+      },
+      items: mergedItems,
+    };
   }
 
   function mineralStyle(value) {
@@ -732,7 +782,9 @@
     const cacheKey = getDatasetCacheKey(mode);
     const fallbackDataset = getFallbackDataset(mode);
     const timeoutMs = mode === "concesiones" ? FETCH_TIMEOUT_MS_CONCESSIONS : FETCH_TIMEOUT_MS;
-    const remotePayload = await fetchFirstAvailableDataset(candidates, timeoutMs);
+    const remotePayload = mode === "concesiones"
+      ? await fetchConcessionsPaginated(candidates[0], timeoutMs)
+      : await fetchFirstAvailableDataset(candidates, timeoutMs);
     if (remotePayload) {
       saveCache(cacheKey, remotePayload);
       sessionDatasetCache[mode] = remotePayload;
