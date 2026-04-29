@@ -13,7 +13,7 @@
   const LEGACY_VIEW_STATE_PURGE_MARKER_KEY = "mineraleschilenos:viewstate:purged:v1";
   const CACHE_TTL_MS = cfg.CACHE_TTL_MS || 1000 * 60 * 60 * 6;
   const FETCH_TIMEOUT_MS = cfg.FETCH_TIMEOUT_MS || 12000;
-  const FETCH_TIMEOUT_MS_CONCESSIONS = cfg.FETCH_TIMEOUT_MS_CONCESSIONS || 35000;
+  const FETCH_TIMEOUT_MS_CONCESSIONS = cfg.FETCH_TIMEOUT_MS_CONCESSIONS || 120000;
   const MOBILE_SHEET_KEY = "mineraleschilenos:mobile-sheet-state";
 
   const FALLBACK_CONCESSIONS_DATASET = {
@@ -636,6 +636,20 @@
       }
       throw new Error("mode switch render did not apply");
     } catch (error) {
+      // Keep mode switch responsive: fallback to built-in dataset instead of rolling back mode.
+      try {
+        sessionDatasetCache[nextMode] = getFallbackDataset(nextMode);
+        const fallbackApplied = await loadAndRenderCurrentMode();
+        if (fallbackApplied) {
+          fitToFiltered();
+          els.status.textContent = `Mapa ${getModeLabel(nextMode)} cargado con respaldo local por error remoto.`;
+          console.error(error);
+          return true;
+        }
+      } catch (fallbackError) {
+        console.error("fallback render failed", fallbackError);
+      }
+
       pinViewMode = prevMode;
       const rollbackStore = loadFilterStore();
       rollbackStore.lastMode = prevMode;
