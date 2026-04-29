@@ -20,6 +20,7 @@ from sqlalchemy import (
     UniqueConstraint,
     create_engine,
     delete,
+    func,
     select,
     text,
     tuple_,
@@ -1358,6 +1359,203 @@ def get_dataset() -> dict[str, Any]:
             "items": items,
         }
         return payload
+
+
+def get_concessions_page(
+    *,
+    offset: int = 0,
+    limit: int = 10000,
+    min_lng: float | None = None,
+    min_lat: float | None = None,
+    max_lng: float | None = None,
+    max_lat: float | None = None,
+) -> dict[str, Any]:
+    """Return concessions directly from DB with optional bbox and pagination."""
+    engine = _make_engine()
+    ensure_schema(engine)
+    with Session(engine) as session:
+        meta = session.scalar(
+            select(DatasetMeta).options(selectinload(DatasetMeta.sources), selectinload(DatasetMeta.stats)).where(DatasetMeta.id == 1)
+        )
+        if meta is None:
+            raise RuntimeError("Dataset not found in PostgreSQL. Run daily refresh to bootstrap data.")
+
+        bbox_filter_on = None not in (min_lng, min_lat, max_lng, max_lat)
+        base_stmt = select(MineRecord)
+        count_stmt = select(func.count(MineRecord.id))
+        postgis_used = False
+
+        if bbox_filter_on:
+            bbox_params = {
+                "min_lng": float(min_lng),
+                "min_lat": float(min_lat),
+                "max_lng": float(max_lng),
+                "max_lat": float(max_lat),
+            }
+            try:
+                session.execute(text("SELECT ST_X(ST_SetSRID(ST_MakePoint(0, 0), 4326))"))
+                postgis_where = text(
+                    "geom IS NOT NULL AND geom && ST_MakeEnvelope(:min_lng, :min_lat, :max_lng, :max_lat, 4326)"
+                )
+                base_stmt = base_stmt.where(postgis_where).params(**bbox_params)
+                count_stmt = count_stmt.where(postgis_where).params(**bbox_params)
+                postgis_used = True
+            except Exception:  # noqa: BLE001
+                base_stmt = base_stmt.where(
+                    MineRecord.longitude.is_not(None),
+                    MineRecord.latitude.is_not(None),
+                    MineRecord.longitude >= bbox_params["min_lng"],
+                    MineRecord.longitude <= bbox_params["max_lng"],
+                    MineRecord.latitude >= bbox_params["min_lat"],
+                    MineRecord.latitude <= bbox_params["max_lat"],
+                )
+                count_stmt = count_stmt.where(
+                    MineRecord.longitude.is_not(None),
+                    MineRecord.latitude.is_not(None),
+                    MineRecord.longitude >= bbox_params["min_lng"],
+                    MineRecord.longitude <= bbox_params["max_lng"],
+                    MineRecord.latitude >= bbox_params["min_lat"],
+                    MineRecord.latitude <= bbox_params["max_lat"],
+                )
+
+        total = int(session.scalar(count_stmt) or 0)
+        safe_offset = max(0, int(offset))
+        safe_limit = max(0, int(limit))
+
+        if safe_limit > 0:
+            page_stmt = base_stmt.order_by(MineRecord.id.asc()).offset(safe_offset).limit(safe_limit)
+        else:
+            page_stmt = base_stmt.order_by(MineRecord.id.asc())
+
+        mines = session.scalars(
+            page_stmt.options(
+                selectinload(MineRecord.minerals),
+                selectinload(MineRecord.links),
+                selectinload(MineRecord.field_provenance),
+                selectinload(MineRecord.source_catalog),
+            )
+        ).all()
+
+        def links_by_category(mine: MineRecord, category: str) -> list[dict[str, str]]:
+            result: list[dict[str, str]] = []
+            for link in mine.links:
+                if link.category != category:
+                    continue
+                row = {"name": link.name, "url": link.url}
+                if link.note:
+                    row["note"] = link.note
+                if link.doc_type:
+                    row["doc_type"] = link.doc_type
+                result.append(row)
+            return result
+
+        items: list[dict[str, Any]] = []
+        for mine in mines:
+            items.append(
+                {
+                    "id": mine.id,
+                    "name": mine.name,
+                    "minerals": [m.mineral for m in mine.minerals],
+                    "latitude": mine.latitude,
+                    "longitude": mine.longitude,
+                    "region": mine.region,
+                    "site_type": mine.site_type,
+                    "mining_company": _display_or_default(mine.mining_company, "-"),
+                    "surface": _display_or_default(mine.surface, "-"),
+                    "altitude": _display_or_default(mine.altitude, "-"),
+                    "production": _display_or_default(mine.production, "-"),
+                    "workforce": _display_or_default(mine.workforce, "-"),
+                    "average_salary": _display_or_default(mine.average_salary, "-"),
+                    "annual_revenue": _display_or_default(mine.annual_revenue, "-"),
+                    "future_hirings": _display_or_default(mine.future_hirings, "-"),
+                    "operation_since": _display_or_default(mine.operation_since, "-"),
+                    "direct_workers": _display_or_default(mine.direct_workers, "-"),
+                    "indirect_workers": _display_or_default(mine.indirect_workers, "-"),
+                    "hiring_plan_2026": _display_or_default(mine.hiring_plan_2026, "-"),
+                    "data_origin": mine.data_origin,
+                    "confidence_score": mine.confidence_score,
+                    "enriched_at": _datetime_to_iso(mine.enriched_at),
+                    "notes": _display_or_default(mine.notes, ""),
+                    "website": _display_or_default(mine.website, "#"),
+                    "is_available_concession": mine.is_available_concession,
+                    "sources": links_by_category(mine, "sources"),
+                    "docs": links_by_category(mine, "docs"),
+                    "environmental_reports": links_by_category(mine, "environmental_reports"),
+                    "operating_authorizations": links_by_category(mine, "operating_authorizations"),
+                    "geology_studies": links_by_category(mine, "geology_studies"),
+                    "mineral_life_studies": links_by_category(mine, "mineral_life_studies"),
+                    "mitigation_studies": links_by_category(mine, "mitigation_studies"),
+                    "field_provenance": [
+                        {
+                            "field_name": row.field_name,
+                            "field_value": row.field_value,
+                            "source_url": row.source_url,
+                            "source_type": row.source_type,
+                            "confidence_score": row.confidence_score,
+                            "updated_at": _datetime_to_iso(row.updated_at),
+                            "note": row.note,
+                        }
+                        for row in mine.field_provenance
+                    ],
+                    "source_catalog": [
+                        {
+                            "source_name": row.source_name,
+                            "source_url": row.source_url,
+                            "field_coverage": row.field_coverage,
+                            "last_checked_at": _datetime_to_iso(row.last_checked_at),
+                        }
+                        for row in mine.source_catalog
+                    ],
+                    "city": _display_or_default(mine.city, ""),
+                    "commune": _display_or_default(mine.commune, ""),
+                    "province": _display_or_default(mine.province, ""),
+                    "locality": _display_or_default(mine.locality, ""),
+                    "location": _display_or_default(mine.location, ""),
+                    "operation_site": _display_or_default(mine.operation_site, ""),
+                    "address": _display_or_default(mine.address, ""),
+                    "concession_type": _display_or_default(mine.concession_type, ""),
+                    "concession_status": _display_or_default(mine.concession_status, ""),
+                    "concession_role": _display_or_default(mine.concession_role, ""),
+                    "concession_id": _display_or_default(mine.concession_id, ""),
+                    "concession_commune_code": _display_or_default(mine.concession_commune_code, ""),
+                    "record_status": str(mine.record_status or "incomplete"),
+                    "mandatory_gaps": [
+                        token.strip()
+                        for token in str(mine.mandatory_gaps or "").split(",")
+                        if token.strip()
+                    ],
+                }
+            )
+
+        scrape_stats = {row.key: row.value for row in meta.stats}
+        meta_payload = {
+            "version": meta.version,
+            "source": meta.source,
+            "updatedAt": _datetime_to_iso(meta.updated_at),
+            "lastVerifiedAt": _datetime_to_iso(meta.last_verified_at),
+            "refreshMode": meta.refresh_mode,
+            "scrapeSourceName": meta.scrape_source_name,
+            "sources": [{"name": s.name, "url": s.url, "note": s.note} for s in meta.sources],
+            "scrapeStats": scrape_stats,
+            "pagination": {
+                "offset": safe_offset,
+                "limit": safe_limit,
+                "returned": len(items),
+                "total": total,
+                "hasMore": (safe_offset + len(items)) < total,
+            },
+        }
+        if bbox_filter_on:
+            meta_payload["bbox"] = {
+                "min_lng": min_lng,
+                "min_lat": min_lat,
+                "max_lng": max_lng,
+                "max_lat": max_lat,
+                "filtered": total,
+                "strategy": "postgis" if postgis_used else "latlng-fallback",
+            }
+
+        return {"meta": meta_payload, "items": items}
 
 
 def _get_mines_dataset_derived_from_concessions() -> dict[str, Any]:

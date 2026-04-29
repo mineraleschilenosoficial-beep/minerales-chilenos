@@ -16,7 +16,14 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scripts.storage import get_dataset, get_link_report, get_mines_dataset, run_schema_migrations, utc_now_iso
+from scripts.storage import (
+    get_concessions_page,
+    get_dataset,
+    get_link_report,
+    get_mines_dataset,
+    run_schema_migrations,
+    utc_now_iso,
+)
 
 # Ensure schema is always migrated before serving requests.
 run_schema_migrations()
@@ -60,60 +67,19 @@ def api_concesiones(
     max_lng: float | None = Query(default=None),
     max_lat: float | None = Query(default=None),
 ) -> dict:
-    payload = _get_cached_concessions_dataset()
-    items = payload.get("items", []) if isinstance(payload, dict) else []
-
     bbox_filter_on = None not in (min_lng, min_lat, max_lng, max_lat)
-    if bbox_filter_on:
-        min_lng_v = float(min_lng)
-        min_lat_v = float(min_lat)
-        max_lng_v = float(max_lng)
-        max_lat_v = float(max_lat)
-        items = [
-            item
-            for item in items
-            if (
-                isinstance(item, dict)
-                and isinstance(item.get("longitude"), (int, float))
-                and isinstance(item.get("latitude"), (int, float))
-                and min_lng_v <= float(item["longitude"]) <= max_lng_v
-                and min_lat_v <= float(item["latitude"]) <= max_lat_v
-            )
-        ]
+    if bbox_filter_on or limit > 0:
+        page_limit = limit if limit > 0 else 50000
+        return get_concessions_page(
+            offset=offset,
+            limit=page_limit,
+            min_lng=min_lng,
+            min_lat=min_lat,
+            max_lng=max_lng,
+            max_lat=max_lat,
+        )
 
-    if limit <= 0:
-        meta = dict(payload.get("meta") or {})
-        if bbox_filter_on:
-            meta["bbox"] = {
-                "min_lng": min_lng,
-                "min_lat": min_lat,
-                "max_lng": max_lng,
-                "max_lat": max_lat,
-                "filtered": len(items),
-            }
-            return {"meta": meta, "items": items}
-        return payload
-
-    total = len(items)
-    page_items = items[offset: offset + limit]
-    has_more = (offset + len(page_items)) < total
-    meta = dict(payload.get("meta") or {})
-    meta["pagination"] = {
-        "offset": offset,
-        "limit": limit,
-        "returned": len(page_items),
-        "total": total,
-        "hasMore": has_more,
-    }
-    if bbox_filter_on:
-        meta["bbox"] = {
-            "min_lng": min_lng,
-            "min_lat": min_lat,
-            "max_lng": max_lng,
-            "max_lat": max_lat,
-            "filtered": total,
-        }
-    return {"meta": meta, "items": page_items}
+    return _get_cached_concessions_dataset()
 
 
 @app.get("/api/minas")
