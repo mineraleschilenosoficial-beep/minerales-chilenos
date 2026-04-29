@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit external links used by the static frontend."""
+"""Audit external links used by the Next.js frontend."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ if str(ROOT) not in sys.path:
 
 from scripts.storage import get_dataset, save_link_report
 
-INDEX_FILE = ROOT / "web" / "index.html"
+INDEX_FILE = ROOT / "app" / "layout.js"
 
 PRECONNECT_ONLY = {
     "https://fonts.googleapis.com",
