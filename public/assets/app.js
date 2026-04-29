@@ -19,6 +19,7 @@
   const CONCESSIONS_PROGRESSIVE_BACKGROUND = cfg.CONCESSIONS_PROGRESSIVE_BACKGROUND !== false;
   const CONCESSIONS_BACKGROUND_MAX_PAGES = Math.max(1, Number(cfg.CONCESSIONS_BACKGROUND_MAX_PAGES) || 8);
   const CHILE_VIEW_BOUNDS = [[-56.2, -76.8], [-17.4, -66.0]];
+  const LEAFLET_MARKERCLUSTER_SCRIPT_URL = "https://unpkg.com/leaflet.markercluster@1.5.0/dist/leaflet.markercluster.js";
   const MOBILE_SHEET_KEY = "mineraleschilenos:mobile-sheet-state";
 
   const FALLBACK_CONCESSIONS_DATASET = {
@@ -113,6 +114,7 @@
   let concessionsViewportFetchInFlight = false;
   let lastConcessionsBboxSignature = "";
   let concessionsBackgroundToken = 0;
+  const externalScriptLoads = new Map();
 
   const els = {
     q: document.getElementById("q"),
@@ -2049,7 +2051,7 @@
       throw new Error("Leaflet no está disponible.");
     }
 
-    map = L.map("map", { center: [-30.5, -70.2], zoom: 5, maxZoom: 19 });
+    map = L.map("map", { center: [-30.5, -70.2], zoom: 5, maxZoom: 19, preferCanvas: true });
     markerLayer = (typeof L.markerClusterGroup === "function")
       ? L.markerClusterGroup({
         maxClusterRadius: 48,
@@ -2094,6 +2096,60 @@
       };
       probe();
     });
+  }
+
+  async function loadExternalScriptOnce(url, timeoutMs = 12000) {
+    if (externalScriptLoads.has(url)) {
+      return externalScriptLoads.get(url);
+    }
+    const pending = new Promise((resolve) => {
+      const existing = Array.from(document.querySelectorAll("script[src]"))
+        .find((node) => node.getAttribute("src") === url);
+      if (existing && existing.getAttribute("data-loaded") === "true") {
+        resolve(true);
+        return;
+      }
+
+      const script = existing || document.createElement("script");
+      let resolved = false;
+      const finalize = (ok) => {
+        if (resolved) return;
+        resolved = true;
+        if (ok) {
+          script.setAttribute("data-loaded", "true");
+        }
+        resolve(ok);
+      };
+
+      script.addEventListener("load", () => finalize(true), { once: true });
+      script.addEventListener("error", () => finalize(false), { once: true });
+      if (!existing) {
+        script.src = url;
+        script.async = true;
+        document.body.appendChild(script);
+      }
+      setTimeout(() => finalize(false), timeoutMs);
+    });
+    externalScriptLoads.set(url, pending);
+    return pending;
+  }
+
+  async function ensureLeafletClusterReady(maxWaitMs = 12000) {
+    const leafletReady = await waitForLeaflet(maxWaitMs);
+    if (!leafletReady || !window.L) return false;
+    if (typeof L.markerClusterGroup === "function") return true;
+
+    await loadExternalScriptOnce(LEAFLET_MARKERCLUSTER_SCRIPT_URL, maxWaitMs);
+    const startedAt = Date.now();
+    while ((Date.now() - startedAt) < maxWaitMs) {
+      if (window.L && typeof L.markerClusterGroup === "function") {
+        return true;
+      }
+      // Wait a bit for plugin registration on window.L
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    return false;
   }
 
   function buildItemSearchText(item) {
@@ -2152,9 +2208,9 @@
     void loadLinkHealth();
 
     try {
-      const leafletReady = await waitForLeaflet();
+      const leafletReady = await ensureLeafletClusterReady();
       if (!leafletReady) {
-        throw new Error("Leaflet no está disponible.");
+        throw new Error("Leaflet o MarkerCluster no está disponible.");
       }
       initMap();
     } catch (mapError) {
