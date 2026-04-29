@@ -135,6 +135,7 @@ def main() -> int:
     env["PORT"] = str(args.port)
     env["API_PORT"] = str(args.api_port)
     env["FASTAPI_INTERNAL_URL"] = f"http://127.0.0.1:{args.api_port}"
+    env.setdefault("NEXT_PUBLIC_API_BASE_URL", f"http://127.0.0.1:{args.api_port}")
 
     print(f"starting fastapi at http://localhost:{args.api_port}")
     api_process = spawn_process(
