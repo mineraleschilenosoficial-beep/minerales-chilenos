@@ -17,9 +17,10 @@
   const CONCESSIONS_PAGE_SIZE = cfg.CONCESSIONS_PAGE_SIZE || 8000;
   const CONCESSIONS_USE_BBOX = cfg.CONCESSIONS_USE_BBOX !== false;
   const CONCESSIONS_PROGRESSIVE_BACKGROUND = cfg.CONCESSIONS_PROGRESSIVE_BACKGROUND !== false;
+  const CONCESSIONS_PROGRESSIVE_BACKGROUND_BBOX = cfg.CONCESSIONS_PROGRESSIVE_BACKGROUND_BBOX === true;
   const CONCESSIONS_BACKGROUND_MAX_PAGES = Math.max(1, Number(cfg.CONCESSIONS_BACKGROUND_MAX_PAGES) || 8);
+  const CONCESSIONS_BACKGROUND_UI_THROTTLE_MS = Math.max(120, Number(cfg.CONCESSIONS_BACKGROUND_UI_THROTTLE_MS) || 450);
   const CHILE_VIEW_BOUNDS = [[-56.2, -76.8], [-17.4, -66.0]];
-  const LEAFLET_MARKERCLUSTER_SCRIPT_URL = "https://unpkg.com/leaflet.markercluster@1.5.0/dist/leaflet.markercluster.js";
   const MOBILE_SHEET_KEY = "mineraleschilenos:mobile-sheet-state";
 
   const FALLBACK_CONCESSIONS_DATASET = {
@@ -113,8 +114,10 @@
   let selectedMarkerId = null;
   let concessionsViewportFetchInFlight = false;
   let lastConcessionsBboxSignature = "";
+  let suppressConcessionsViewportRefreshUntil = 0;
   let concessionsBackgroundToken = 0;
-  const externalScriptLoads = new Map();
+  let concessionsBackgroundPendingPayload = null;
+  let concessionsBackgroundUiTimer = null;
 
   const els = {
     q: document.getElementById("q"),
@@ -148,7 +151,12 @@
     modalTitle: document.getElementById("modal-title"),
     modalContent: document.getElementById("modal-content"),
     modalClose: document.getElementById("btn-close-modal"),
-    legendList: document.getElementById("legend-list")
+    legendPanel: document.getElementById("legend-panel"),
+    btnLegendToggle: document.getElementById("btn-legend-toggle"),
+    legendList: document.getElementById("legend-list"),
+    loadingOverlay: document.getElementById("global-loading"),
+    loadingTitle: document.getElementById("global-loading-title"),
+    loadingSubtitle: document.getElementById("global-loading-subtitle")
   };
 
   const MINERAL_STYLES = [
@@ -351,10 +359,40 @@
   function applyConcessionsBackgroundPayload(payload) {
     if (getCurrentDatasetMode() !== "concesiones") return;
     if (!payload || !Array.isArray(payload.items)) return;
+    const pagination = payload.meta && payload.meta.pagination && typeof payload.meta.pagination === "object"
+      ? payload.meta.pagination
+      : null;
+    const stillStreaming = Boolean(pagination && pagination.hasMore);
     allItems = normalizeDatasetItems(payload.items);
     window.__dataUpdatedAt = payload.meta && payload.meta.updatedAt;
     rebuildIndexes(allItems);
-    applyFilters();
+    // While pages are still streaming, skip expensive resorting on every refresh.
+    applyFilters({ skipSort: stillStreaming, silentStatus: stillStreaming });
+  }
+
+  function scheduleIdleRefresh(cb) {
+    if (typeof window.requestIdleCallback === "function") {
+      window.requestIdleCallback(cb, { timeout: 220 });
+      return;
+    }
+    requestAnimationFrame(cb);
+  }
+
+  function scheduleConcessionsBackgroundUiRefresh(payload, token) {
+    if (token !== concessionsBackgroundToken) return;
+    concessionsBackgroundPendingPayload = payload;
+    if (concessionsBackgroundUiTimer) return;
+    concessionsBackgroundUiTimer = setTimeout(() => {
+      concessionsBackgroundUiTimer = null;
+      if (token !== concessionsBackgroundToken) return;
+      const pending = concessionsBackgroundPendingPayload;
+      concessionsBackgroundPendingPayload = null;
+      if (!pending) return;
+      scheduleIdleRefresh(() => {
+        if (token !== concessionsBackgroundToken) return;
+        applyConcessionsBackgroundPayload(pending);
+      });
+    }, CONCESSIONS_BACKGROUND_UI_THROTTLE_MS);
   }
 
   async function fetchConcessionsPaginated(baseUrl, timeoutMs = FETCH_TIMEOUT_MS_CONCESSIONS) {
@@ -388,7 +426,9 @@
     };
 
     const token = ++concessionsBackgroundToken;
-    if (!hasMore || firstReturned <= 0 || !CONCESSIONS_PROGRESSIVE_BACKGROUND) {
+    const allowBackground = CONCESSIONS_PROGRESSIVE_BACKGROUND
+      && (!CONCESSIONS_USE_BBOX || CONCESSIONS_PROGRESSIVE_BACKGROUND_BBOX);
+    if (!hasMore || firstReturned <= 0 || !allowBackground) {
       return payload;
     }
 
@@ -405,7 +445,7 @@
         payload = mergeConcessionsPayload(payload, page, pageSize);
         sessionDatasetCache.concesiones = payload;
         saveCache(getDatasetCacheKey("concesiones"), payload);
-        applyConcessionsBackgroundPayload(payload);
+        scheduleConcessionsBackgroundUiRefresh(payload, token);
 
         const pageMeta = page.meta && typeof page.meta === "object" ? page.meta : {};
         const pagePagination = pageMeta && typeof pageMeta.pagination === "object" ? pageMeta.pagination : {};
@@ -451,10 +491,18 @@
     return values.map((v) => Number(v).toFixed(3)).join(",");
   }
 
+  function suppressConcessionsViewportRefresh(ms = 1200) {
+    suppressConcessionsViewportRefreshUntil = Math.max(
+      suppressConcessionsViewportRefreshUntil,
+      Date.now() + Math.max(0, Number(ms) || 0)
+    );
+  }
+
   async function refreshConcessionsForViewport() {
     if (!CONCESSIONS_USE_BBOX || !mapEnabled || !map) return;
     if (getCurrentDatasetMode() !== "concesiones") return;
     if (modeSwitchInFlight || concessionsViewportFetchInFlight) return;
+    if (Date.now() < suppressConcessionsViewportRefreshUntil) return;
     const signature = concessionsBboxSignature();
     if (!signature || signature === lastConcessionsBboxSignature) return;
 
@@ -760,9 +808,25 @@
     }
   }
 
+  function setGlobalLoading(active, title = "", subtitle = "") {
+    if (!els.loadingOverlay) return;
+    const visible = Boolean(active);
+    els.loadingOverlay.classList.toggle("is-active", visible);
+    els.loadingOverlay.setAttribute("aria-hidden", visible ? "false" : "true");
+    document.body.classList.toggle("app-loading", visible);
+
+    if (els.loadingTitle) {
+      els.loadingTitle.textContent = title || "Cargando visualizador...";
+    }
+    if (els.loadingSubtitle) {
+      els.loadingSubtitle.textContent = subtitle || "Preparando mapa y datos.";
+    }
+  }
+
   function resetMapViewportForConcessions() {
     if (!mapEnabled || !map) return;
     try {
+      suppressConcessionsViewportRefresh(1600);
       map.fitBounds(CHILE_VIEW_BOUNDS, { animate: false, padding: [12, 12], maxZoom: 5 });
     } catch (error) {
       console.warn("cannot reset concessions viewport", error);
@@ -784,6 +848,11 @@
     }
 
     modeSwitchInFlight = true;
+    setGlobalLoading(
+      true,
+      `Cargando mapa ${getModeLabel(nextMode).toLowerCase()}...`,
+      "Aplicando vista y datos del modo seleccionado."
+    );
     setModeSwitchBusy(true, nextMode);
     pinViewMode = nextMode;
     onlyLibres = false;
@@ -843,6 +912,7 @@
     } finally {
       modeSwitchInFlight = false;
       setModeSwitchBusy(false);
+      setGlobalLoading(false);
       if (queuedModeSwitch) {
         const queued = queuedModeSwitch;
         queuedModeSwitch = null;
@@ -1075,6 +1145,14 @@
           })
       ];
     els.legendList.innerHTML = rows.join("");
+  }
+
+  function setLegendCollapsed(collapsed) {
+    if (!els.legendPanel || !els.btnLegendToggle) return;
+    els.legendPanel.classList.toggle("is-collapsed", collapsed);
+    els.btnLegendToggle.classList.toggle("is-expanded", !collapsed);
+    els.btnLegendToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    els.btnLegendToggle.setAttribute("aria-label", collapsed ? "Expandir leyenda" : "Esconder leyenda");
   }
 
   function pluralize(value, singular, plural) {
@@ -1405,7 +1483,7 @@
     markerLayer.clearLayers();
     markerById.clear();
 
-    const chunkSize = 600;
+    const chunkSize = getCurrentDatasetMode() === "concesiones" ? 180 : 450;
     let cursor = 0;
 
     const pushChunk = () => {
@@ -1471,7 +1549,9 @@
     return true;
   }
 
-  function applyFilters() {
+  function applyFilters(options = {}) {
+    const skipSort = Boolean(options.skipSort);
+    const silentStatus = Boolean(options.silentStatus);
     const q = normalizeSearchValue(els.q.value);
     const queryTokens = q ? q.split(/\s+/).filter(Boolean) : [];
     const fMineral = els.mineral.value;
@@ -1489,21 +1569,21 @@
       if (!matchesQueryTokens(item, queryTokens)) continue;
       nextFiltered.push(item);
     }
-    if (fSort === "nombre_asc") {
+    if (!skipSort && fSort === "nombre_asc") {
       nextFiltered.sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "es"));
-    } else if (fSort === "region_asc") {
+    } else if (!skipSort && fSort === "region_asc") {
       nextFiltered.sort((a, b) => {
         const byRegion = String(a.region || "").localeCompare(String(b.region || ""), "es");
         if (byRegion !== 0) return byRegion;
         return String(a.name || "").localeCompare(String(b.name || ""), "es");
       });
-    } else if (fSort === "empresa_asc") {
+    } else if (!skipSort && fSort === "empresa_asc") {
       nextFiltered.sort((a, b) => {
         const byCompany = String(a.mining_company || "").localeCompare(String(b.mining_company || ""), "es");
         if (byCompany !== 0) return byCompany;
         return String(a.name || "").localeCompare(String(b.name || ""), "es");
       });
-    } else if (pinViewMode === "concesiones" && !onlyLibres) {
+    } else if (!skipSort && pinViewMode === "concesiones" && !onlyLibres) {
       nextFiltered.sort((a, b) => {
         const byConcession = concessionSortRank(a) - concessionSortRank(b);
         if (byConcession !== 0) return byConcession;
@@ -1517,7 +1597,9 @@
 
     renderList();
     renderMobileFilterBar();
-    setStatus(window.__dataOrigin || "remote", filtered.length, allItems.length, window.__dataUpdatedAt || null);
+    if (!silentStatus) {
+      setStatus(window.__dataOrigin || "remote", filtered.length, allItems.length, window.__dataUpdatedAt || null);
+    }
     persistCurrentModeFilters();
   }
 
@@ -1558,6 +1640,7 @@
 
   function fitToFiltered() {
     if (!mapEnabled || !map || !filtered.length) return;
+    suppressConcessionsViewportRefresh(1800);
     const bounds = L.latLngBounds(filtered.map((x) => [x.latitude, x.longitude]));
     map.fitBounds(bounds.pad(0.25), { animate: true, duration: 0.55 });
   }
@@ -1919,6 +2002,7 @@
   }
 
   function wireUi() {
+    setLegendCollapsed(true);
     const debouncedApply = debounce(applyFilters, 160);
     els.q.addEventListener("input", debouncedApply);
     els.q.addEventListener("change", applyFilters);
@@ -2005,6 +2089,14 @@
       });
     }
 
+    if (els.btnLegendToggle) {
+      els.btnLegendToggle.addEventListener("click", () => {
+        if (!els.legendPanel) return;
+        const collapsed = !els.legendPanel.classList.contains("is-collapsed");
+        setLegendCollapsed(collapsed);
+      });
+    }
+
     if (els.mobileBackdrop) {
       els.mobileBackdrop.addEventListener("click", () => setMobilePanelOpen(false));
     }
@@ -2079,30 +2171,6 @@
     }, 350));
   }
 
-  function upgradeMarkerLayerToClusterIfAvailable() {
-    if (!mapEnabled || !map || !window.L) return false;
-    if (typeof L.markerClusterGroup !== "function") return false;
-    if (markerLayer && typeof markerLayer.addLayers === "function") return true;
-
-    const nextLayer = L.markerClusterGroup({
-      maxClusterRadius: 48,
-      showCoverageOnHover: false,
-      chunkedLoading: true,
-      chunkInterval: 45,
-      chunkDelay: 15,
-      removeOutsideVisibleBounds: true,
-      animate: false,
-      animateAddingMarkers: false
-    });
-    if (markerLayer) {
-      map.removeLayer(markerLayer);
-    }
-    markerLayer = nextLayer;
-    map.addLayer(markerLayer);
-    renderMarkersForFiltered(filtered);
-    return true;
-  }
-
   async function waitForLeaflet(maxWaitMs = 12000) {
     if (window.L) return true;
     const startedAt = Date.now();
@@ -2122,48 +2190,10 @@
     });
   }
 
-  async function loadExternalScriptOnce(url, timeoutMs = 12000) {
-    if (externalScriptLoads.has(url)) {
-      return externalScriptLoads.get(url);
-    }
-    const pending = new Promise((resolve) => {
-      const existing = Array.from(document.querySelectorAll("script[src]"))
-        .find((node) => node.getAttribute("src") === url);
-      if (existing && existing.getAttribute("data-loaded") === "true") {
-        resolve(true);
-        return;
-      }
-
-      const script = existing || document.createElement("script");
-      let resolved = false;
-      const finalize = (ok) => {
-        if (resolved) return;
-        resolved = true;
-        if (ok) {
-          script.setAttribute("data-loaded", "true");
-        }
-        resolve(ok);
-      };
-
-      script.addEventListener("load", () => finalize(true), { once: true });
-      script.addEventListener("error", () => finalize(false), { once: true });
-      if (!existing) {
-        script.src = url;
-        script.async = true;
-        document.body.appendChild(script);
-      }
-      setTimeout(() => finalize(false), timeoutMs);
-    });
-    externalScriptLoads.set(url, pending);
-    return pending;
-  }
-
   async function ensureLeafletClusterReady(maxWaitMs = 2500) {
     const leafletReady = await waitForLeaflet(maxWaitMs);
     if (!leafletReady || !window.L) return false;
     if (typeof L.markerClusterGroup === "function") return true;
-
-    await loadExternalScriptOnce(LEAFLET_MARKERCLUSTER_SCRIPT_URL, maxWaitMs);
     const startedAt = Date.now();
     while ((Date.now() - startedAt) < maxWaitMs) {
       if (window.L && typeof L.markerClusterGroup === "function") {
@@ -2225,6 +2255,7 @@
 
   async function bootstrap() {
     purgeLegacyViewStateStorageOnce();
+    setGlobalLoading(true, "Inicializando visualizador...", "Cargando mapa base, capas y dataset.");
     initGtm();
     renderLegend();
     wireUi();
@@ -2236,19 +2267,11 @@
       if (!leafletReady) {
         throw new Error("Leaflet no está disponible.");
       }
-      const clusterReady = await ensureLeafletClusterReady(2500);
-      initMap();
+      const clusterReady = await ensureLeafletClusterReady(12000);
       if (!clusterReady) {
-        console.warn("MarkerCluster no está disponible aún. Se intentará habilitar en background.");
-        void loadExternalScriptOnce(LEAFLET_MARKERCLUSTER_SCRIPT_URL, 12000)
-          .then(() => {
-            const upgraded = upgradeMarkerLayerToClusterIfAvailable();
-            if (upgraded) {
-              applyFilters();
-            }
-          })
-          .catch(() => {});
+        throw new Error("Leaflet MarkerCluster no está disponible.");
       }
+      initMap();
     } catch (mapError) {
       mapEnabled = false;
       showMapUnavailableNotice("Puedes navegar los datos desde el panel lateral. Revisa la conexión o restricciones de CDN para habilitar el mapa.");
@@ -2274,6 +2297,8 @@
     } catch (dataError) {
       els.status.textContent = "No fue posible cargar los datos. Verifica la conexión a la API y PostgreSQL.";
       console.error(dataError);
+    } finally {
+      setGlobalLoading(false);
     }
   }
 

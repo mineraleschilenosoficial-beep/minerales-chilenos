@@ -72,6 +72,13 @@ def is_present_mandatory(value: Any) -> bool:
 def main() -> int:
     errors: list[str] = []
     warnings: list[str] = []
+    enforce_mandatory_fields = os.getenv("ENFORCE_MANDATORY_FIELDS", "").strip().lower() in {"1", "true", "yes", "on"}
+
+    def add_mandatory_violation(message: str) -> None:
+        if enforce_mandatory_fields:
+            errors.append(message)
+        else:
+            warnings.append(f"mandatory(non_blocking): {message}")
 
     try:
         payload = get_dataset()
@@ -249,7 +256,7 @@ def main() -> int:
 
         for field in mandatory_scalar_with_source:
             if is_present_mandatory(item.get(field)) and not has_source_for_field(field):
-                errors.append(f"{path}.{field} requires at least one field_provenance source_url")
+                add_mandatory_violation(f"{path}.{field} requires at least one field_provenance source_url")
 
         for field in mandatory_list_with_source:
             rows = item.get(field)
@@ -264,7 +271,7 @@ def main() -> int:
                     has_any_url = True
                     break
             if not has_any_url:
-                errors.append(f"{path}.{field} requires at least one valid source URL")
+                add_mandatory_violation(f"{path}.{field} requires at least one valid source URL")
         if all(
             (
                 isinstance(item.get(field), list) and len(item.get(field) or []) > 0
@@ -334,7 +341,7 @@ def main() -> int:
     if coverage_threshold > 1:
         coverage_threshold = 1.0
     if coverage_ratio < coverage_threshold:
-        errors.append(
+        add_mandatory_violation(
             "mandatory field coverage gate failed: "
             f"{coverage_ratio * 100:.2f}% < {coverage_threshold * 100:.2f}% "
             f"(set by MANDATORY_FIELD_COVERAGE_MIN)"

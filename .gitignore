@@ -14,6 +14,8 @@ Thumbs.db
 
 # Common dependencies
 node_modules/
+.next/
+.yarn/
 
 # Python caches
 __pycache__/

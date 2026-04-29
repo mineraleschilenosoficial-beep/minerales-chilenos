@@ -764,6 +764,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"leaflet.markercluster@npm:1.5.3":
+  version: 1.5.3
+  resolution: "leaflet.markercluster@npm:1.5.3"
+  peerDependencies:
+    leaflet: ^1.3.1
+  checksum: 10c0/ce2d4065da00c727f5b05fe4568e5239ebd2556e45d859307ff9c44a6f7ecb9658cd91d055f5723d93f3e491c48949cf78109f50533b0b36b9a226e4d339213f
+  languageName: node
+  linkType: hard
+
+"leaflet@npm:1.9.4":
+  version: 1.9.4
+  resolution: "leaflet@npm:1.9.4"
+  checksum: 10c0/f639441dbb7eb9ae3fcd29ffd7d3508f6c6106892441634b0232fafb9ffb1588b05a8244ec7085de2c98b5ed703894df246898477836cfd0ce5b96d4717b5ca1
+  languageName: node
+  linkType: hard
+
 "lilconfig@npm:^3.0.0, lilconfig@npm:^3.1.3":
   version: 3.1.3
   resolution: "lilconfig@npm:3.1.3"
@@ -800,6 +816,8 @@ __metadata:
   resolution: "minerales-chilenos@workspace:."
   dependencies:
     autoprefixer: "npm:^10.5.0"
+    leaflet: "npm:1.9.4"
+    leaflet.markercluster: "npm:1.5.3"
     next: "npm:^16.2.4"
     postcss: "npm:^8.5.12"
     react: "npm:^19.2.5"

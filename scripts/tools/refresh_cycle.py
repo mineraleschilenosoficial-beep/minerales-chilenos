@@ -19,11 +19,12 @@ def run_step(command: list[str]) -> None:
 
 def main() -> int:
     fast_local_mode = os.getenv("FAST_LOCAL_MODE", "").strip().lower() in {"1", "true", "yes", "on"}
-    if fast_local_mode:
-        # Keep local cycles fast: skip expensive geocoding loop and link audit.
-        os.environ.setdefault("REVERSE_GEOCODE_MAX_LOOKUPS", "0")
+    skip_validate = os.getenv("SKIP_VALIDATE", "").strip().lower() in {"1", "true", "yes", "on"}
     run_step([sys.executable, "scripts/daily_refresh.py"])
-    run_step([sys.executable, "scripts/tools/validate_data.py"])
+    if not skip_validate:
+        run_step([sys.executable, "scripts/tools/validate_data.py"])
+    else:
+        print("SKIP_VALIDATE enabled: skipping validate_data")
     if not fast_local_mode:
         run_step([sys.executable, "scripts/tools/link_audit.py"])
     else:

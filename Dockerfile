@@ -1,15 +1,25 @@
-FROM python:3.12-slim
+FROM node:20-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    FASTAPI_INTERNAL_URL=http://127.0.0.1:8001
 
 WORKDIR /app
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY package.json yarn.lock .yarnrc.yml /app/
+RUN corepack enable && yarn install --immutable
+
 COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
+RUN pip3 install --no-cache-dir -r /app/requirements.txt
 
 COPY . /app
+RUN yarn build
 
 EXPOSE 8000
+EXPOSE 8001
 
-CMD ["sh", "-lc", "python3 scripts/tools/bootstrap_runtime.py && gunicorn --bind 0.0.0.0:8000 api.server:app"]
+CMD ["sh", "-lc", "python3 scripts/tools/bootstrap_runtime.py && python3 -m uvicorn api.server:app --host 0.0.0.0 --port 8001 & yarn start --port 8000"]
