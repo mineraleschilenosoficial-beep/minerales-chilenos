@@ -2079,6 +2079,30 @@
     }, 350));
   }
 
+  function upgradeMarkerLayerToClusterIfAvailable() {
+    if (!mapEnabled || !map || !window.L) return false;
+    if (typeof L.markerClusterGroup !== "function") return false;
+    if (markerLayer && typeof markerLayer.addLayers === "function") return true;
+
+    const nextLayer = L.markerClusterGroup({
+      maxClusterRadius: 48,
+      showCoverageOnHover: false,
+      chunkedLoading: true,
+      chunkInterval: 45,
+      chunkDelay: 15,
+      removeOutsideVisibleBounds: true,
+      animate: false,
+      animateAddingMarkers: false
+    });
+    if (markerLayer) {
+      map.removeLayer(markerLayer);
+    }
+    markerLayer = nextLayer;
+    map.addLayer(markerLayer);
+    renderMarkersForFiltered(filtered);
+    return true;
+  }
+
   async function waitForLeaflet(maxWaitMs = 12000) {
     if (window.L) return true;
     const startedAt = Date.now();
@@ -2134,7 +2158,7 @@
     return pending;
   }
 
-  async function ensureLeafletClusterReady(maxWaitMs = 12000) {
+  async function ensureLeafletClusterReady(maxWaitMs = 2500) {
     const leafletReady = await waitForLeaflet(maxWaitMs);
     if (!leafletReady || !window.L) return false;
     if (typeof L.markerClusterGroup === "function") return true;
@@ -2208,11 +2232,23 @@
     void loadLinkHealth();
 
     try {
-      const leafletReady = await ensureLeafletClusterReady();
+      const leafletReady = await waitForLeaflet(8000);
       if (!leafletReady) {
-        throw new Error("Leaflet o MarkerCluster no está disponible.");
+        throw new Error("Leaflet no está disponible.");
       }
+      const clusterReady = await ensureLeafletClusterReady(2500);
       initMap();
+      if (!clusterReady) {
+        console.warn("MarkerCluster no está disponible aún. Se intentará habilitar en background.");
+        void loadExternalScriptOnce(LEAFLET_MARKERCLUSTER_SCRIPT_URL, 12000)
+          .then(() => {
+            const upgraded = upgradeMarkerLayerToClusterIfAvailable();
+            if (upgraded) {
+              applyFilters();
+            }
+          })
+          .catch(() => {});
+      }
     } catch (mapError) {
       mapEnabled = false;
       showMapUnavailableNotice("Puedes navegar los datos desde el panel lateral. Revisa la conexión o restricciones de CDN para habilitar el mapa.");
