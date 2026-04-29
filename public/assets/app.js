@@ -15,6 +15,7 @@
   const FETCH_TIMEOUT_MS = cfg.FETCH_TIMEOUT_MS || 12000;
   const FETCH_TIMEOUT_MS_CONCESSIONS = cfg.FETCH_TIMEOUT_MS_CONCESSIONS || 120000;
   const CONCESSIONS_PAGE_SIZE = cfg.CONCESSIONS_PAGE_SIZE || 8000;
+  const CONCESSIONS_USE_BBOX = cfg.CONCESSIONS_USE_BBOX !== false;
   const MOBILE_SHEET_KEY = "mineraleschilenos:mobile-sheet-state";
 
   const FALLBACK_CONCESSIONS_DATASET = {
@@ -314,6 +315,7 @@
   async function fetchConcessionsPaginated(baseUrl, timeoutMs = FETCH_TIMEOUT_MS_CONCESSIONS) {
     const pageSize = Math.max(500, Number(CONCESSIONS_PAGE_SIZE) || 8000);
     const stamp = Date.now();
+    const bboxQuery = buildConcessionsBboxQuery();
     let offset = 0;
     let mergedItems = [];
     let mergedMeta = null;
@@ -322,7 +324,7 @@
 
     while (safetyPages < maxPages) {
       safetyPages += 1;
-      const pageUrl = `${baseUrl}?offset=${offset}&limit=${pageSize}&v=${stamp}-${offset}`;
+      const pageUrl = `${baseUrl}?offset=${offset}&limit=${pageSize}${bboxQuery}&v=${stamp}-${offset}`;
       const page = await fetchJsonWithTimeout(pageUrl, timeoutMs);
       if (!page || !Array.isArray(page.items)) {
         return mergedItems.length ? { meta: mergedMeta || {}, items: mergedItems } : null;
@@ -358,6 +360,22 @@
       },
       items: mergedItems,
     };
+  }
+
+  function buildConcessionsBboxQuery() {
+    if (!CONCESSIONS_USE_BBOX) return "";
+    if (!mapEnabled || !map || typeof map.getBounds !== "function") return "";
+    const bounds = map.getBounds();
+    if (!bounds) return "";
+    const southWest = bounds.getSouthWest();
+    const northEast = bounds.getNorthEast();
+    if (!southWest || !northEast) return "";
+    const minLng = Number(southWest.lng);
+    const minLat = Number(southWest.lat);
+    const maxLng = Number(northEast.lng);
+    const maxLat = Number(northEast.lat);
+    if (![minLng, minLat, maxLng, maxLat].every(Number.isFinite)) return "";
+    return `&min_lng=${minLng}&min_lat=${minLat}&max_lng=${maxLng}&max_lat=${maxLat}`;
   }
 
   function mineralStyle(value) {

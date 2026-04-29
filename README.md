@@ -140,6 +140,12 @@ La UI consume:
 - `GET /api/yacimientos` (compatibilidad/backward)
 - `GET /api/link-report`
 
+`/api/concesiones` soporta paginación y filtro geográfico opcional:
+
+- `offset` (>= 0)
+- `limit` (0..50000)
+- `min_lng`, `min_lat`, `max_lng`, `max_lat` (bbox WGS84)
+
 Convención de campos del dataset:
 
 - Canónicos en inglés para almacenamiento/API (`name`, `minerals`, `latitude`, `longitude`, `site_type`, `mining_company`, `is_available_concession`).
@@ -247,6 +253,7 @@ Chequeos incluidos:
   - `DATABASE_URL` (PostgreSQL de Coolify o externo).
 - Variables opcionales de bootstrap:
   - `AUTO_BOOTSTRAP_DATASET` (`true` por defecto): si no hay dataset, ejecuta refresh+validate al iniciar.
+  - `API_CONCESSIONS_CACHE_TTL_SECONDS` (default `120`): TTL de cache en memoria para payload de concesiones.
 
 Si la DB está vacía, el sistema construye dataset desde la fuente oficial SERNAGEOMIN integrada en el refresh.
 Antes de levantar API, el runtime ejecuta migraciones de esquema automáticamente.
@@ -256,6 +263,34 @@ Antes de levantar API, el runtime ejecuta migraciones de esquema automáticament
 - Crear servicio PostgreSQL en Coolify.
 - Conectar su URL al `DATABASE_URL` del servicio principal.
 - Las tablas relacionales se crean automáticamente al primer uso (sin almacenamiento JSON legacy).
+
+#### PostGIS (recomendado para mapa georreferenciado)
+
+1. En el servicio PostgreSQL de Coolify, abrir consola SQL y ejecutar:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS postgis;
+SELECT PostGIS_Version();
+```
+
+2. Reiniciar el servicio principal para que aplique migraciones de esquema.
+3. Verificar que se creó columna/índice espacial:
+
+```sql
+\d+ mine_records
+```
+
+Deberías ver:
+- columna `geom geometry(Point,4326)`
+- índice `idx_mine_records_geom_gist` (GIST)
+
+4. (Opcional estricto) forzar falla si PostGIS no está disponible:
+
+```bash
+POSTGIS_REQUIRED=true
+```
+
+Con esa variable, el arranque aborta si no puede habilitar PostGIS.
 
 ### 3) Cronjob en Coolify (cada 4 horas)
 
