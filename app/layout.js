@@ -10,7 +10,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
       <head>
         <meta name="theme-color" content="#0a0a0a" />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -34,7 +34,7 @@ export default function RootLayout({ children }) {
         />
         <link rel="stylesheet" href="/assets/site.css" />
       </head>
-      <body className="bg-neutral-950 text-neutral-100 antialiased">
+      <body className="bg-neutral-950 text-neutral-100 antialiased" suppressHydrationWarning>
         {children}
         <Script id="runtime-config" strategy="beforeInteractive">
           {`window.__RUNTIME_CONFIG__ = { API_BASE_URL: ${JSON.stringify(apiBaseUrl)} };`}

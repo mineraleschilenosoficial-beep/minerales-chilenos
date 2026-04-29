@@ -1876,6 +1876,25 @@
     window.addEventListener("resize", () => map.invalidateSize());
   }
 
+  async function waitForLeaflet(maxWaitMs = 12000) {
+    if (window.L) return true;
+    const startedAt = Date.now();
+    return await new Promise((resolve) => {
+      const probe = () => {
+        if (window.L) {
+          resolve(true);
+          return;
+        }
+        if ((Date.now() - startedAt) >= maxWaitMs) {
+          resolve(false);
+          return;
+        }
+        setTimeout(probe, 50);
+      };
+      probe();
+    });
+  }
+
   function buildItemSearchText(item) {
     const locationParts = [
       item.region,
@@ -1932,6 +1951,10 @@
     void loadLinkHealth();
 
     try {
+      const leafletReady = await waitForLeaflet();
+      if (!leafletReady) {
+        throw new Error("Leaflet no está disponible.");
+      }
       initMap();
     } catch (mapError) {
       mapEnabled = false;
