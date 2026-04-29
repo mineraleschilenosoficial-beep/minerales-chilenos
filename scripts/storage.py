@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import json
 import os
 from typing import Any
 
@@ -26,7 +27,9 @@ from sqlalchemy import (
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, selectinload
 
 _ENGINE_CACHE: dict[str, Any] = {}
+_MINES_DATASET_CACHE: dict[str, Any] = {"fetched_at": None, "payload": None}
 _SCHEMA_READY_BY_DSN: set[str] = set()
+_POSTGIS_REQUIRED = os.getenv("POSTGIS_REQUIRED", "false").strip().lower() in {"1", "true", "yes"}
 
 
 def utc_now_iso() -> str:
@@ -103,6 +106,16 @@ class DatasetMetaStat(Base):
     meta: Mapped["DatasetMeta"] = relationship(back_populates="stats")
 
 
+class DatasetCache(Base):
+    __tablename__ = "dataset_cache"
+
+    cache_key: Mapped[str] = mapped_column(String(80), primary_key=True)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+    updated_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=dt.datetime.now(dt.timezone.utc)
+    )
+
+
 class MineRecord(Base):
     __tablename__ = "mine_records"
     __table_args__ = (
@@ -142,6 +155,11 @@ class MineRecord(Base):
     location: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     operation_site: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     address: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    concession_type: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    concession_status: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    concession_role: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    concession_id: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    concession_commune_code: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     record_status: Mapped[str] = mapped_column(String(20), nullable=False, default="incomplete")
     mandatory_gaps: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     minerals: Mapped[list["MineMineral"]] = relationship(cascade="all, delete-orphan", back_populates="mine")
@@ -239,40 +257,6 @@ class MineFieldAudit(Base):
     changed_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=dt.datetime.now(dt.timezone.utc))
 
 
-class MineOverride(Base):
-    __tablename__ = "mine_overrides"
-    __table_args__ = (
-        CheckConstraint(
-            "(confidence_score IS NULL) OR (confidence_score >= 0 AND confidence_score <= 1)",
-            name="ck_mine_overrides_confidence_0_1",
-        ),
-    )
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    target_name: Mapped[str] = mapped_column(Text, nullable=False)
-    target_name_normalized: Mapped[str] = mapped_column(Text, nullable=False, index=True)
-    target_latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
-    target_longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
-    match_radius_deg: Mapped[float] = mapped_column(Float, nullable=False, default=0.05)
-    mining_company: Mapped[str | None] = mapped_column(Text, nullable=True)
-    website: Mapped[str | None] = mapped_column(Text, nullable=True)
-    operation_since: Mapped[str | None] = mapped_column(Text, nullable=True)
-    city: Mapped[str | None] = mapped_column(Text, nullable=True)
-    commune: Mapped[str | None] = mapped_column(Text, nullable=True)
-    province: Mapped[str | None] = mapped_column(Text, nullable=True)
-    locality: Mapped[str | None] = mapped_column(Text, nullable=True)
-    location: Mapped[str | None] = mapped_column(Text, nullable=True)
-    operation_site: Mapped[str | None] = mapped_column(Text, nullable=True)
-    address: Mapped[str | None] = mapped_column(Text, nullable=True)
-    is_available_concession: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
-    data_origin: Mapped[str | None] = mapped_column(Text, nullable=True)
-    confidence_score: Mapped[float | None] = mapped_column(Float, nullable=True)
-    source_url: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    source_note: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=dt.datetime.now(dt.timezone.utc))
-
-
 class LinkReportRun(Base):
     __tablename__ = "link_report_runs"
 
@@ -336,6 +320,11 @@ MINE_RECORD_OPTIONAL_TEXT_COLUMNS = (
     "location",
     "operation_site",
     "address",
+    "concession_type",
+    "concession_status",
+    "concession_role",
+    "concession_id",
+    "concession_commune_code",
 )
 
 
@@ -438,7 +427,9 @@ def ensure_schema(engine, *, force: bool = False) -> None:
     Base.metadata.create_all(engine)
     # Hard cutover: legacy JSON key-value table is no longer supported.
     with engine.begin() as conn:
+        _setup_postgis(conn)
         conn.execute(text("DROP TABLE IF EXISTS app_state"))
+        conn.execute(text("DROP TABLE IF EXISTS mine_overrides"))
         # Clean pre-existing duplicates before creating unique indexes.
         conn.execute(
             text(
@@ -571,6 +562,21 @@ def ensure_schema(engine, *, force: bool = False) -> None:
             text("ALTER TABLE mine_records ADD COLUMN IF NOT EXISTS mandatory_gaps TEXT")
         )
         conn.execute(
+            text("ALTER TABLE mine_records ADD COLUMN IF NOT EXISTS concession_type TEXT")
+        )
+        conn.execute(
+            text("ALTER TABLE mine_records ADD COLUMN IF NOT EXISTS concession_status TEXT")
+        )
+        conn.execute(
+            text("ALTER TABLE mine_records ADD COLUMN IF NOT EXISTS concession_role TEXT")
+        )
+        conn.execute(
+            text("ALTER TABLE mine_records ADD COLUMN IF NOT EXISTS concession_id TEXT")
+        )
+        conn.execute(
+            text("ALTER TABLE mine_records ADD COLUMN IF NOT EXISTS concession_commune_code TEXT")
+        )
+        conn.execute(
             text(
                 "CREATE INDEX IF NOT EXISTS idx_mine_records_record_status "
                 "ON mine_records (record_status)"
@@ -619,7 +625,6 @@ def ensure_schema(engine, *, force: bool = False) -> None:
             ("dataset_meta", "updated_at"),
             ("dataset_meta", "last_verified_at"),
             ("mine_records", "enriched_at"),
-            ("mine_overrides", "updated_at"),
             ("link_report_runs", "created_at"),
             ("reverse_geocode_cache", "updated_at"),
             ("mine_field_provenance", "updated_at"),
@@ -661,160 +666,64 @@ def ensure_schema(engine, *, force: bool = False) -> None:
     _SCHEMA_READY_BY_DSN.add(cache_key)
 
 
-def _normalize_name(value: str) -> str:
-    lowered = "".join(ch.lower() if ch.isalnum() else " " for ch in (value or ""))
-    return " ".join(lowered.split())
-
-
-def _override_matches(item: dict[str, Any], override: MineOverride) -> bool:
-    item_name_norm = _normalize_name(str(item.get("name") or ""))
-    if item_name_norm != override.target_name_normalized:
-        return False
-
-    if override.target_latitude is None or override.target_longitude is None:
-        return True
-
-    lat = item.get("latitude")
-    lng = item.get("longitude")
-    if not isinstance(lat, (int, float)) or not isinstance(lng, (int, float)):
-        return False
-
-    radius = override.match_radius_deg if override.match_radius_deg > 0 else 0.05
-    return abs(float(lat) - float(override.target_latitude)) <= radius and abs(float(lng) - float(override.target_longitude)) <= radius
-
-
-def apply_manual_overrides(payload: dict[str, Any]) -> tuple[dict[str, Any], int]:
-    items = payload.get("items")
-    if not isinstance(items, list) or not items:
-        return payload, 0
-
-    engine = _make_engine()
-    ensure_schema(engine)
-    with Session(engine) as session:
-        overrides = session.scalars(select(MineOverride).where(MineOverride.active.is_(True))).all()
-
-    if not overrides:
-        return payload, 0
-
-    applied = 0
-    now = utc_now_iso()
-    for item in items:
-        if not isinstance(item, dict):
-            continue
-
-        matched = next((ov for ov in overrides if _override_matches(item, ov)), None)
-        if matched is None:
-            continue
-
-        for field in (
-            "mining_company",
-            "website",
-            "operation_since",
-            "city",
-            "commune",
-            "province",
-            "locality",
-            "location",
-            "operation_site",
-            "address",
-        ):
-            value = getattr(matched, field)
-            if value is not None and str(value).strip():
-                clean = str(value).strip()
-                item[field] = clean
-                append_field_provenance(
-                    item,
-                    field_name=field,
-                    field_value=clean,
-                    source_type="manual",
-                    source_url=matched.source_url.strip(),
-                    confidence_score=float(matched.confidence_score) if matched.confidence_score is not None else None,
-                    note=matched.source_note.strip() or f"override_id={matched.id}",
-                    updated_at=now,
-                )
-
-        if matched.is_available_concession is not None:
-            item["is_available_concession"] = bool(matched.is_available_concession)
-            append_field_provenance(
-                item,
-                field_name="is_available_concession",
-                field_value=str(bool(matched.is_available_concession)).lower(),
-                source_type="manual",
-                source_url=matched.source_url.strip(),
-                confidence_score=float(matched.confidence_score) if matched.confidence_score is not None else None,
-                note=matched.source_note.strip() or f"override_id={matched.id}",
-                updated_at=now,
+def _setup_postgis(conn) -> None:
+    """Enable PostGIS and keep a geometry column in sync with lat/lng."""
+    try:
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+        conn.execute(text("ALTER TABLE mine_records ADD COLUMN IF NOT EXISTS geom geometry(Point, 4326)"))
+        conn.execute(
+            text(
+                """
+                UPDATE mine_records
+                SET geom = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
+                WHERE latitude IS NOT NULL
+                  AND longitude IS NOT NULL
+                  AND (
+                    geom IS NULL
+                    OR abs(ST_X(geom) - longitude) > 0.0000001
+                    OR abs(ST_Y(geom) - latitude) > 0.0000001
+                  )
+                """
             )
-        if matched.target_latitude is not None and matched.target_longitude is not None:
-            item["latitude"] = float(matched.target_latitude)
-            item["longitude"] = float(matched.target_longitude)
-        if matched.data_origin and matched.data_origin.strip():
-            item["data_origin"] = matched.data_origin.strip()
-        if matched.confidence_score is not None:
-            item["confidence_score"] = float(matched.confidence_score)
-
-        item["enriched_at"] = now
-
-        if matched.source_url.strip():
-            src = {
-                "name": "Manual override",
-                "url": matched.source_url.strip(),
-                "note": matched.source_note.strip() or f"override_id={matched.id}",
-            }
-            existing_sources = item.get("sources")
-            if not isinstance(existing_sources, list):
-                existing_sources = []
-                item["sources"] = existing_sources
-            if not any(isinstance(row, dict) and row.get("url") == src["url"] for row in existing_sources):
-                existing_sources.append(src)
-        applied += 1
-
-    return payload, applied
-
-
-def keep_only_override_candidates(payload: dict[str, Any]) -> tuple[dict[str, Any], int]:
-    items = payload.get("items")
-    if not isinstance(items, list) or not items:
-        return payload, 0
-
-    engine = _make_engine()
-    ensure_schema(engine)
-    with Session(engine) as session:
-        overrides = session.scalars(select(MineOverride).where(MineOverride.active.is_(True))).all()
-
-    if not overrides:
-        payload["items"] = []
-        return payload, 0
-
-    kept: list[dict[str, Any]] = []
-    for item in items:
-        if not isinstance(item, dict):
-            continue
-        if any(_override_matches(item, override) for override in overrides):
-            kept.append(item)
-    payload["items"] = kept
-    return payload, len(kept)
-
-
-def list_active_override_targets() -> list[dict[str, Any]]:
-    engine = _make_engine()
-    ensure_schema(engine)
-    with Session(engine) as session:
-        overrides = session.scalars(select(MineOverride).where(MineOverride.active.is_(True))).all()
-
-    targets: list[dict[str, Any]] = []
-    for override in overrides:
-        if override.target_latitude is None or override.target_longitude is None:
-            continue
-        targets.append(
-            {
-                "name_normalized": str(override.target_name_normalized or "").strip(),
-                "latitude": float(override.target_latitude),
-                "longitude": float(override.target_longitude),
-                "radius_deg": float(override.match_radius_deg or 0.05),
-            }
         )
-    return targets
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_mine_records_geom_gist ON mine_records USING GIST (geom)"))
+        conn.execute(
+            text(
+                """
+                CREATE OR REPLACE FUNCTION mine_records_set_geom()
+                RETURNS trigger
+                AS $$
+                BEGIN
+                    IF NEW.latitude IS NULL OR NEW.longitude IS NULL THEN
+                        NEW.geom := NULL;
+                    ELSE
+                        NEW.geom := ST_SetSRID(ST_MakePoint(NEW.longitude, NEW.latitude), 4326);
+                    END IF;
+                    RETURN NEW;
+                END;
+                $$ LANGUAGE plpgsql
+                """
+            )
+        )
+        conn.execute(text("DROP TRIGGER IF EXISTS trg_mine_records_set_geom ON mine_records"))
+        conn.execute(
+            text(
+                """
+                CREATE TRIGGER trg_mine_records_set_geom
+                BEFORE INSERT OR UPDATE OF latitude, longitude
+                ON mine_records
+                FOR EACH ROW
+                EXECUTE FUNCTION mine_records_set_geom()
+                """
+            )
+        )
+    except Exception as exc:  # noqa: BLE001
+        if _POSTGIS_REQUIRED:
+            raise RuntimeError(
+                "PostGIS setup failed and POSTGIS_REQUIRED=true. "
+                "Enable the extension in PostgreSQL/Coolify and retry."
+            ) from exc
+        print(f"[storage] warning: PostGIS setup skipped ({exc})")
 
 
 def _coord_cache_key(lat: float, lng: float) -> tuple[float, float]:
@@ -1234,6 +1143,11 @@ def save_dataset(payload: dict[str, Any]) -> None:
                 location=_null_if_sentinel(item.get("location")),
                 operation_site=_null_if_sentinel(item.get("operation_site")),
                 address=_null_if_sentinel(item.get("address")),
+                concession_type=_null_if_sentinel(item.get("concession_type")),
+                concession_status=_null_if_sentinel(item.get("concession_status")),
+                concession_role=_null_if_sentinel(item.get("concession_role")),
+                concession_id=_null_if_sentinel(item.get("concession_id")),
+                concession_commune_code=_null_if_sentinel(item.get("concession_commune_code")),
                 record_status=str(item.get("record_status") or "incomplete"),
                 mandatory_gaps=(
                     ",".join([str(x).strip() for x in (item.get("mandatory_gaps") or []) if str(x).strip()])
@@ -1415,6 +1329,11 @@ def get_dataset() -> dict[str, Any]:
                 "location": _display_or_default(mine.location, ""),
                 "operation_site": _display_or_default(mine.operation_site, ""),
                 "address": _display_or_default(mine.address, ""),
+                "concession_type": _display_or_default(mine.concession_type, ""),
+                "concession_status": _display_or_default(mine.concession_status, ""),
+                "concession_role": _display_or_default(mine.concession_role, ""),
+                "concession_id": _display_or_default(mine.concession_id, ""),
+                "concession_commune_code": _display_or_default(mine.concession_commune_code, ""),
                 "record_status": str(mine.record_status or "incomplete"),
                 "mandatory_gaps": [
                     token.strip()
@@ -1439,6 +1358,152 @@ def get_dataset() -> dict[str, Any]:
             "items": items,
         }
         return payload
+
+
+def _get_mines_dataset_derived_from_concessions() -> dict[str, Any]:
+    """Build a mines-focused fallback view derived from concessions dataset."""
+    concessions_payload = get_dataset()
+    meta = concessions_payload.get("meta") if isinstance(concessions_payload, dict) else {}
+    source_items = concessions_payload.get("items") if isinstance(concessions_payload, dict) else []
+    if not isinstance(meta, dict):
+        meta = {}
+    if not isinstance(source_items, list):
+        source_items = []
+
+    def has_meaningful_text(value: Any) -> bool:
+        text = str(value or "").strip()
+        if not text:
+            return False
+        return text not in {"-", "N/A", "n/a", "unknown", "Unknown"}
+
+    mine_items: list[dict[str, Any]] = []
+    for item in source_items:
+        if not isinstance(item, dict):
+            continue
+        concession_type = str(item.get("concession_type") or item.get("site_type") or "").strip().lower()
+        # Mines view prioritizes exploitation-like records. If no typed data is present,
+        # keep occupied/non-available concessions as likely active operations.
+        is_exploitation = "explot" in concession_type
+        is_likely_active = item.get("is_available_concession") is False
+        if not (is_exploitation or is_likely_active):
+            continue
+        if not has_meaningful_text(item.get("region")):
+            continue
+        if not has_meaningful_text(item.get("commune")):
+            continue
+        if not has_meaningful_text(item.get("mining_company")):
+            continue
+
+        mapped = dict(item)
+        mapped["site_type"] = "Mina"
+        mapped["dataset_kind"] = "mines"
+        mine_items.append(mapped)
+
+    if not mine_items:
+        # Safety fallback: expose original records so frontend never renders an empty map by derivation.
+        for item in source_items:
+            if not isinstance(item, dict):
+                continue
+            mapped = dict(item)
+            mapped["site_type"] = "Mina"
+            mapped["dataset_kind"] = "mines_fallback"
+            mine_items.append(mapped)
+
+    return {
+        "meta": {
+            "version": int(meta.get("version") or 1),
+            "source": "sernageomin-catastro-derived-mines",
+            "updatedAt": str(meta.get("updatedAt") or utc_now_iso()),
+            "lastVerifiedAt": str(meta.get("lastVerifiedAt") or utc_now_iso()),
+            "refreshMode": "derived-mines-view",
+            "scrapeSourceName": "sernageomin-catastro",
+            "derivedFrom": "api/yacimientos",
+            "sources": meta.get("sources") if isinstance(meta.get("sources"), list) else [],
+            "scrapeStats": {
+                "sourceItems": len(source_items),
+                "derivedMineItems": len(mine_items),
+                "derivedMineItemsWithRegionCommuneCompany": len(mine_items),
+            },
+        },
+        "items": mine_items,
+    }
+
+
+def _read_dataset_cache(cache_key: str) -> tuple[dict[str, Any] | None, dt.datetime | None]:
+    engine = _make_engine()
+    ensure_schema(engine)
+    with Session(engine) as session:
+        row = session.get(DatasetCache, cache_key)
+        if row is None:
+            return None, None
+        try:
+            payload = json.loads(row.payload_json)
+        except Exception:  # noqa: BLE001
+            return None, None
+        if not isinstance(payload, dict):
+            return None, None
+        return payload, row.updated_at
+
+
+def _write_dataset_cache(cache_key: str, payload: dict[str, Any], *, updated_at: dt.datetime | None = None) -> None:
+    engine = _make_engine()
+    ensure_schema(engine)
+    serialized = json.dumps(payload, ensure_ascii=True)
+    ts = updated_at or _parse_datetime(utc_now_iso())
+    with Session(engine) as session:
+        row = session.get(DatasetCache, cache_key)
+        if row is None:
+            row = DatasetCache(cache_key=cache_key, payload_json=serialized, updated_at=ts)
+            session.add(row)
+        else:
+            row.payload_json = serialized
+            row.updated_at = ts
+        session.commit()
+
+
+def refresh_mines_dataset_cache() -> dict[str, Any]:
+    from scripts.refresh.mines_open_data_source import build_dataset_from_open_mines
+
+    now = _parse_datetime(utc_now_iso())
+    payload, _stats = build_dataset_from_open_mines()
+    _write_dataset_cache("mines-open-data", payload, updated_at=now)
+    _MINES_DATASET_CACHE["fetched_at"] = now
+    _MINES_DATASET_CACHE["payload"] = payload
+    return payload
+
+
+def get_mines_dataset() -> dict[str, Any]:
+    """Return mines dataset from open data source with cached fallback behavior."""
+    cache_ttl_seconds_raw = str(os.getenv("MINES_DATA_CACHE_TTL_SECONDS", "21600")).strip()
+    try:
+        cache_ttl_seconds = max(60, int(cache_ttl_seconds_raw))
+    except ValueError:
+        cache_ttl_seconds = 21600
+
+    now = _parse_datetime(utc_now_iso())
+    cached_at = _MINES_DATASET_CACHE.get("fetched_at")
+    cached_payload = _MINES_DATASET_CACHE.get("payload")
+    if isinstance(cached_at, dt.datetime) and isinstance(cached_payload, dict):
+        age_seconds = (now - cached_at).total_seconds()
+        if age_seconds <= cache_ttl_seconds:
+            return cached_payload
+
+    cached_db_payload, cached_db_at = _read_dataset_cache("mines-open-data")
+    if isinstance(cached_db_payload, dict) and isinstance(cached_db_at, dt.datetime):
+        age_seconds = (now - cached_db_at).total_seconds()
+        if age_seconds <= cache_ttl_seconds:
+            _MINES_DATASET_CACHE["fetched_at"] = cached_db_at
+            _MINES_DATASET_CACHE["payload"] = cached_db_payload
+            return cached_db_payload
+
+    try:
+        return refresh_mines_dataset_cache()
+    except Exception:  # noqa: BLE001
+        if isinstance(cached_db_payload, dict):
+            _MINES_DATASET_CACHE["fetched_at"] = cached_db_at
+            _MINES_DATASET_CACHE["payload"] = cached_db_payload
+            return cached_db_payload
+        return _get_mines_dataset_derived_from_concessions()
 
 
 def save_link_report(payload: dict[str, Any]) -> None:
