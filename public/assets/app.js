@@ -16,6 +16,8 @@
   const FETCH_TIMEOUT_MS_CONCESSIONS = cfg.FETCH_TIMEOUT_MS_CONCESSIONS || 120000;
   const CONCESSIONS_PAGE_SIZE = cfg.CONCESSIONS_PAGE_SIZE || 8000;
   const CONCESSIONS_USE_BBOX = cfg.CONCESSIONS_USE_BBOX !== false;
+  const CONCESSIONS_PROGRESSIVE_BACKGROUND = cfg.CONCESSIONS_PROGRESSIVE_BACKGROUND !== false;
+  const CONCESSIONS_BACKGROUND_MAX_PAGES = Math.max(1, Number(cfg.CONCESSIONS_BACKGROUND_MAX_PAGES) || 8);
   const CHILE_VIEW_BOUNDS = [[-56.2, -76.8], [-17.4, -66.0]];
   const MOBILE_SHEET_KEY = "mineraleschilenos:mobile-sheet-state";
 
@@ -110,6 +112,7 @@
   let selectedMarkerId = null;
   let concessionsViewportFetchInFlight = false;
   let lastConcessionsBboxSignature = "";
+  let concessionsBackgroundToken = 0;
 
   const els = {
     q: document.getElementById("q"),
@@ -315,54 +318,105 @@
     });
   }
 
-  async function fetchConcessionsPaginated(baseUrl, timeoutMs = FETCH_TIMEOUT_MS_CONCESSIONS) {
-    const pageSize = Math.max(500, Number(CONCESSIONS_PAGE_SIZE) || 8000);
-    const stamp = Date.now();
-    const bboxQuery = buildConcessionsBboxQuery();
-    let offset = 0;
-    let mergedItems = [];
-    let mergedMeta = null;
-    let safetyPages = 0;
-    const maxPages = 1000;
-
-    while (safetyPages < maxPages) {
-      safetyPages += 1;
-      const pageUrl = `${baseUrl}?offset=${offset}&limit=${pageSize}${bboxQuery}&v=${stamp}-${offset}`;
-      const page = await fetchJsonWithTimeout(pageUrl, timeoutMs);
-      if (!page || !Array.isArray(page.items)) {
-        return mergedItems.length ? { meta: mergedMeta || {}, items: mergedItems } : null;
-      }
-      if (!mergedMeta) {
-        mergedMeta = page.meta && typeof page.meta === "object" ? { ...page.meta } : {};
-      }
-      mergedItems = mergedItems.concat(page.items);
-
-      const pagination = page.meta && page.meta.pagination && typeof page.meta.pagination === "object"
-        ? page.meta.pagination
-        : null;
-      if (!pagination) {
-        // Non-paginated backend response, use as-is.
-        return page;
-      }
-      const returned = Number(pagination.returned || page.items.length || 0);
-      const hasMore = Boolean(pagination.hasMore);
-      if (!hasMore || returned <= 0) {
-        break;
-      }
-      offset += returned;
-    }
+  function mergeConcessionsPayload(basePayload, pagePayload, pageSize) {
+    const baseItems = Array.isArray(basePayload && basePayload.items) ? basePayload.items : [];
+    const pageItems = Array.isArray(pagePayload && pagePayload.items) ? pagePayload.items : [];
+    const pageMeta = pagePayload && typeof pagePayload.meta === "object" ? pagePayload.meta : {};
+    const pagePagination = pageMeta && typeof pageMeta.pagination === "object" ? pageMeta.pagination : {};
+    const returned = Number(pagePagination.returned || pageItems.length || 0);
+    const offset = Number(pagePagination.offset || 0);
+    const total = Number(pagePagination.total || (offset + returned) || baseItems.length);
+    const hasMore = Boolean(pagePagination.hasMore);
+    const mergedItems = baseItems.concat(pageItems);
 
     return {
       meta: {
-        ...(mergedMeta || {}),
+        ...(basePayload && typeof basePayload.meta === "object" ? basePayload.meta : {}),
+        ...pageMeta,
         pagination: {
-          mode: "aggregated",
+          mode: "progressive",
           pageSize,
+          offset: 0,
           returned: mergedItems.length,
+          total,
+          hasMore,
         },
       },
       items: mergedItems,
     };
+  }
+
+  function applyConcessionsBackgroundPayload(payload) {
+    if (getCurrentDatasetMode() !== "concesiones") return;
+    if (!payload || !Array.isArray(payload.items)) return;
+    allItems = normalizeDatasetItems(payload.items);
+    window.__dataUpdatedAt = payload.meta && payload.meta.updatedAt;
+    rebuildIndexes(allItems);
+    applyFilters();
+  }
+
+  async function fetchConcessionsPaginated(baseUrl, timeoutMs = FETCH_TIMEOUT_MS_CONCESSIONS) {
+    const pageSize = Math.max(500, Number(CONCESSIONS_PAGE_SIZE) || 8000);
+    const stamp = Date.now();
+    const bboxQuery = buildConcessionsBboxQuery();
+    const firstUrl = `${baseUrl}?offset=0&limit=${pageSize}${bboxQuery}&v=${stamp}-0`;
+    const firstPage = await fetchJsonWithTimeout(firstUrl, timeoutMs);
+    if (!firstPage || !Array.isArray(firstPage.items)) {
+      return null;
+    }
+
+    const firstMeta = firstPage.meta && typeof firstPage.meta === "object" ? firstPage.meta : {};
+    const firstPagination = firstMeta && typeof firstMeta.pagination === "object" ? firstMeta.pagination : {};
+    const firstReturned = Number(firstPagination.returned || firstPage.items.length || 0);
+    const hasMore = Boolean(firstPagination.hasMore);
+
+    let payload = {
+      meta: {
+        ...firstMeta,
+        pagination: {
+          mode: "progressive",
+          pageSize,
+          offset: 0,
+          returned: firstPage.items.length,
+          total: Number(firstPagination.total || firstPage.items.length),
+          hasMore,
+        },
+      },
+      items: firstPage.items.slice(),
+    };
+
+    const token = ++concessionsBackgroundToken;
+    if (!hasMore || firstReturned <= 0 || !CONCESSIONS_PROGRESSIVE_BACKGROUND) {
+      return payload;
+    }
+
+    // Continue loading extra pages without blocking initial paint.
+    (async () => {
+      let offset = firstReturned;
+      let loadedPages = 0;
+      while (loadedPages < CONCESSIONS_BACKGROUND_MAX_PAGES) {
+        if (token !== concessionsBackgroundToken) return;
+        loadedPages += 1;
+        const pageUrl = `${baseUrl}?offset=${offset}&limit=${pageSize}${bboxQuery}&v=${stamp}-${offset}`;
+        const page = await fetchJsonWithTimeout(pageUrl, timeoutMs);
+        if (!page || !Array.isArray(page.items)) return;
+        payload = mergeConcessionsPayload(payload, page, pageSize);
+        sessionDatasetCache.concesiones = payload;
+        saveCache(getDatasetCacheKey("concesiones"), payload);
+        applyConcessionsBackgroundPayload(payload);
+
+        const pageMeta = page.meta && typeof page.meta === "object" ? page.meta : {};
+        const pagePagination = pageMeta && typeof pageMeta.pagination === "object" ? pageMeta.pagination : {};
+        const returned = Number(pagePagination.returned || page.items.length || 0);
+        const pageHasMore = Boolean(pagePagination.hasMore);
+        if (!pageHasMore || returned <= 0) return;
+        offset += returned;
+      }
+    })().catch((error) => {
+      console.error("concessions background load failed", error);
+    });
+
+    return payload;
   }
 
   function buildConcessionsBboxQuery() {
