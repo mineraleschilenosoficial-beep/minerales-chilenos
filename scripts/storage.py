@@ -55,6 +55,8 @@ def _required_database_url() -> str:
 def _make_engine():
     dsn = _required_database_url()
     normalized = dsn
+    if normalized.startswith("postgres://"):
+        normalized = normalized.replace("postgres://", "postgresql://", 1)
     if normalized.startswith("postgresql://") and "postgresql+" not in normalized:
         normalized = normalized.replace("postgresql://", "postgresql+psycopg://", 1)
     engine = _ENGINE_CACHE.get(normalized)
