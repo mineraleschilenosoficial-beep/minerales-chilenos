@@ -25,4 +25,4 @@ RUN yarn build
 EXPOSE 8000
 EXPOSE 8001
 
-CMD ["sh", "-lc", "python scripts/tools/bootstrap_runtime.py && python -m uvicorn api.server:app --host 0.0.0.0 --port 8001 & yarn start --port 8000"]
+CMD ["sh", "-lc", "/opt/venv/bin/python scripts/tools/bootstrap_runtime.py && /opt/venv/bin/python -m uvicorn api.server:app --host 0.0.0.0 --port 8001 & yarn start --port 8000"]
