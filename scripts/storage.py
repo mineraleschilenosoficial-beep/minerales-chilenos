@@ -670,61 +670,68 @@ def ensure_schema(engine, *, force: bool = False) -> None:
 def _setup_postgis(conn) -> None:
     """Enable PostGIS and keep a geometry column in sync with lat/lng."""
     try:
+        conn.execute(text("SAVEPOINT postgis_setup"))
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
-        conn.execute(text("ALTER TABLE mine_records ADD COLUMN IF NOT EXISTS geom geometry(Point, 4326)"))
-        conn.execute(
-            text(
-                """
-                UPDATE mine_records
-                SET geom = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
-                WHERE latitude IS NOT NULL
-                  AND longitude IS NOT NULL
-                  AND (
-                    geom IS NULL
-                    OR abs(ST_X(geom) - longitude) > 0.0000001
-                    OR abs(ST_Y(geom) - latitude) > 0.0000001
-                  )
-                """
-            )
-        )
-        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_mine_records_geom_gist ON mine_records USING GIST (geom)"))
-        conn.execute(
-            text(
-                """
-                CREATE OR REPLACE FUNCTION mine_records_set_geom()
-                RETURNS trigger
-                AS $$
-                BEGIN
-                    IF NEW.latitude IS NULL OR NEW.longitude IS NULL THEN
-                        NEW.geom := NULL;
-                    ELSE
-                        NEW.geom := ST_SetSRID(ST_MakePoint(NEW.longitude, NEW.latitude), 4326);
-                    END IF;
-                    RETURN NEW;
-                END;
-                $$ LANGUAGE plpgsql
-                """
-            )
-        )
-        conn.execute(text("DROP TRIGGER IF EXISTS trg_mine_records_set_geom ON mine_records"))
-        conn.execute(
-            text(
-                """
-                CREATE TRIGGER trg_mine_records_set_geom
-                BEFORE INSERT OR UPDATE OF latitude, longitude
-                ON mine_records
-                FOR EACH ROW
-                EXECUTE FUNCTION mine_records_set_geom()
-                """
-            )
-        )
     except Exception as exc:  # noqa: BLE001
+        conn.execute(text("ROLLBACK TO SAVEPOINT postgis_setup"))
+        conn.execute(text("RELEASE SAVEPOINT postgis_setup"))
         if _POSTGIS_REQUIRED:
             raise RuntimeError(
                 "PostGIS setup failed and POSTGIS_REQUIRED=true. "
                 "Enable the extension in PostgreSQL/Coolify and retry."
             ) from exc
         print(f"[storage] warning: PostGIS setup skipped ({exc})")
+        return
+    else:
+        conn.execute(text("RELEASE SAVEPOINT postgis_setup"))
+
+    conn.execute(text("ALTER TABLE mine_records ADD COLUMN IF NOT EXISTS geom geometry(Point, 4326)"))
+    conn.execute(
+        text(
+            """
+            UPDATE mine_records
+            SET geom = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
+            WHERE latitude IS NOT NULL
+              AND longitude IS NOT NULL
+              AND (
+                geom IS NULL
+                OR abs(ST_X(geom) - longitude) > 0.0000001
+                OR abs(ST_Y(geom) - latitude) > 0.0000001
+              )
+            """
+        )
+    )
+    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_mine_records_geom_gist ON mine_records USING GIST (geom)"))
+    conn.execute(
+        text(
+            """
+            CREATE OR REPLACE FUNCTION mine_records_set_geom()
+            RETURNS trigger
+            AS $$
+            BEGIN
+                IF NEW.latitude IS NULL OR NEW.longitude IS NULL THEN
+                    NEW.geom := NULL;
+                ELSE
+                    NEW.geom := ST_SetSRID(ST_MakePoint(NEW.longitude, NEW.latitude), 4326);
+                END IF;
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql
+            """
+        )
+    )
+    conn.execute(text("DROP TRIGGER IF EXISTS trg_mine_records_set_geom ON mine_records"))
+    conn.execute(
+        text(
+            """
+            CREATE TRIGGER trg_mine_records_set_geom
+            BEFORE INSERT OR UPDATE OF latitude, longitude
+            ON mine_records
+            FOR EACH ROW
+            EXECUTE FUNCTION mine_records_set_geom()
+            """
+        )
+    )
 
 
 def _coord_cache_key(lat: float, lng: float) -> tuple[float, float]:
