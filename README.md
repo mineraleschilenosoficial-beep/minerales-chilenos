@@ -1,30 +1,48 @@
 # minerales-chilenos
 
-Aplicación web para `MineralesChilenos.cl` preparada para desplegar en Coolify con backend Python + PostgreSQL.
+Aplicación web para `MineralesChilenos.cl` preparada para desplegar en Coolify con frontend Next.js + backend FastAPI + PostgreSQL y pipeline Python de refresh.
 
 ## Arquitectura actual
 
-- `api/server.py`: API HTTP y servidor de archivos estáticos.
-- `web/assets/app.js`: frontend (mapa, filtros, modal y cache local del navegador).
-- `web/assets/config.js`: endpoints de la API y configuración de cache/GTM.
+- `app/page.js`: shell frontend servido por Next.js.
+- `public/assets/app.js`: frontend (mapa, filtros, modal y cache local del navegador).
+- `next.config.js`: rewrite de `/api/*` hacia FastAPI.
+- `api/server.py`: backend FastAPI (`/api/minas`, `/api/concesiones`, `/api/yacimientos`, `/api/link-report`, `/api/health`).
 - `scripts/storage.py`: persistencia relacional en PostgreSQL mediante ORM (SQLAlchemy).
 - `scripts/daily_refresh.py`: refresca dataset.
-- `scripts/refresh/refresh_helpers.py`: utilidades compartidas del pipeline de refresh.
-- `scripts/refresh/enrichment_pipeline.py`: enriquecimiento de campos top/sprint y fallbacks controlados.
-- `scripts/refresh/quality_checks.py`: completitud, deduplicación, proveniencia base y KPIs del refresh.
-- `scripts/refresh/refresh_runtime.py`: carga remota opcional, alertas y rollback policy del refresh.
-- `scripts/refresh/mrds_scraper.py`: scraping y depuración de dataset MRDS (USGS).
-- `scripts/refresh/reverse_geocoding.py`: enriquecimiento de ciudad/comuna con Nominatim.
-- `scripts/refresh/concession_logic.py`: reglas y evidencias de concesiones.
+- `scripts/refresh/sernageomin_source.py`: ingesta oficial de concesiones desde Catastro Minero SERNAGEOMIN (FeatureServer), con normalización de comuna/región y descarte de outliers geográficos.
 - `scripts/tools/validate_data.py`: valida esquema/calidad del dataset.
 - `scripts/tools/link_audit.py`: audita enlaces y genera reporte.
-- `scripts/sql/manual_overrides.sql`: plantilla SQL para correcciones manuales confiables.
 - `scripts/tools/bootstrap_runtime.py`: migración automática de esquema al iniciar runtime.
 - `scripts/tools/refresh_cycle.py`: ejecuta refresh + validación + auditoría.
 - `Dockerfile`: imagen para despliegue en Coolify.
 - `requirements.txt`: dependencias Python.
 
 ## Desarrollo local
+
+Arranque rapido (un comando):
+
+```bash
+.venv/bin/python scripts/tools/run_local.py --docker-db --quick
+```
+
+- `--docker-db`: levanta PostgreSQL local con `docker compose`.
+- `--inject-data`: ejecuta inyección de datos (`refresh_cycle`) antes de iniciar servicios.
+- `--no-inject-data`: inicia servicios sin inyección de datos.
+- `--refresh`: alias legacy de `--inject-data`.
+- `--fast`: con `--refresh`, omite `link_audit` para iterar mas rapido.
+- `--quick`: modo rapido real para desarrollo (omite validacion y limita filas de ingesta).
+- `--max-records N`: limite opcional de filas SERNAGEOMIN para acelerar refresh local.
+
+Ejemplos directos:
+
+```bash
+# con inyección de datos
+.venv/bin/python scripts/tools/run_local.py --docker-db --inject-data
+
+# sin inyección de datos
+.venv/bin/python scripts/tools/run_local.py --docker-db --no-inject-data
+```
 
 1. Crear entorno local con `uv` (recomendado, una sola vez):
 
@@ -39,10 +57,16 @@ uv pip install --python .venv/bin/python -r requirements.txt
 export DATABASE_URL="postgresql://user:password@localhost:5432/minerales"
 ```
 
-3. Ejecutar API:
+3. Ejecutar servicio web+api:
 
 ```bash
-.venv/bin/python api/server.py
+.venv/bin/python scripts/tools/run_service.py --port 8000 --api-port 8001
+```
+
+Opcional (producción o proxy externo):
+
+```bash
+export NEXT_PUBLIC_API_BASE_URL="https://api.tu-dominio.cl"
 ```
 
 4. Abrir:
@@ -69,30 +93,9 @@ export DATABASE_URL="postgresql://minerales:minerales@localhost:5432/minerales"
 .venv/bin/python scripts/daily_refresh.py
 ```
 
-Autofill masivo controlado (para maximizar cobertura):
-
-```bash
-AUTO_FILL_WEBSITE_FROM_SOURCE=true \
-AUTO_FILL_DOC_FIELDS_FROM_SOURCE=true \
-AUTO_FILL_NOT_PUBLIC_FIELDS=true \
-.venv/bin/python scripts/daily_refresh.py
-```
-
 Notas:
-- `AUTO_FILL_WEBSITE_FROM_SOURCE=true` usa URL de fuente primaria como fallback de `website`.
-- `AUTO_FILL_DOC_FIELDS_FROM_SOURCE=true` rellena listas de documentos faltantes con referencia pública primaria.
-- `AUTO_FILL_NOT_PUBLIC_FIELDS=true` completa escalares faltantes con `not_public` + trazabilidad (modo agresivo).
-- `CURATED_ONLY_MODE=true` (default) conserva desde el inicio solo candidatas que matchean overrides activos.
-- Con `CURATED_ONLY_MODE=true`, el scraping MRDS es dirigido por targets de overrides (bbox por faena), evitando barrer todo el universo.
-- `KEEP_ONLY_MINIMUM_DATA=true` (default) deja al final solo entradas con señales mínimas de enriquecimiento (`KEEP_MIN_DATA_SIGNALS`, default `2`).
-- `KEEP_ONLY_COMPLETE_RECORDS=true` (opcional estricto) filtra el dataset final para dejar solo registros `record_status=complete`.
-- `TRUSTED_CONCESSION_SOURCE_HOSTS` permite exigir dominios confiables para `is_available_concession` (default estricto: hosts gubernamentales/autoridades mineras); solo evidencia desde esos hosts puede marcar concesión disponible.
-
-Opcional (legacy): cargar overrides manuales SQL antes del refresh:
-
-```bash
-psql "$DATABASE_URL" -f scripts/sql/manual_overrides.sql
-```
+- El refresh usa una sola fuente oficial: Catastro Minero SERNAGEOMIN.
+- Variables opcionales: `SERNAGEOMIN_CONCESSION_LAYER_URL`, `SERNAGEOMIN_CONCESSION_TIMEOUT_SECONDS`, `SERNAGEOMIN_CONCESSION_PAGE_SIZE`.
 
 4. Validar dataset:
 
@@ -100,10 +103,10 @@ psql "$DATABASE_URL" -f scripts/sql/manual_overrides.sql
 .venv/bin/python scripts/tools/validate_data.py
 ```
 
-5. (Opcional) Ejecutar API local:
+5. (Opcional) Ejecutar servicio web+api local:
 
 ```bash
-.venv/bin/python api/server.py
+.venv/bin/python scripts/tools/run_service.py --port 8000 --api-port 8001
 ```
 
 - `http://localhost:8000`
@@ -116,7 +119,7 @@ docker compose -f docker-compose.local.yml down
 
 ## Google Tag Manager (GTM)
 
-1. Abre `web/assets/config.js`.
+1. Abre `public/assets/config.js`.
 2. Define tu contenedor real:
 
 ```js
@@ -132,7 +135,9 @@ Con eso, el sitio carga automáticamente:
 
 La UI consume:
 
-- `GET /api/yacimientos`
+- `GET /api/minas`
+- `GET /api/concesiones`
+- `GET /api/yacimientos` (compatibilidad/backward)
 - `GET /api/link-report`
 
 Convención de campos del dataset:
@@ -141,10 +146,11 @@ Convención de campos del dataset:
 - No hay aliases en español: todos los consumidores deben usar la convención en inglés.
 - Si la DB tiene registros legacy en español, ejecutar `.venv/bin/python scripts/daily_refresh.py` para migrar/reconstruir el dataset antes de levantar la API.
 - En UI se prioriza mostrar datos públicamente verificables. Campos sensibles (por ejemplo salarios/ingresos/dotación por faena) pueden venir como `not_public` o `not_disclosed`.
-- `meta.scrapeStats` incluye KPIs por refresh en base points (`Bp`, donde `10000 = 100%`): cobertura de campos mandatorios, cobertura de fuente oficial y pendiente de curación manual.
-- En cada refresh se hace `seed` de `field_provenance` para campos escalares clave desde `sources` (`source_type`: `official` o `source`) y luego se complementa con `manual`/`inferred` según enriquecimiento.
-- Regla de negocio de `is_available_concession`: `true` solo con evidencia (override manual/official o `operating_authorizations`), en otro caso queda `false` por defecto.
-- En `meta.scrapeStats` se publican coberturas por refresh para ciudad (`coverageCityBp`), empresa minera (`coverageMiningCompanyBp`) y concesión confiable (`coverageReliableConcessionBp`).
+- `meta.scrapeStats` publica totales por estado de concesión (`CONSTITUIDA`, `EN TRAMITE`, `ELIMINADA`) y conteos de disponibilidad.
+- El refresh normaliza `commune`, deriva `region` por coordenadas y persiste campos accesorios (`concession_type`, `concession_status`, `concession_role`, `concession_id`, `concession_commune_code`).
+- Se descartan puntos fuera del bounding de Chile y outliers geográficos por comuna para evitar registros inconsistentes.
+- En cada refresh se registra `field_provenance` para `is_available_concession` y, cuando exista, para `mining_company` y `operation_since`.
+- Regla actual de `is_available_concession`: `true` cuando `SITUACION_CONCESION=ELIMINADA`; en otros estados `false`.
 
 Persistencia:
 
@@ -152,9 +158,14 @@ Persistencia:
 
 Comportamiento de lectura frontend:
 
-- Si hay conexión, intenta cargar la versión más nueva de `/api/yacimientos`.
+- Selector `Mapa`:
+  - `Minas`: carga `/api/minas` desde fuente dedicada `Datos Abiertos Chile - Faenas en Chile (CSV)`.
+  - `Concesiones`: carga `/api/concesiones` (catastro oficial completo).
+- Filtros principales en UI: `Región`, `Comuna` y `Empresa` (además de búsqueda y tipo).
+- Si hay conexión, intenta cargar la versión más nueva del endpoint correspondiente al mapa activo.
 - Si falla o está reciente, usa cache local para mantener continuidad.
 - La información de "Última actualización" se toma de `meta.updatedAt`.
+- En `Minas` se descartan pines con coordenadas inválidas, fuera de Chile, con región inconsistente por bounds, o outliers por comuna (distancia al centro comunal).
 
 ### Flujo recomendado para actualizar datos
 
@@ -170,20 +181,20 @@ Modo rápido local (iteraciones de desarrollo):
 FAST_LOCAL_MODE=true .venv/bin/python scripts/tools/refresh_cycle.py
 ```
 
-Este modo desactiva pasos costosos no críticos para feedback rápido local (`link_audit` y geocoding extendido).
+Este modo desactiva `link_audit` para acelerar iteraciones locales.
 
 2. Mantener estructura:
    - `meta` con `updatedAt`, `version`, `source`.
    - `meta.sources` con enlaces exactos de fuentes oficiales.
    - `items[*].sources` con fuentes específicas por pin.
    - `items` con registros de yacimientos/concesiones.
-3. Verificar salida en logs y en `GET /api/yacimientos`.
+3. Verificar salida en logs y en `GET /api/concesiones` (y `GET /api/minas` para vista minera).
 
 ## Verificación de enlaces
 
 Audita enlaces externos de:
 
-- `web/index.html` (CDN/fuentes/scripts)
+- `app/layout.js` (CDN/fuentes/scripts cargados por Next.js)
 - dataset almacenado en PostgreSQL (`items[*].website` y `items[*].docs[*].url`)
 
 Ejecutar:
@@ -231,14 +242,13 @@ Chequeos incluidos:
 
 - Tipo: `Dockerfile`.
 - Puerto: `8000`.
-- Start command: usa `CMD` de Dockerfile (`python3 scripts/tools/bootstrap_runtime.py && gunicorn --bind 0.0.0.0:8000 api.server:app`).
+- Start command: usa `CMD` de Dockerfile (`python3 scripts/tools/bootstrap_runtime.py && python3 -m uvicorn api.server:app --host 0.0.0.0 --port 8001 & yarn start --port 8000`).
 - Variables requeridas:
   - `DATABASE_URL` (PostgreSQL de Coolify o externo).
-  - `DATA_JSON_SOURCE_URL` (opcional, JSON remoto con `{meta, items}` para poblar/actualizar datos).
 - Variables opcionales de bootstrap:
   - `AUTO_BOOTSTRAP_DATASET` (`true` por defecto): si no hay dataset, ejecuta refresh+validate al iniciar.
 
-Si no defines `DATA_JSON_SOURCE_URL` y la DB está vacía, el sistema hace scraping con la fuente integrada verificada USGS MRDS (WFS para Chile).
+Si la DB está vacía, el sistema construye dataset desde la fuente oficial SERNAGEOMIN integrada en el refresh.
 Antes de levantar API, el runtime ejecuta migraciones de esquema automáticamente.
 
 ### 2) Base de datos PostgreSQL
