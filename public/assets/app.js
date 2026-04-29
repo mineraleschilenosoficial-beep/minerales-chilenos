@@ -107,6 +107,8 @@
   let libresItems = [];
   let markerRenderVersion = 0;
   let selectedMarkerId = null;
+  let concessionsViewportFetchInFlight = false;
+  let lastConcessionsBboxSignature = "";
 
   const els = {
     q: document.getElementById("q"),
@@ -376,6 +378,42 @@
     const maxLat = Number(northEast.lat);
     if (![minLng, minLat, maxLng, maxLat].every(Number.isFinite)) return "";
     return `&min_lng=${minLng}&min_lat=${minLat}&max_lng=${maxLng}&max_lat=${maxLat}`;
+  }
+
+  function concessionsBboxSignature() {
+    if (!CONCESSIONS_USE_BBOX || !mapEnabled || !map || typeof map.getBounds !== "function") {
+      return "";
+    }
+    const bounds = map.getBounds();
+    if (!bounds) return "";
+    const sw = bounds.getSouthWest();
+    const ne = bounds.getNorthEast();
+    if (!sw || !ne) return "";
+    const values = [sw.lng, sw.lat, ne.lng, ne.lat];
+    if (!values.every((v) => Number.isFinite(Number(v)))) return "";
+    return values.map((v) => Number(v).toFixed(3)).join(",");
+  }
+
+  async function refreshConcessionsForViewport() {
+    if (!CONCESSIONS_USE_BBOX || !mapEnabled || !map) return;
+    if (getCurrentDatasetMode() !== "concesiones") return;
+    if (modeSwitchInFlight || concessionsViewportFetchInFlight) return;
+    const signature = concessionsBboxSignature();
+    if (!signature || signature === lastConcessionsBboxSignature) return;
+
+    concessionsViewportFetchInFlight = true;
+    try {
+      // Force fresh concessions fetch for new viewport.
+      sessionDatasetCache.concesiones = null;
+      const applied = await loadAndRenderCurrentMode();
+      if (applied) {
+        lastConcessionsBboxSignature = signature;
+      }
+    } catch (error) {
+      console.error("viewport concessions refresh failed", error);
+    } finally {
+      concessionsViewportFetchInFlight = false;
+    }
   }
 
   function mineralStyle(value) {
@@ -757,6 +795,10 @@
   }
 
   async function prefetchMode(mode) {
+    if (mode === "concesiones" && CONCESSIONS_USE_BBOX) {
+      // Concessions payload depends on current viewport; prefetching full dataset is wasteful.
+      return;
+    }
     if (sessionDatasetCache[mode] && Array.isArray(sessionDatasetCache[mode].items)) {
       return;
     }
@@ -1958,6 +2000,9 @@
     mapEnabled = true;
     setTimeout(() => map.invalidateSize(), 100);
     window.addEventListener("resize", () => map.invalidateSize());
+    map.on("moveend", debounce(() => {
+      void refreshConcessionsForViewport();
+    }, 350));
   }
 
   async function waitForLeaflet(maxWaitMs = 12000) {
