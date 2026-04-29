@@ -5,26 +5,32 @@ Aplicación web para `MineralesChilenos.cl` preparada para desplegar en Coolify 
 ## Arquitectura actual
 
 - `api/server.py`: API HTTP y servidor de archivos estáticos.
-- `assets/app.js`: frontend (mapa, filtros, modal y cache local del navegador).
-- `assets/config.js`: endpoints de la API y configuración de cache/GTM.
+- `web/assets/app.js`: frontend (mapa, filtros, modal y cache local del navegador).
+- `web/assets/config.js`: endpoints de la API y configuración de cache/GTM.
 - `scripts/storage.py`: persistencia relacional en PostgreSQL mediante ORM (SQLAlchemy).
 - `scripts/daily_refresh.py`: refresca dataset.
-- `scripts/validate_data.py`: valida esquema/calidad del dataset.
-- `scripts/link_audit.py`: audita enlaces y genera reporte.
-- `scripts/manual_overrides.sql`: plantilla SQL para correcciones manuales confiables.
-- `scripts/source_extractor_rules.json`: reglas de extracción estructurada para campos mandatorios.
-- `scripts/bootstrap_runtime.py`: migración automática de esquema al iniciar runtime.
-- `scripts/missing_data_hunt.py`: auditoría de faltantes y búsqueda de URLs candidatas.
-- `scripts/refresh_cycle.py`: ejecuta refresh + validación + auditoría.
+- `scripts/refresh/refresh_helpers.py`: utilidades compartidas del pipeline de refresh.
+- `scripts/refresh/enrichment_pipeline.py`: enriquecimiento de campos top/sprint y fallbacks controlados.
+- `scripts/refresh/quality_checks.py`: completitud, deduplicación, proveniencia base y KPIs del refresh.
+- `scripts/refresh/refresh_runtime.py`: carga remota opcional, alertas y rollback policy del refresh.
+- `scripts/refresh/mrds_scraper.py`: scraping y depuración de dataset MRDS (USGS).
+- `scripts/refresh/reverse_geocoding.py`: enriquecimiento de ciudad/comuna con Nominatim.
+- `scripts/refresh/concession_logic.py`: reglas y evidencias de concesiones.
+- `scripts/tools/validate_data.py`: valida esquema/calidad del dataset.
+- `scripts/tools/link_audit.py`: audita enlaces y genera reporte.
+- `scripts/sql/manual_overrides.sql`: plantilla SQL para correcciones manuales confiables.
+- `scripts/tools/bootstrap_runtime.py`: migración automática de esquema al iniciar runtime.
+- `scripts/tools/refresh_cycle.py`: ejecuta refresh + validación + auditoría.
 - `Dockerfile`: imagen para despliegue en Coolify.
 - `requirements.txt`: dependencias Python.
 
 ## Desarrollo local
 
-1. Instalar dependencias:
+1. Crear entorno local con `uv` (recomendado, una sola vez):
 
 ```bash
-python3 -m pip install -r requirements.txt
+uv venv .venv
+uv pip install --python .venv/bin/python -r requirements.txt
 ```
 
 2. Definir base de datos (obligatorio):
@@ -36,7 +42,7 @@ export DATABASE_URL="postgresql://user:password@localhost:5432/minerales"
 3. Ejecutar API:
 
 ```bash
-python3 api/server.py
+.venv/bin/python api/server.py
 ```
 
 4. Abrir:
@@ -60,25 +66,44 @@ export DATABASE_URL="postgresql://minerales:minerales@localhost:5432/minerales"
 3. Inicializar/actualizar dataset desde tu entorno local:
 
 ```bash
-python3 scripts/daily_refresh.py
+.venv/bin/python scripts/daily_refresh.py
 ```
 
-Opcional: cargar overrides manuales confiables antes del refresh:
+Autofill masivo controlado (para maximizar cobertura):
 
 ```bash
-psql "$DATABASE_URL" -f scripts/manual_overrides.sql
+AUTO_FILL_WEBSITE_FROM_SOURCE=true \
+AUTO_FILL_DOC_FIELDS_FROM_SOURCE=true \
+AUTO_FILL_NOT_PUBLIC_FIELDS=true \
+.venv/bin/python scripts/daily_refresh.py
+```
+
+Notas:
+- `AUTO_FILL_WEBSITE_FROM_SOURCE=true` usa URL de fuente primaria como fallback de `website`.
+- `AUTO_FILL_DOC_FIELDS_FROM_SOURCE=true` rellena listas de documentos faltantes con referencia pública primaria.
+- `AUTO_FILL_NOT_PUBLIC_FIELDS=true` completa escalares faltantes con `not_public` + trazabilidad (modo agresivo).
+- `CURATED_ONLY_MODE=true` (default) conserva desde el inicio solo candidatas que matchean overrides activos.
+- Con `CURATED_ONLY_MODE=true`, el scraping MRDS es dirigido por targets de overrides (bbox por faena), evitando barrer todo el universo.
+- `KEEP_ONLY_MINIMUM_DATA=true` (default) deja al final solo entradas con señales mínimas de enriquecimiento (`KEEP_MIN_DATA_SIGNALS`, default `2`).
+- `KEEP_ONLY_COMPLETE_RECORDS=true` (opcional estricto) filtra el dataset final para dejar solo registros `record_status=complete`.
+- `TRUSTED_CONCESSION_SOURCE_HOSTS` permite exigir dominios confiables para `is_available_concession` (default estricto: hosts gubernamentales/autoridades mineras); solo evidencia desde esos hosts puede marcar concesión disponible.
+
+Opcional (legacy): cargar overrides manuales SQL antes del refresh:
+
+```bash
+psql "$DATABASE_URL" -f scripts/sql/manual_overrides.sql
 ```
 
 4. Validar dataset:
 
 ```bash
-python3 scripts/validate_data.py
+.venv/bin/python scripts/tools/validate_data.py
 ```
 
 5. (Opcional) Ejecutar API local:
 
 ```bash
-python3 api/server.py
+.venv/bin/python api/server.py
 ```
 
 - `http://localhost:8000`
@@ -91,7 +116,7 @@ docker compose -f docker-compose.local.yml down
 
 ## Google Tag Manager (GTM)
 
-1. Abre `assets/config.js`.
+1. Abre `web/assets/config.js`.
 2. Define tu contenedor real:
 
 ```js
@@ -114,16 +139,12 @@ Convención de campos del dataset:
 
 - Canónicos en inglés para almacenamiento/API (`name`, `minerals`, `latitude`, `longitude`, `site_type`, `mining_company`, `is_available_concession`).
 - No hay aliases en español: todos los consumidores deben usar la convención en inglés.
-- Si la DB tiene registros legacy en español, ejecutar `python3 scripts/daily_refresh.py` para migrar/reconstruir el dataset antes de levantar la API.
+- Si la DB tiene registros legacy en español, ejecutar `.venv/bin/python scripts/daily_refresh.py` para migrar/reconstruir el dataset antes de levantar la API.
 - En UI se prioriza mostrar datos públicamente verificables. Campos sensibles (por ejemplo salarios/ingresos/dotación por faena) pueden venir como `not_public` o `not_disclosed`.
 - `meta.scrapeStats` incluye KPIs por refresh en base points (`Bp`, donde `10000 = 100%`): cobertura de campos mandatorios, cobertura de fuente oficial y pendiente de curación manual.
 - En cada refresh se hace `seed` de `field_provenance` para campos escalares clave desde `sources` (`source_type`: `official` o `source`) y luego se complementa con `manual`/`inferred` según enriquecimiento.
 - Regla de negocio de `is_available_concession`: `true` solo con evidencia (override manual/official o `operating_authorizations`), en otro caso queda `false` por defecto.
-- En `meta.scrapeStats` se publican coberturas por refresh para Phase 3: ciudad (`coverageCityBp`), empresa minera (`coverageMiningCompanyBp`) y concesión confiable (`coverageReliableConcessionBp`).
-- Sprint 2 agrega extracción automática incremental de `website`, `mining_company`, `operating_authorizations` y `environmental_reports` desde `sources/docs` cuando hay evidencia trazable.
-- Sprint 3 agrega extracción de baja confianza (con `field_provenance` `source_type=inferred`) para `direct_workers`, `indirect_workers`, `average_salary`, `annual_revenue`, `operation_since` y `hiring_plan_2026`.
-- Sprint 4 agrega clasificación automática de `docs` hacia `geology_studies`, `mineral_life_studies` y `mitigation_studies` con deduplicación por URL.
-- Sprint 5 agrega hardening productivo en refresh: alertas por umbral (`ALERT_*_MIN_BP`) y rollback por caída de volumen (`ROLLBACK_MAX_ITEM_DROP_RATIO`).
+- En `meta.scrapeStats` se publican coberturas por refresh para ciudad (`coverageCityBp`), empresa minera (`coverageMiningCompanyBp`) y concesión confiable (`coverageReliableConcessionBp`).
 
 Persistencia:
 
@@ -140,13 +161,13 @@ Comportamiento de lectura frontend:
 1. Ejecutar:
 
 ```bash
-python3 scripts/refresh_cycle.py
+.venv/bin/python scripts/tools/refresh_cycle.py
 ```
 
 Modo rápido local (iteraciones de desarrollo):
 
 ```bash
-FAST_LOCAL_MODE=true python3 scripts/refresh_cycle.py
+FAST_LOCAL_MODE=true .venv/bin/python scripts/tools/refresh_cycle.py
 ```
 
 Este modo desactiva pasos costosos no críticos para feedback rápido local (`link_audit` y geocoding extendido).
@@ -162,13 +183,13 @@ Este modo desactiva pasos costosos no críticos para feedback rápido local (`li
 
 Audita enlaces externos de:
 
-- `index.html` (CDN/fuentes/scripts)
+- `web/index.html` (CDN/fuentes/scripts)
 - dataset almacenado en PostgreSQL (`items[*].website` y `items[*].docs[*].url`)
 
 Ejecutar:
 
 ```bash
-python3 scripts/link_audit.py
+.venv/bin/python scripts/tools/link_audit.py
 ```
 
 Resultado:
@@ -186,7 +207,7 @@ Notas:
 Valida esquema y calidad mínima del dataset en PostgreSQL:
 
 ```bash
-python3 scripts/validate_data.py
+.venv/bin/python scripts/tools/validate_data.py
 ```
 
 Chequeos incluidos:
@@ -210,7 +231,7 @@ Chequeos incluidos:
 
 - Tipo: `Dockerfile`.
 - Puerto: `8000`.
-- Start command: usa `CMD` de Dockerfile (`python3 scripts/bootstrap_runtime.py && gunicorn --bind 0.0.0.0:8000 api.server:app`).
+- Start command: usa `CMD` de Dockerfile (`python3 scripts/tools/bootstrap_runtime.py && gunicorn --bind 0.0.0.0:8000 api.server:app`).
 - Variables requeridas:
   - `DATABASE_URL` (PostgreSQL de Coolify o externo).
   - `DATA_JSON_SOURCE_URL` (opcional, JSON remoto con `{meta, items}` para poblar/actualizar datos).
@@ -219,24 +240,6 @@ Chequeos incluidos:
 
 Si no defines `DATA_JSON_SOURCE_URL` y la DB está vacía, el sistema hace scraping con la fuente integrada verificada USGS MRDS (WFS para Chile).
 Antes de levantar API, el runtime ejecuta migraciones de esquema automáticamente.
-
-## Verificación de faltantes y búsqueda
-
-Para verificar faltantes reales y generar búsquedas de fuentes candidatas:
-
-```bash
-python3 scripts/missing_data_hunt.py
-```
-
-Salidas:
-
-- `reports/missing_data_hunt.json`
-- `reports/missing_data_hunt.md`
-
-Variables opcionales:
-
-- `MISSING_HUNT_MAX_RECORDS` (default `50`)
-- `MISSING_HUNT_WEB_SEARCH` (default `true`)
 
 ### 2) Base de datos PostgreSQL
 
@@ -256,7 +259,7 @@ Variables opcionales:
 - Command:
 
 ```bash
-python3 scripts/refresh_cycle.py
+python3 scripts/tools/refresh_cycle.py
 ```
 
 ### 4) Workflows de GitHub

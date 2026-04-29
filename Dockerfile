@@ -12,4 +12,4 @@ COPY . /app
 
 EXPOSE 8000
 
-CMD ["sh", "-lc", "python3 scripts/bootstrap_runtime.py && gunicorn --bind 0.0.0.0:8000 api.server:app"]
+CMD ["sh", "-lc", "python3 scripts/tools/bootstrap_runtime.py && gunicorn --bind 0.0.0.0:8000 api.server:app"]

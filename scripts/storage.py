@@ -745,6 +745,9 @@ def apply_manual_overrides(payload: dict[str, Any]) -> tuple[dict[str, Any], int
                 note=matched.source_note.strip() or f"override_id={matched.id}",
                 updated_at=now,
             )
+        if matched.target_latitude is not None and matched.target_longitude is not None:
+            item["latitude"] = float(matched.target_latitude)
+            item["longitude"] = float(matched.target_longitude)
         if matched.data_origin and matched.data_origin.strip():
             item["data_origin"] = matched.data_origin.strip()
         if matched.confidence_score is not None:
@@ -767,6 +770,51 @@ def apply_manual_overrides(payload: dict[str, Any]) -> tuple[dict[str, Any], int
         applied += 1
 
     return payload, applied
+
+
+def keep_only_override_candidates(payload: dict[str, Any]) -> tuple[dict[str, Any], int]:
+    items = payload.get("items")
+    if not isinstance(items, list) or not items:
+        return payload, 0
+
+    engine = _make_engine()
+    ensure_schema(engine)
+    with Session(engine) as session:
+        overrides = session.scalars(select(MineOverride).where(MineOverride.active.is_(True))).all()
+
+    if not overrides:
+        payload["items"] = []
+        return payload, 0
+
+    kept: list[dict[str, Any]] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        if any(_override_matches(item, override) for override in overrides):
+            kept.append(item)
+    payload["items"] = kept
+    return payload, len(kept)
+
+
+def list_active_override_targets() -> list[dict[str, Any]]:
+    engine = _make_engine()
+    ensure_schema(engine)
+    with Session(engine) as session:
+        overrides = session.scalars(select(MineOverride).where(MineOverride.active.is_(True))).all()
+
+    targets: list[dict[str, Any]] = []
+    for override in overrides:
+        if override.target_latitude is None or override.target_longitude is None:
+            continue
+        targets.append(
+            {
+                "name_normalized": str(override.target_name_normalized or "").strip(),
+                "latitude": float(override.target_latitude),
+                "longitude": float(override.target_longitude),
+                "radius_deg": float(override.match_radius_deg or 0.05),
+            }
+        )
+    return targets
 
 
 def _coord_cache_key(lat: float, lng: float) -> tuple[float, float]:

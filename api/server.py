@@ -9,7 +9,7 @@ import sys
 from flask import Flask, jsonify, request, send_from_directory
 
 ROOT = Path(__file__).resolve().parents[1]
-ASSETS_ROOT = ROOT
+ASSETS_ROOT = ROOT / "web"
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 

@@ -18,3 +18,9 @@ node_modules/
 # Python caches
 __pycache__/
 *.pyc
+.venv/
+.pytest_cache/
+.mypy_cache/
+
+# Generated reports/artifacts
+reports/
