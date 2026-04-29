@@ -2,7 +2,6 @@
   const cfg = window.APP_CONFIG || {};
   const MINES_URL = cfg.MINES_URL || "/api/minas";
   const CONCESSIONS_URL = cfg.CONCESSIONS_URL || "/api/concesiones";
-  const DATA_URL = cfg.DATA_URL || "/api/yacimientos";
   const LINK_REPORT_URL = cfg.LINK_REPORT_URL || "/api/link-report";
   const GTM_ID = (cfg.GTM_ID || "").trim();
   const CACHE_KEY_BASE = cfg.CACHE_KEY || "mineraleschilenos:data:v3";
@@ -662,7 +661,7 @@
 
   function getDatasetCandidates(mode) {
     const rawCandidates = mode === "concesiones"
-      ? [CONCESSIONS_URL, DATA_URL]
+      ? [CONCESSIONS_URL]
       : [MINES_URL];
     return rawCandidates.filter((url) => typeof url === "string" && url.trim().length > 0);
   }
