@@ -4,7 +4,7 @@ Use this file as the single tracking reference for the current recovery plan.
 
 Reference note:
 
-- `PUBLIC_DATA_FEASIBILITY_NOTE.md` defines what is feasible from public sources and what is sensitive/non-public.
+- `docs/PUBLIC_DATA_FEASIBILITY_NOTE.md` defines what is feasible from public sources and what is sensitive/non-public.
 
 Execution rule:
 

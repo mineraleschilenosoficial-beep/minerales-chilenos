@@ -8,11 +8,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-from storage import dataset_exists, run_schema_migrations
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-
-ROOT = Path(__file__).resolve().parents[1]
-
+from scripts.storage import dataset_exists, run_schema_migrations
 
 def _as_bool(env_value: str | None, default: bool = False) -> bool:
     if env_value is None:
@@ -36,7 +36,7 @@ def main() -> int:
     print("bootstrap: dataset missing, running daily refresh")
     subprocess.run([sys.executable, "scripts/daily_refresh.py"], cwd=ROOT, check=True)
     print("bootstrap: running dataset validation")
-    subprocess.run([sys.executable, "scripts/validate_data.py"], cwd=ROOT, check=True)
+    subprocess.run([sys.executable, "scripts/tools/validate_data.py"], cwd=ROOT, check=True)
     print("bootstrap: completed")
     return 0
 

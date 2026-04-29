@@ -467,6 +467,17 @@ body.detail-open #detail-backdrop {
   font-size: 14px;
 }
 
+.detail-group-body .inline-link-soft {
+  color: #b8cfde;
+  text-decoration: underline;
+  text-decoration-color: rgba(184, 207, 222, 0.45);
+  text-underline-offset: 2px;
+}
+
+.detail-group-body .inline-link-soft:hover {
+  color: #d8e6ef;
+}
+
 .link-btn {
   display: inline-block;
   text-decoration: none;

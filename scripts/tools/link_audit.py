@@ -11,10 +11,13 @@ import urllib.request
 from pathlib import Path
 from typing import Dict, List
 
-from storage import get_dataset, save_link_report
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-ROOT = Path(__file__).resolve().parents[1]
-INDEX_FILE = ROOT / "index.html"
+from scripts.storage import get_dataset, save_link_report
+
+INDEX_FILE = ROOT / "web" / "index.html"
 
 PRECONNECT_ONLY = {
     "https://fonts.googleapis.com",

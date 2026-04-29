@@ -44,11 +44,11 @@
   let allItems = [];
   let filtered = [];
   let onlyLibres = false;
+  let pinViewMode = "minerales";
   let mobileSheetState = "collapsed";
   let mobileSheetStateInitialized = false;
   const MAX_LIST_RENDER = 350;
   const markerById = new Map();
-  const allMarkerById = new Map();
   const itemById = new Map();
   const mineralIndex = new Map();
   const regionIndex = new Map();
@@ -62,6 +62,7 @@
     mineral: document.getElementById("f-mineral"),
     region: document.getElementById("f-region"),
     tipo: document.getElementById("f-tipo"),
+    viewMode: document.getElementById("f-viewmode"),
     list: document.getElementById("list"),
     status: document.getElementById("status"),
     topKpis: document.getElementById("topKpis"),
@@ -134,6 +135,21 @@
       .trim();
   }
 
+  function normalizeConcessionAvailability(value) {
+    if (value === true || value === false) return value;
+    if (typeof value === "number") {
+      if (value === 1) return true;
+      if (value === 0) return false;
+      return null;
+    }
+    if (typeof value !== "string") return null;
+    const normalized = value.trim().toLocaleLowerCase("es-CL");
+    if (!normalized) return null;
+    if (["true", "1", "yes", "si", "sí", "available", "disponible", "libre"].includes(normalized)) return true;
+    if (["false", "0", "no", "unavailable", "not_available", "no disponible", "ocupada"].includes(normalized)) return false;
+    return null;
+  }
+
   function mineralStyle(value) {
     const normalized = normalizeMineral(value);
     for (const style of MINERAL_STYLES) {
@@ -143,13 +159,21 @@
   }
 
   function colorFor(item) {
-    if (item.is_available_concession) return "#2D7A4F";
+    if (pinViewMode === "concesiones") {
+      if (item.is_available_concession === true) return "#2D7A4F";
+      if (item.is_available_concession === false) return "#B55656";
+      return "#9A8C6E";
+    }
     const primary = (item.minerals && item.minerals[0]) || "desconocido";
     return mineralStyle(primary).color;
   }
 
   function symbolFor(item) {
-    if (item.is_available_concession) return "L";
+    if (pinViewMode === "concesiones") {
+      if (item.is_available_concession === true) return "L";
+      if (item.is_available_concession === false) return "N";
+      return "?";
+    }
     const primary = (item.minerals && item.minerals[0]) || "desconocido";
     return mineralStyle(primary).symbol;
   }
@@ -223,7 +247,7 @@
   }
 
   function setTopKpis(meta, items) {
-    const libres = items.filter((x) => x.is_available_concession).length;
+    const libres = items.filter((x) => x.is_available_concession === true).length;
     const activos = items.length - libres;
     els.topKpis.innerHTML = [
       `<div class="kpi">${items.length} puntos</div>`,
@@ -250,14 +274,19 @@
 
   function renderLegend() {
     if (!els.legendList) return;
-    const rows = [
-      ...MINERAL_STYLES
-        .filter((style) => style.key !== "desconocido")
-        .map((style) => {
-          return `<div class="legend-row"><span class="sw" style="background:${style.color}"></span> ${style.label}</div>`;
-        }),
-      '<div class="legend-row"><span class="sw" style="background:#2D7A4F"></span> Concesion disponible</div>'
-    ];
+    const rows = pinViewMode === "concesiones"
+      ? [
+        '<div class="legend-row"><span class="sw" style="background:#2D7A4F"></span> Concesión disponible</div>',
+        '<div class="legend-row"><span class="sw" style="background:#B55656"></span> Concesión no disponible</div>',
+        '<div class="legend-row"><span class="sw" style="background:#9A8C6E"></span> Sin dato de concesión</div>'
+      ]
+      : [
+        ...MINERAL_STYLES
+          .filter((style) => style.key !== "desconocido")
+          .map((style) => {
+            return `<div class="legend-row"><span class="sw" style="background:${style.color}"></span> ${style.label}</div>`;
+          })
+      ];
     els.legendList.innerHTML = rows.join("");
   }
 
@@ -409,6 +438,7 @@
     if (els.mineral.value) chips.push(`<span class="mchip">Mineral: ${escapeHtml(toTitleCase(els.mineral.value))}</span>`);
     if (els.region.value) chips.push(`<span class="mchip">Región: ${escapeHtml(els.region.value)}</span>`);
     if (els.tipo.value) chips.push(`<span class="mchip">Tipo: ${escapeHtml(prettyTypeLabel(els.tipo.value))}</span>`);
+    chips.push(`<span class="mchip">Modo: ${pinViewMode === "concesiones" ? "Concesiones" : "Minerales"}</span>`);
     if (onlyLibres) chips.push(`<span class="mchip">Solo disponibles</span>`);
 
     const hasFilters = q || els.mineral.value || els.region.value || els.tipo.value || onlyLibres;
@@ -422,24 +452,47 @@
     });
     els.mobileFilterBar.querySelectorAll("[data-action='clear-filters']").forEach((node) => {
       node.addEventListener("click", () => {
-        onlyLibres = false;
-        syncLibresButton();
-        els.q.value = "";
-        els.mineral.value = "";
-        els.region.value = "";
-        els.tipo.value = "";
-        applyFilters();
+        resetFiltersAndApply();
       });
     });
   }
 
+  function resetFiltersAndApply() {
+    onlyLibres = false;
+    syncLibresButton();
+    els.q.value = "";
+    els.mineral.value = "";
+    els.region.value = "";
+    els.tipo.value = "";
+    applyFilters();
+  }
+
   function syncLibresButton() {
     if (!els.btnLibres) return;
+    const concessionsMode = pinViewMode === "concesiones";
+    if (!concessionsMode) {
+      onlyLibres = false;
+      els.btnLibres.disabled = false;
+      els.btnLibres.classList.remove("btn-gold", "is-active");
+      els.btnLibres.setAttribute("aria-pressed", "false");
+      els.btnLibres.textContent = "Solo concesiones disponibles (modo minerales)";
+      return;
+    }
+    els.btnLibres.disabled = false;
     const active = Boolean(onlyLibres);
     els.btnLibres.classList.toggle("btn-gold", active);
     els.btnLibres.classList.toggle("is-active", active);
     els.btnLibres.setAttribute("aria-pressed", active ? "true" : "false");
-    els.btnLibres.textContent = active ? "Solo concesiones disponibles (activo)" : "Solo concesiones disponibles";
+    els.btnLibres.textContent = active
+      ? "Solo concesiones disponibles (activo)"
+      : "Solo concesiones disponibles (mostrar solo disponibles)";
+  }
+
+  function concessionSortRank(item) {
+    if (item.is_available_concession === false) return 0;
+    if (item.is_available_concession === null) return 1;
+    if (item.is_available_concession === true) return 2;
+    return 3;
   }
 
   function debounce(fn, waitMs) {
@@ -466,11 +519,7 @@
       const end = Math.min(cursor + chunkSize, items.length);
       for (; cursor < end; cursor += 1) {
         const item = items[cursor];
-        let marker = allMarkerById.get(item.id);
-        if (!marker) {
-          marker = buildMarker(item);
-          allMarkerById.set(item.id, marker);
-        }
+        const marker = buildMarker(item);
         markerById.set(item.id, marker);
         chunkMarkers.push(marker);
       }
@@ -498,40 +547,52 @@
     requestAnimationFrame(pushChunk);
   }
 
+  function resolveBaseItems(fMineral, fRegion, fTipo) {
+    const candidateBuckets = [];
+    if (fMineral) candidateBuckets.push(mineralIndex.get(fMineral) || []);
+    if (fRegion) candidateBuckets.push(regionIndex.get(fRegion) || []);
+    if (fTipo) candidateBuckets.push(tipoIndex.get(fTipo) || []);
+    if (pinViewMode === "concesiones" && onlyLibres) candidateBuckets.push(libresItems);
+    return candidateBuckets.length
+      ? candidateBuckets.reduce((best, bucket) => (bucket.length < best.length ? bucket : best))
+      : allItems;
+  }
+
+  function matchesQueryTokens(item, queryTokens) {
+    if (!queryTokens.length) return true;
+    const haystack = item._searchText;
+    return queryTokens.every((token) => haystack.includes(token));
+  }
+
+  function matchesStructuredFilters(item, fMineral, fRegion, fTipo) {
+    if (pinViewMode === "concesiones" && onlyLibres && item.is_available_concession !== true) return false;
+    if (fMineral && !(item.minerals || []).includes(fMineral)) return false;
+    if (fRegion && item.region !== fRegion) return false;
+    if (fTipo && item.site_type !== fTipo) return false;
+    return true;
+  }
+
   function applyFilters() {
     const q = normalizeSearchValue(els.q.value);
     const queryTokens = q ? q.split(/\s+/).filter(Boolean) : [];
     const fMineral = els.mineral.value;
     const fRegion = els.region.value;
     const fTipo = els.tipo.value;
-    const candidateBuckets = [];
-    if (fMineral) candidateBuckets.push(mineralIndex.get(fMineral) || []);
-    if (fRegion) candidateBuckets.push(regionIndex.get(fRegion) || []);
-    if (fTipo) candidateBuckets.push(tipoIndex.get(fTipo) || []);
-    if (onlyLibres) candidateBuckets.push(libresItems);
-    const baseItems = candidateBuckets.length
-      ? candidateBuckets.reduce((best, bucket) => (bucket.length < best.length ? bucket : best))
-      : allItems;
+    const baseItems = resolveBaseItems(fMineral, fRegion, fTipo);
 
     const nextFiltered = [];
     for (let i = 0; i < baseItems.length; i += 1) {
-      const x = baseItems[i];
-      if (onlyLibres && !x.is_available_concession) continue;
-      if (fMineral && !(x.minerals || []).includes(fMineral)) continue;
-      if (fRegion && x.region !== fRegion) continue;
-      if (fTipo && x.site_type !== fTipo) continue;
-      if (queryTokens.length) {
-        let allTokensFound = true;
-        const haystack = x._searchText;
-        for (let t = 0; t < queryTokens.length; t += 1) {
-          if (!haystack.includes(queryTokens[t])) {
-            allTokensFound = false;
-            break;
-          }
-        }
-        if (!allTokensFound) continue;
-      }
-      nextFiltered.push(x);
+      const item = baseItems[i];
+      if (!matchesStructuredFilters(item, fMineral, fRegion, fTipo)) continue;
+      if (!matchesQueryTokens(item, queryTokens)) continue;
+      nextFiltered.push(item);
+    }
+    if (pinViewMode === "concesiones" && !onlyLibres) {
+      nextFiltered.sort((a, b) => {
+        const byConcession = concessionSortRank(a) - concessionSortRank(b);
+        if (byConcession !== 0) return byConcession;
+        return String(a.name || "").localeCompare(String(b.name || ""), "es");
+      });
     }
     filtered = nextFiltered;
 
@@ -561,116 +622,123 @@
     ].join("");
   }
 
-  function openDetail(item) {
-    els.modalTitle.textContent = item.name;
-    const mineralPills = (item.minerals || []).map((m) => {
-      const style = mineralStyle(m);
+  function isMeaningfulValue(value) {
+    const text = String(value ?? "").trim();
+    return Boolean(text && text !== "-" && text.toLocaleLowerCase("es-CL") !== "n/a");
+  }
+
+  function textOrUnavailable(value) {
+    const text = String(value ?? "").trim();
+    return text && text !== "-" ? escapeHtml(text) : "<em>No disponible</em>";
+  }
+
+  function buildMineralPillsHtml(item) {
+    return (item.minerals || []).map((mineral) => {
+      const style = mineralStyle(mineral);
       return [
         `<span class="mineral-pill" style="--mineral-color:${style.color}">`,
         `<span class="marker-pin marker-pin--mini" style="background:${style.color}"><span>${style.symbol}</span></span>`,
-        `<span>${escapeHtml(toTitleCase(m))}</span>`,
+        `<span>${escapeHtml(toTitleCase(mineral))}</span>`,
         "</span>"
       ].join("");
     }).join("");
+  }
 
-    const freeSection = item.is_available_concession ? [
+  function getConcessionReliability(item) {
+    const provenance = Array.isArray(item.field_provenance) ? item.field_provenance : [];
+    const concessionRows = provenance.filter((row) => row && row.field_name === "is_available_concession");
+    const hasManual = concessionRows.some((row) => String(row.source_type || "").toLowerCase() === "manual");
+    const hasOfficial = concessionRows.some((row) => String(row.source_type || "").toLowerCase() === "official");
+    const hasAuth = Array.isArray(item.operating_authorizations) && item.operating_authorizations.length > 0;
+
+    if (hasManual || hasOfficial) {
+      return {
+        className: "reliability-high",
+        label: "Confiabilidad alta",
+        note: "Estado respaldado por fuente manual/oficial trazable."
+      };
+    }
+    if (hasAuth) {
+      return {
+        className: "reliability-medium",
+        label: "Confiabilidad media",
+        note: "Derivado de autorizaciones de operación disponibles."
+      };
+    }
+    return {
+      className: "reliability-low",
+      label: "Confiabilidad baja",
+      note: "Sin evidencia oficial/manual suficiente para confirmar estado."
+    };
+  }
+
+  function buildConcessionEvidenceHtml(item) {
+    const concessionValueLabel = item.is_available_concession === true
+      ? "Disponible"
+      : item.is_available_concession === false
+        ? "No disponible"
+        : "Sin dato";
+    const provenance = Array.isArray(item.field_provenance) ? item.field_provenance : [];
+    const rows = provenance.filter((row) => row && row.field_name === "is_available_concession");
+    const latest = rows.length ? rows[rows.length - 1] : null;
+    const srcType = latest ? String(latest.source_type || "").trim() : "";
+    const srcUrl = latest ? String(latest.source_url || "").trim() : "";
+    const srcNote = latest ? String(latest.note || "").trim() : "";
+    const sourceText = srcUrl && srcUrl.startsWith("http")
+      ? `<a class="inline-link-soft" href="${escapeHtml(srcUrl)}" target="_blank" rel="noreferrer">${escapeHtml(srcUrl)}</a>`
+      : (srcType ? escapeHtml(srcType) : "<em>Sin fuente trazable</em>");
+    return [
+      `Valor concesión: <strong>${escapeHtml(concessionValueLabel)}</strong>`,
+      `Fuente: ${sourceText}`,
+      srcNote ? `Nota: ${escapeHtml(srcNote)}` : ""
+    ].filter(Boolean).join("<br>");
+  }
+
+  function renderResourceLinks(resources) {
+    const rows = (Array.isArray(resources) ? resources : [])
+      .map((entry) => {
+        if (typeof entry === "string") {
+          if (!entry.startsWith("http")) return "";
+          return `<a class="source-link" href="${escapeHtml(entry)}" target="_blank" rel="noreferrer">${escapeHtml(entry)}</a>`;
+        }
+        if (!entry || typeof entry !== "object") return "";
+        const url = typeof entry.url === "string" ? entry.url : "";
+        if (!url.startsWith("http")) return "";
+        const name = escapeHtml(entry.name || url);
+        const note = entry.note ? `<small>${escapeHtml(entry.note)}</small>` : "";
+        return `<a class="source-link" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${name}<small>${escapeHtml(url)}</small>${note}</a>`;
+      })
+      .filter(Boolean);
+    return rows.length ? rows.join("") : '<div class="item-meta">No disponible.</div>';
+  }
+
+  function docsByType(docsList, docType) {
+    const normalizedType = String(docType || "").trim().toLocaleLowerCase("es-CL");
+    return docsList.filter((doc) => String(doc && doc.doc_type || "").trim().toLocaleLowerCase("es-CL") === normalizedType);
+  }
+
+  function buildConcessionExtraSection(item) {
+    const hasConcessionExtra =
+      isMeaningfulValue(item.potential) ||
+      isMeaningfulValue(item.depth) ||
+      isMeaningfulValue(item.study_date) ||
+      isMeaningfulValue(item.study_source);
+    if (!(item.is_available_concession === true && hasConcessionExtra)) {
+      return "";
+    }
+    return [
       '<div class="card" style="border-color:rgba(45,122,79,0.45);background:rgba(45,122,79,0.2)">',
       "<strong>Concesión disponible</strong><br>",
-      `Potencial: ${item.potential || "-"}<br>`,
-      `Profundidad: ${item.depth || "-"}<br>`,
-      `Ultimo estudio: ${(item.study_date || "-")} ${(item.study_source ? "· " + item.study_source : "")}`,
+      isMeaningfulValue(item.potential) ? `Potencial: ${escapeHtml(item.potential)}<br>` : "",
+      isMeaningfulValue(item.depth) ? `Profundidad: ${escapeHtml(item.depth)}<br>` : "",
+      (isMeaningfulValue(item.study_date) || isMeaningfulValue(item.study_source))
+        ? `Ultimo estudio: ${isMeaningfulValue(item.study_date) ? escapeHtml(item.study_date) : "-"} ${isMeaningfulValue(item.study_source) ? "· " + escapeHtml(item.study_source) : ""}`
+        : "",
       "</div>"
-    ].join("") : "";
+    ].join("");
+  }
 
-    const concessionReliability = (() => {
-      const provenance = Array.isArray(item.field_provenance) ? item.field_provenance : [];
-      const concessionRows = provenance.filter((row) => row && row.field_name === "is_available_concession");
-      const hasManual = concessionRows.some((row) => String(row.source_type || "").toLowerCase() === "manual");
-      const hasOfficial = concessionRows.some((row) => String(row.source_type || "").toLowerCase() === "official");
-      const hasAuth = Array.isArray(item.operating_authorizations) && item.operating_authorizations.length > 0;
-
-      if (hasManual || hasOfficial) {
-        return {
-          className: "reliability-high",
-          label: "Confiabilidad alta",
-          note: "Estado respaldado por fuente manual/oficial trazable."
-        };
-      }
-      if (hasAuth) {
-        return {
-          className: "reliability-medium",
-          label: "Confiabilidad media",
-          note: "Derivado de autorizaciones de operación disponibles."
-        };
-      }
-      return {
-        className: "reliability-low",
-        label: "Confiabilidad baja",
-        note: "Sin evidencia oficial/manual suficiente para confirmar estado."
-      };
-    })();
-
-    const docsList = Array.isArray(item.docs) ? item.docs : [];
-    const renderLinks = (resources) => {
-      const rows = (Array.isArray(resources) ? resources : [])
-        .map((entry) => {
-          if (typeof entry === "string") {
-            if (!entry.startsWith("http")) return "";
-            return `<a class="source-link" href="${escapeHtml(entry)}" target="_blank" rel="noreferrer">${escapeHtml(entry)}</a>`;
-          }
-          if (!entry || typeof entry !== "object") return "";
-          const url = typeof entry.url === "string" ? entry.url : "";
-          if (!url.startsWith("http")) return "";
-          const name = escapeHtml(entry.name || url);
-          const note = entry.note ? `<small>${escapeHtml(entry.note)}</small>` : "";
-          return `<a class="source-link" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${name}<small>${escapeHtml(url)}</small>${note}</a>`;
-        })
-        .filter(Boolean);
-      return rows.length ? rows.join("") : '<div class="item-meta">No disponible.</div>';
-    };
-    const docsByType = (docType) => {
-      const normalizedType = String(docType || "").trim().toLocaleLowerCase("es-CL");
-      return docsList.filter((doc) => String(doc && doc.doc_type || "").trim().toLocaleLowerCase("es-CL") === normalizedType);
-    };
-    const docs = docsList.length
-      ? docsList.map((d) => `<a class="link-btn" style="margin-right:8px;background:#2b2b2b;color:#fff;border:1px solid var(--line)" href="${d.url}" target="_blank" rel="noreferrer">${d.name || d.url}</a>`).join("")
-      : "";
-
-    const pinSources = Array.isArray(item.sources) ? item.sources : [];
-    const sourcesHtml = pinSources
-      .filter((src) => src && typeof src.url === "string" && src.url.startsWith("http"))
-      .map((src) => {
-        const name = escapeHtml(src.name || src.url);
-        const url = escapeHtml(src.url);
-        const note = src.note ? `<small>${escapeHtml(src.note)}</small>` : "";
-        return `<a class="source-link" href="${url}" target="_blank" rel="noreferrer">${name}<small>${url}</small>${note}</a>`;
-      })
-      .join("");
-
-    const webBtn = (item.website && item.website !== "#")
-      ? `<a class="link-btn" href="${item.website}" target="_blank" rel="noreferrer">Ver página corporativa</a>`
-      : "";
-    const textOrUnavailable = (value) => {
-      const text = String(value ?? "").trim();
-      return text && text !== "-" ? escapeHtml(text) : "<em>No disponible</em>";
-    };
-
-    const environmentalReports = (Array.isArray(item.environmental_reports) && item.environmental_reports.length)
-      ? item.environmental_reports
-      : docsByType("environmental_report");
-    const operatingAuthorizations = (Array.isArray(item.operating_authorizations) && item.operating_authorizations.length)
-      ? item.operating_authorizations
-      : docsByType("operating_authorization");
-    const geologyStudies = (Array.isArray(item.geology_studies) && item.geology_studies.length)
-      ? item.geology_studies
-      : docsByType("geology_study");
-    const mineralLifeStudies = (Array.isArray(item.mineral_life_studies) && item.mineral_life_studies.length)
-      ? item.mineral_life_studies
-      : docsByType("mineral_life_study");
-    const mitigationStudies = (Array.isArray(item.mitigation_studies) && item.mitigation_studies.length)
-      ? item.mitigation_studies
-      : docsByType("environmental_mitigation_study");
-
+  function buildUsefulInfoHtml(item) {
     const usefulRows = [];
     const pushUseful = (label, value) => {
       if (value === null || value === undefined) return;
@@ -687,28 +755,85 @@
     pushUseful("Producción", item.production);
     pushUseful("Superficie", item.surface);
     pushUseful("Altitud", item.altitude);
-
-    const usefulHtml = usefulRows.length
+    return usefulRows.length
       ? usefulRows.join("<br>")
       : "Sin datos operativos adicionales útiles para este registro.";
-    const mandatoryInfoHtml = [
+  }
+
+  function buildMandatoryInfoHtml(item) {
+    const website = item.website && item.website !== "#"
+      ? `<a class="inline-link-soft" href="${escapeHtml(item.website)}" target="_blank" rel="noreferrer">${escapeHtml(item.website)}</a>`
+      : "<em>No disponible</em>";
+    return [
       `Empresa operadora: <strong>${textOrUnavailable(item.mining_company)}</strong>`,
       `Desde cuándo opera: <strong>${textOrUnavailable(item.operation_since)}</strong>`,
-      `Página web oficial: ${item.website && item.website !== "#" ? `<a href="${escapeHtml(item.website)}" target="_blank" rel="noreferrer">${escapeHtml(item.website)}</a>` : "<em>No disponible</em>"}`
+      `Página web oficial: ${website}`
     ].join("<br>");
+  }
+
+  function openDetail(item) {
+    els.modalTitle.textContent = item.name;
+    const mineralPills = buildMineralPillsHtml(item);
+    const freeSection = buildConcessionExtraSection(item);
+    const concessionReliability = getConcessionReliability(item);
+    const concessionEvidence = buildConcessionEvidenceHtml(item);
+    const docsList = Array.isArray(item.docs) ? item.docs : [];
+    const docs = docsList.length
+      ? docsList
+        .filter((doc) => doc && typeof doc.url === "string" && doc.url.startsWith("http"))
+        .map((doc) => {
+          const url = escapeHtml(doc.url);
+          const name = escapeHtml(doc.name || doc.url);
+          return `<a class="link-btn" style="margin-right:8px;background:#2b2b2b;color:#fff;border:1px solid var(--line)" href="${url}" target="_blank" rel="noreferrer">${name}</a>`;
+        })
+        .join("")
+      : "";
+
+    const pinSources = Array.isArray(item.sources) ? item.sources : [];
+    const sourcesHtml = pinSources
+      .filter((src) => src && typeof src.url === "string" && src.url.startsWith("http"))
+      .map((src) => {
+        const name = escapeHtml(src.name || src.url);
+        const url = escapeHtml(src.url);
+        const note = src.note ? `<small>${escapeHtml(src.note)}</small>` : "";
+        return `<a class="source-link" href="${url}" target="_blank" rel="noreferrer">${name}<small>${url}</small>${note}</a>`;
+      })
+      .join("");
+
+    const webBtn = (item.website && item.website !== "#")
+      ? `<a class="link-btn" href="${item.website}" target="_blank" rel="noreferrer">Ver página corporativa</a>`
+      : "";
+    const environmentalReports = (Array.isArray(item.environmental_reports) && item.environmental_reports.length)
+      ? item.environmental_reports
+      : docsByType(docsList, "environmental_report");
+    const operatingAuthorizations = (Array.isArray(item.operating_authorizations) && item.operating_authorizations.length)
+      ? item.operating_authorizations
+      : docsByType(docsList, "operating_authorization");
+    const geologyStudies = (Array.isArray(item.geology_studies) && item.geology_studies.length)
+      ? item.geology_studies
+      : docsByType(docsList, "geology_study");
+    const mineralLifeStudies = (Array.isArray(item.mineral_life_studies) && item.mineral_life_studies.length)
+      ? item.mineral_life_studies
+      : docsByType(docsList, "mineral_life_study");
+    const mitigationStudies = (Array.isArray(item.mitigation_studies) && item.mitigation_studies.length)
+      ? item.mitigation_studies
+      : docsByType(docsList, "environmental_mitigation_study");
+    const usefulHtml = buildUsefulInfoHtml(item);
+    const mandatoryInfoHtml = buildMandatoryInfoHtml(item);
 
     els.modalContent.innerHTML = [
       `<div style="color:var(--gold);margin-bottom:10px">${item.site_type} · ${item.region}</div>`,
       `<div class="mineral-pill-row">${mineralPills}</div>`,
       `<div class="reliability-badge ${concessionReliability.className}">${concessionReliability.label}</div>`,
       `<div class="item-meta" style="margin:-4px 0 10px">${escapeHtml(concessionReliability.note)}</div>`,
+      `<details class="detail-group" open><summary>Concesión (valor y fuente)</summary><div class="detail-group-body">${concessionEvidence}</div></details>`,
       `<details class="detail-group" open><summary>Datos públicos disponibles</summary><div class="detail-group-body">${mandatoryInfoHtml}</div></details>`,
       `<details class="detail-group" open><summary>Ficha del yacimiento</summary><div class="detail-group-body">${usefulHtml}</div></details>`,
       freeSection,
-      `<details class="detail-group"><summary>Informes ambientales</summary><div class="detail-group-body"><div id="pin-source-links" style="display:grid;gap:8px;">${renderLinks(environmentalReports)}</div></div></details>`,
-      `<details class="detail-group"><summary>Autorizaciones de operación</summary><div class="detail-group-body"><div id="pin-source-links" style="display:grid;gap:8px;">${renderLinks(operatingAuthorizations)}</div></div></details>`,
-      `<details class="detail-group"><summary>Estudios geológicos y duración del mineral</summary><div class="detail-group-body"><div id="pin-source-links" style="display:grid;gap:8px;">${renderLinks([...geologyStudies, ...mineralLifeStudies])}</div></div></details>`,
-      `<details class="detail-group"><summary>Estudios de mitigación ambiental</summary><div class="detail-group-body"><div id="pin-source-links" style="display:grid;gap:8px;">${renderLinks(mitigationStudies)}</div></div></details>`,
+      `<details class="detail-group"><summary>Informes ambientales</summary><div class="detail-group-body"><div id="pin-source-links" style="display:grid;gap:8px;">${renderResourceLinks(environmentalReports)}</div></div></details>`,
+      `<details class="detail-group"><summary>Autorizaciones de operación</summary><div class="detail-group-body"><div id="pin-source-links" style="display:grid;gap:8px;">${renderResourceLinks(operatingAuthorizations)}</div></div></details>`,
+      `<details class="detail-group"><summary>Estudios geológicos y duración del mineral</summary><div class="detail-group-body"><div id="pin-source-links" style="display:grid;gap:8px;">${renderResourceLinks([...geologyStudies, ...mineralLifeStudies])}</div></div></details>`,
+      `<details class="detail-group"><summary>Estudios de mitigación ambiental</summary><div class="detail-group-body"><div id="pin-source-links" style="display:grid;gap:8px;">${renderResourceLinks(mitigationStudies)}</div></div></details>`,
       `<details class="detail-group"><summary>Notas y noticias</summary><div class="detail-group-body">${item.notes || "Sin novedades por ahora."}</div></details>`,
       sourcesHtml ? `<details class="detail-group" open><summary>Fuentes del pin</summary><div class="detail-group-body"><div id="pin-source-links" style="display:grid;gap:8px;">${sourcesHtml}</div></div></details>` : "",
       docs ? `<details class="detail-group"><summary>Documentos técnicos</summary><div class="detail-group-body">${docs}</div></details>` : "",
@@ -777,6 +902,14 @@
     let lastY = 0;
     let lastTs = 0;
     let velocityY = 0;
+    const resetGestureState = () => {
+      startY = 0;
+      moved = false;
+      startTs = 0;
+      lastY = 0;
+      lastTs = 0;
+      velocityY = 0;
+    };
 
     els.sheetGrab.addEventListener("pointerdown", (event) => {
       startY = event.clientY;
@@ -823,23 +956,11 @@
           setMobileSheetState("full");
         }
       }
-      startY = 0;
-      moved = false;
-      startTs = 0;
-      lastY = 0;
-      lastTs = 0;
-      velocityY = 0;
+      resetGestureState();
     };
 
     els.sheetGrab.addEventListener("pointerup", handlePointerEnd);
-    els.sheetGrab.addEventListener("pointercancel", () => {
-      startY = 0;
-      moved = false;
-      startTs = 0;
-      lastY = 0;
-      lastTs = 0;
-      velocityY = 0;
-    });
+    els.sheetGrab.addEventListener("pointercancel", resetGestureState);
   }
 
   function wireUi() {
@@ -849,21 +970,43 @@
     els.mineral.addEventListener("change", applyFilters);
     els.region.addEventListener("change", applyFilters);
     els.tipo.addEventListener("change", applyFilters);
+    if (els.viewMode) {
+      els.viewMode.addEventListener("change", () => {
+        const prevMode = pinViewMode;
+        pinViewMode = els.viewMode.value === "concesiones" ? "concesiones" : "minerales";
+        if (pinViewMode !== prevMode && pinViewMode === "concesiones") {
+          // entering concessions from selector should show all states first
+          onlyLibres = false;
+        }
+        syncLibresButton();
+        renderLegend();
+        applyFilters();
+      });
+    }
 
     els.btnLibres.addEventListener("click", () => {
-      onlyLibres = !onlyLibres;
+      if (pinViewMode !== "concesiones") {
+        pinViewMode = "concesiones";
+        if (els.viewMode) els.viewMode.value = "concesiones";
+        // first click: show concessions mode with all statuses
+        onlyLibres = false;
+        renderLegend();
+      } else if (onlyLibres) {
+        // third click: return to minerales mode
+        pinViewMode = "minerales";
+        if (els.viewMode) els.viewMode.value = "minerales";
+        onlyLibres = false;
+        renderLegend();
+      } else {
+        // second click: strict concessions filter
+        onlyLibres = true;
+      }
       syncLibresButton();
       applyFilters();
     });
 
     els.btnReset.addEventListener("click", () => {
-      onlyLibres = false;
-      syncLibresButton();
-      els.q.value = "";
-      els.mineral.value = "";
-      els.region.value = "";
-      els.tipo.value = "";
-      applyFilters();
+      resetFiltersAndApply();
     });
 
     els.btnFit.addEventListener("click", fitToFiltered);
@@ -973,6 +1116,49 @@
     window.addEventListener("resize", () => map.invalidateSize());
   }
 
+  function buildItemSearchText(item) {
+    const locationParts = [
+      item.region,
+      item.city,
+      item.commune,
+      item.province,
+      item.locality,
+      item.location,
+      item.operation_site,
+      item.address
+    ];
+    return normalizeSearchValue([
+      item.name || "",
+      item.mining_company || "",
+      item.site_type || "",
+      ...(item.minerals || []),
+      ...locationParts.filter(Boolean)
+    ].join(" "));
+  }
+
+  function normalizeDatasetItems(items) {
+    return items.map((item) => ({
+      ...item,
+      is_available_concession: normalizeConcessionAvailability(item.is_available_concession),
+      _searchText: buildItemSearchText(item)
+    }));
+  }
+
+  function rebuildIndexes(items) {
+    itemById.clear();
+    mineralIndex.clear();
+    regionIndex.clear();
+    tipoIndex.clear();
+    libresItems = [];
+    items.forEach((item) => {
+      itemById.set(item.id, item);
+      if (item.is_available_concession === true) libresItems.push(item);
+      addToIndex(regionIndex, item.region, item);
+      addToIndex(tipoIndex, item.site_type, item);
+      (item.minerals || []).forEach((mineral) => addToIndex(mineralIndex, mineral, item));
+    });
+  }
+
   async function bootstrap() {
     initGtm();
     renderLegend();
@@ -990,41 +1176,9 @@
 
     try {
       const payload = await loadData();
-      allItems = payload.items.map((x) => {
-        const locationParts = [
-          x.region,
-          x.city,
-          x.commune,
-          x.province,
-          x.locality,
-          x.location,
-          x.operation_site,
-          x.address
-        ];
-        const searchText = normalizeSearchValue([
-          x.name || "",
-          x.mining_company || "",
-          x.site_type || "",
-          ...(x.minerals || []),
-          ...locationParts.filter(Boolean)
-        ].join(" "));
-        return { ...x, _searchText: searchText };
-      });
+      allItems = normalizeDatasetItems(payload.items);
       window.__dataUpdatedAt = payload.meta && payload.meta.updatedAt;
-
-      itemById.clear();
-      mineralIndex.clear();
-      regionIndex.clear();
-      tipoIndex.clear();
-      libresItems = [];
-      allMarkerById.clear();
-      allItems.forEach((item) => {
-        itemById.set(item.id, item);
-        if (item.is_available_concession) libresItems.push(item);
-        addToIndex(regionIndex, item.region, item);
-        addToIndex(tipoIndex, item.site_type, item);
-        (item.minerals || []).forEach((mineral) => addToIndex(mineralIndex, mineral, item));
-      });
+      rebuildIndexes(allItems);
 
       const minerals = new Set(allItems.flatMap((x) => x.minerals || []));
       const regions = new Set(allItems.map((x) => x.region).filter(Boolean));
@@ -1033,6 +1187,9 @@
       fillSelect(els.mineral, minerals, "Todos", toTitleCase);
       fillSelect(els.region, regions, "Todas", toTitleCase);
       fillSelect(els.tipo, tipos, "Todos", prettyTypeLabel);
+      if (els.viewMode) {
+        pinViewMode = els.viewMode.value === "concesiones" ? "concesiones" : "minerales";
+      }
       setTopKpis(payload.meta || {}, allItems);
       syncLibresButton();
       applyFilters();
