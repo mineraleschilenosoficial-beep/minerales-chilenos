@@ -16,6 +16,7 @@
   const FETCH_TIMEOUT_MS_CONCESSIONS = cfg.FETCH_TIMEOUT_MS_CONCESSIONS || 120000;
   const CONCESSIONS_PAGE_SIZE = cfg.CONCESSIONS_PAGE_SIZE || 8000;
   const CONCESSIONS_USE_BBOX = cfg.CONCESSIONS_USE_BBOX !== false;
+  const CHILE_VIEW_BOUNDS = [[-56.2, -76.8], [-17.4, -66.0]];
   const MOBILE_SHEET_KEY = "mineraleschilenos:mobile-sheet-state";
 
   const FALLBACK_CONCESSIONS_DATASET = {
@@ -703,6 +704,15 @@
     }
   }
 
+  function resetMapViewportForConcessions() {
+    if (!mapEnabled || !map) return;
+    try {
+      map.fitBounds(CHILE_VIEW_BOUNDS, { animate: false, padding: [12, 12], maxZoom: 5 });
+    } catch (error) {
+      console.warn("cannot reset concessions viewport", error);
+    }
+  }
+
   async function changeMode(nextModeRaw) {
     const nextMode = nextModeRaw === "concesiones" ? "concesiones" : "minas";
     const prevMode = getCurrentDatasetMode();
@@ -728,6 +738,14 @@
     syncLibresButton();
     renderMobileFilterBar();
     els.status.textContent = `Cambiando a mapa ${getModeLabel(nextMode).toLowerCase()}...`;
+
+    if (nextMode === "concesiones" && CONCESSIONS_USE_BBOX) {
+      // BBOX-scoped concessions must start from a national viewport to avoid
+      // getting stuck with data from a previously zoomed-in region.
+      resetMapViewportForConcessions();
+      lastConcessionsBboxSignature = "";
+      sessionDatasetCache.concesiones = null;
+    }
 
     try {
       let applied = await loadAndRenderCurrentMode();
