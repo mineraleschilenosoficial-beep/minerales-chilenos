@@ -797,6 +797,19 @@ body.detail-open #detail-backdrop {
 }
 
 @media (max-width: 980px) {
+  :root {
+    --sidebar-w: 100%;
+    --header-h: 96px;
+  }
+
+  header {
+    padding: 8px 10px;
+    gap: 8px;
+    align-items: center;
+    align-content: center;
+    flex-wrap: wrap;
+  }
+
   #detail-modal {
     inset: auto 0 -100% 0;
     width: auto;
@@ -820,7 +833,6 @@ body.detail-open #detail-backdrop {
     z-index: 1380;
   }
 
-  :root { --sidebar-w: 100%; }
   #app {
     grid-template-columns: 1fr;
     grid-template-rows: var(--header-h) 1fr;
@@ -829,19 +841,33 @@ body.detail-open #detail-backdrop {
       "map";
   }
 
+  .logo {
+    flex: 1 1 100%;
+    font-size: 23px;
+    line-height: 1.05;
+    min-width: 0;
+  }
+
   .mobile-panel-btn {
+    order: 3;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    margin-right: 6px;
+    margin-right: 0;
     font-size: 13px;
-    min-height: 38px;
-    padding: 8px 12px;
+    min-height: 34px;
+    padding: 6px 10px;
   }
 
   .header-mode-btn {
-    margin-left: auto;
-    margin-right: 6px;
+    order: 2;
+    margin-left: 0;
+    margin-right: 0;
+    min-height: 34px;
+    padding: 6px 10px;
+    font-size: 12px;
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .top-kpis {
@@ -849,8 +875,13 @@ body.detail-open #detail-backdrop {
   }
 
   #health-badge {
+    order: 4;
+    margin-left: auto;
     font-size: 10px;
     padding: 5px 9px;
+    max-width: 45vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   #mobile-filter-bar {
@@ -988,16 +1019,20 @@ body.detail-open #detail-backdrop {
 }
 
 @media (max-width: 560px) {
-  :root { --header-h: 62px; }
+  :root { --header-h: 90px; }
 
   header {
     padding: 0 10px;
   }
 
   .logo {
-    font-size: 22px;
+    font-size: 20px;
     letter-spacing: 1px;
     gap: 6px;
+  }
+
+  #health-badge {
+    display: none;
   }
 
   .panel {

@@ -1,7 +1,7 @@
 (function () {
   const cfg = window.APP_CONFIG || {};
   const MINES_URL = cfg.MINES_URL || "/api/minas";
-  const CONCESSIONS_URL = cfg.CONCESSIONS_URL || "/api/concesiones";
+  const GRAPHQL_URL = cfg.GRAPHQL_URL || "/api/graphql";
   const LINK_REPORT_URL = cfg.LINK_REPORT_URL || "/api/link-report";
   const GTM_ID = (cfg.GTM_ID || "").trim();
   const CACHE_KEY_BASE = cfg.CACHE_KEY || "mineraleschilenos:data:v3";
@@ -15,7 +15,6 @@
   const CACHE_TTL_MS = cfg.CACHE_TTL_MS || 1000 * 60 * 60 * 6;
   const FETCH_TIMEOUT_MS = cfg.FETCH_TIMEOUT_MS || 12000;
   const FETCH_TIMEOUT_MS_CONCESSIONS = cfg.FETCH_TIMEOUT_MS_CONCESSIONS || 120000;
-  const CONCESSIONS_LITE_MODE = true;
   const MOBILE_SHEET_KEY = "mineraleschilenos:mobile-sheet-state";
 
   const FALLBACK_CONCESSIONS_DATASET = {
@@ -108,6 +107,10 @@
   let markerRenderVersion = 0;
   let selectedMarkerId = null;
   const concessionDetailCache = new Map();
+  const concessionsFilterIndexCache = {
+    data: null,
+    inFlight: null
+  };
 
   const els = {
     q: document.getElementById("q"),
@@ -293,6 +296,26 @@
     }
   }
 
+  async function fetchGraphQLWithTimeout(query, variables = {}, timeoutMs = FETCH_TIMEOUT_MS_CONCESSIONS) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(GRAPHQL_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        signal: controller.signal,
+        body: JSON.stringify({ query, variables }),
+      });
+      if (!res.ok) return null;
+      const json = await res.json();
+      if (!json || typeof json !== "object") return null;
+      return json;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
   async function fetchFirstAvailableDataset(candidates, timeoutMs = FETCH_TIMEOUT_MS) {
     const unique = Array.from(new Set((Array.isArray(candidates) ? candidates : []).filter(Boolean)));
     if (!unique.length) return null;
@@ -318,30 +341,96 @@
     });
   }
 
-  async function fetchConcessionsSingleBatch(baseUrl, timeoutMs = FETCH_TIMEOUT_MS_CONCESSIONS) {
-    const stamp = Date.now();
-    const liteQuery = CONCESSIONS_LITE_MODE ? "&lite=true" : "";
-    const url = `${baseUrl}?offset=0&limit=0${liteQuery}&v=${stamp}-full`;
-    return await fetchJsonWithTimeout(url, timeoutMs);
+  async function fetchConcessionsMapCore(timeoutMs = FETCH_TIMEOUT_MS_CONCESSIONS) {
+    const payload = await fetchGraphQLWithTimeout(
+      "query ConcessionsMapCore { concessionsMapCore { meta items } }",
+      {},
+      timeoutMs
+    );
+    const dataset = payload && payload.data && payload.data.concessionsMapCore;
+    if (!dataset || !Array.isArray(dataset.items)) return null;
+    return dataset;
+  }
+
+  function normalizeFilterIndexData(raw) {
+    if (!raw || typeof raw !== "object") return null;
+    const toCleanList = (value) => {
+      if (!Array.isArray(value)) return [];
+      return Array.from(new Set(
+        value
+          .map((entry) => String(entry || "").trim())
+          .filter(Boolean)
+      ));
+    };
+    return {
+      regions: toCleanList(raw.regions),
+      communes: toCleanList(raw.communes),
+      companies: toCleanList(raw.companies),
+      tipos: toCleanList(raw.tipos)
+    };
+  }
+
+  async function fetchConcessionsFilterIndex(timeoutMs = FETCH_TIMEOUT_MS_CONCESSIONS) {
+    const payload = await fetchGraphQLWithTimeout(
+      "query ConcessionsFilterIndex { concessionsFilterIndex { regions communes companies tipos } }",
+      {},
+      timeoutMs
+    );
+    const raw = payload && payload.data && payload.data.concessionsFilterIndex;
+    return normalizeFilterIndexData(raw);
+  }
+
+  function applyConcessionsFilterIndex(indexData) {
+    if (!indexData) return false;
+    fillSelect(els.region, indexData.regions, "Todas", toTitleCase);
+    fillSelect(els.commune, indexData.communes, "Todas", toTitleCase);
+    fillSelect(els.company, indexData.companies, "Todas", toTitleCase);
+    fillSelect(els.tipo, indexData.tipos, "Todos", prettyTypeLabel);
+    return true;
+  }
+
+  function shouldRestoreConcessionFilterState() {
+    return !els.region.value && !els.commune.value && !els.company.value && !els.tipo.value;
+  }
+
+  async function ensureConcessionsFilterIndexLoaded(preferredState = null) {
+    if (concessionsFilterIndexCache.data) {
+      return concessionsFilterIndexCache.data;
+    }
+    if (!concessionsFilterIndexCache.inFlight) {
+      concessionsFilterIndexCache.inFlight = (async () => {
+        const indexData = await fetchConcessionsFilterIndex();
+        if (indexData) {
+          concessionsFilterIndexCache.data = indexData;
+        }
+        return concessionsFilterIndexCache.data;
+      })()
+        .finally(() => {
+          concessionsFilterIndexCache.inFlight = null;
+        });
+    }
+    const data = await concessionsFilterIndexCache.inFlight;
+    if (!data || getCurrentDatasetMode() !== "concesiones") return data;
+    const shouldRestore = shouldRestoreConcessionFilterState();
+    applyConcessionsFilterIndex(data);
+    if (shouldRestore && preferredState) {
+      applyFilterStateToControls(preferredState);
+      applyFilters({ silentStatus: true, persist: false });
+    }
+    return data;
   }
 
   async function fetchConcessionDetailById(id, timeoutMs = FETCH_TIMEOUT_MS_CONCESSIONS) {
     const numericId = Number(id);
     if (!Number.isFinite(numericId) || numericId <= 0) return null;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      const url = `${CONCESSIONS_URL}/${encodeURIComponent(String(numericId))}?v=${Date.now()}`;
-      const res = await fetch(url, { cache: "no-store", signal: controller.signal });
-      if (!res.ok) return null;
-      const json = await res.json();
-      if (!json || typeof json !== "object" || !json.item || typeof json.item !== "object") return null;
-      return json.item;
-    } catch {
-      return null;
-    } finally {
-      clearTimeout(timeoutId);
-    }
+    const payload = await fetchGraphQLWithTimeout(
+      "query ConcessionDetail($id:Int!){ concession(id:$id) }",
+      { id: numericId },
+      timeoutMs
+    );
+    const item = payload && payload.data && payload.data.concession;
+    if (!item || typeof item !== "object") return null;
+    return item;
   }
 
   function replaceItemByIdInCollections(nextItem) {
@@ -761,11 +850,8 @@
     }
   }
 
-  function getDatasetCandidates(mode) {
-    const rawCandidates = mode === "concesiones"
-      ? [CONCESSIONS_URL]
-      : [MINES_URL];
-    return rawCandidates.filter((url) => typeof url === "string" && url.trim().length > 0);
+  function getDatasetCandidates() {
+    return [MINES_URL].filter((url) => typeof url === "string" && url.trim().length > 0);
   }
 
   function getDatasetCacheKey(mode) {
@@ -785,15 +871,17 @@
       return;
     }
     prefetchInFlight[mode] = (async () => {
-      const candidates = getDatasetCandidates(mode);
       const cacheKey = getDatasetCacheKey(mode);
       const timeoutMs = mode === "concesiones" ? FETCH_TIMEOUT_MS_CONCESSIONS : FETCH_TIMEOUT_MS;
       const remotePayload = mode === "concesiones"
-        ? await fetchConcessionsSingleBatch(candidates[0], timeoutMs)
-        : await fetchFirstAvailableDataset(candidates, timeoutMs);
+        ? await fetchConcessionsMapCore(timeoutMs)
+        : await fetchFirstAvailableDataset(getDatasetCandidates(), timeoutMs);
       if (remotePayload) {
         sessionDatasetCache[mode] = remotePayload;
         saveCache(cacheKey, remotePayload);
+        if (mode === "concesiones") {
+          void ensureConcessionsFilterIndexLoaded();
+        }
         return;
       }
       const freshCache = loadFreshCache(cacheKey);
@@ -818,17 +906,19 @@
       return sessionDatasetCache[mode];
     }
     // Do not await prefetch here: it can stall bootstrap if a request hangs.
-    const candidates = getDatasetCandidates(mode);
     const cacheKey = getDatasetCacheKey(mode);
     const fallbackDataset = getFallbackDataset(mode);
     const timeoutMs = mode === "concesiones" ? FETCH_TIMEOUT_MS_CONCESSIONS : FETCH_TIMEOUT_MS;
     const remotePayload = mode === "concesiones"
-      ? await fetchConcessionsSingleBatch(candidates[0], timeoutMs)
-      : await fetchFirstAvailableDataset(candidates, timeoutMs);
+      ? await fetchConcessionsMapCore(timeoutMs)
+      : await fetchFirstAvailableDataset(getDatasetCandidates(), timeoutMs);
     if (remotePayload) {
       saveCache(cacheKey, remotePayload);
       sessionDatasetCache[mode] = remotePayload;
       window.__dataOrigin = "remote";
+      if (mode === "concesiones") {
+        void ensureConcessionsFilterIndexLoaded();
+      }
       return remotePayload;
     }
 
@@ -1444,22 +1534,37 @@
     window.__dataUpdatedAt = payload.meta && payload.meta.updatedAt;
     rebuildIndexes(allItems);
 
-    const minerals = new Set(allItems.flatMap((x) => x.minerals || []));
-    const regions = new Set(allItems.map((x) => x.region).filter(Boolean));
-    const communes = new Set(allItems.map((x) => x.commune).filter(Boolean));
-    const companies = new Set(allItems.map((x) => x.mining_company).filter((x) => String(x || "").trim() && String(x).trim() !== "-"));
-    const tipos = new Set(allItems.map((x) => x.site_type).filter(Boolean));
-
-    fillSelect(els.mineral, minerals, "Todos", toTitleCase);
-    fillSelect(els.region, regions, "Todas", toTitleCase);
-    fillSelect(els.commune, communes, "Todas", toTitleCase);
-    fillSelect(els.company, companies, "Todas", toTitleCase);
-    fillSelect(els.tipo, tipos, "Todos", prettyTypeLabel);
     const store = loadFilterStore();
     const pinned = loadPinnedFilterStore();
     const pinnedState = pinned.modes && pinned.modes[mode];
     const autoState = store.modes && store.modes[mode];
-    applyFilterStateToControls(pinnedState || autoState);
+    const preferredState = pinnedState || autoState;
+    if (mode === "concesiones") {
+      fillSelect(els.mineral, new Set(), "Todos", toTitleCase);
+      const hasCachedFilterIndex = applyConcessionsFilterIndex(concessionsFilterIndexCache.data);
+      if (!hasCachedFilterIndex) {
+        fillSelect(els.region, new Set(), "Todas", toTitleCase);
+        fillSelect(els.commune, new Set(), "Todas", toTitleCase);
+        fillSelect(els.company, new Set(), "Todas", toTitleCase);
+        fillSelect(els.tipo, new Set(), "Todos", prettyTypeLabel);
+      }
+      applyFilterStateToControls(preferredState);
+      if (!hasCachedFilterIndex) {
+        void ensureConcessionsFilterIndexLoaded(preferredState);
+      }
+    } else {
+      const minerals = new Set(allItems.flatMap((x) => x.minerals || []));
+      const regions = new Set(allItems.map((x) => x.region).filter(Boolean));
+      const communes = new Set(allItems.map((x) => x.commune).filter(Boolean));
+      const companies = new Set(allItems.map((x) => x.mining_company).filter((x) => String(x || "").trim() && String(x).trim() !== "-"));
+      const tipos = new Set(allItems.map((x) => x.site_type).filter(Boolean));
+      fillSelect(els.mineral, minerals, "Todos", toTitleCase);
+      fillSelect(els.region, regions, "Todas", toTitleCase);
+      fillSelect(els.commune, communes, "Todas", toTitleCase);
+      fillSelect(els.company, companies, "Todas", toTitleCase);
+      fillSelect(els.tipo, tipos, "Todos", prettyTypeLabel);
+      applyFilterStateToControls(preferredState);
+    }
     setTopKpis(payload.meta || {}, allItems);
     setQualityPanel(payload.meta || {});
     syncLibresButton();

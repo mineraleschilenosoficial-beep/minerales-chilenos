@@ -6,11 +6,13 @@ from __future__ import annotations
 from pathlib import Path
 import os
 import sys
-import time
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+from graphql import GraphQLResolveInfo, build_schema, graphql_sync
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -18,8 +20,8 @@ if str(ROOT) not in sys.path:
 
 from scripts.storage import (
     get_concession_detail,
-    get_concessions_page,
-    get_dataset,
+    get_concessions_filter_index,
+    get_concessions_map_dataset,
     get_link_report,
     get_mines_dataset,
     run_schema_migrations,
@@ -30,10 +32,6 @@ from scripts.storage import (
 run_schema_migrations()
 
 app = FastAPI(title="minerales-chilenos-api", version="1.0.0")
-_CONCESSIONS_CACHE: dict[str, object] = {"payload": None, "ts": 0.0}
-_CONCESSIONS_LITE_CACHE: dict[str, object] = {"payload": None, "ts": 0.0}
-_CONCESSIONS_CACHE_TTL_SECONDS = int(os.getenv("API_CONCESSIONS_CACHE_TTL_SECONDS", "120"))
-_CONCESSIONS_BBOX_CACHE: dict[str, dict[str, object]] = {}
 
 allowed_origins = [
     origin.strip()
@@ -46,9 +44,66 @@ allowed_origins = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_methods=["GET", "OPTIONS"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
+app.add_middleware(
+    GZipMiddleware,
+    minimum_size=max(500, int(os.getenv("API_GZIP_MIN_SIZE", "1024"))),
+)
+
+
+class GraphQLPayload(BaseModel):
+    query: str
+    variables: dict | None = None
+    operationName: str | None = None
+
+
+_GRAPHQL_SCHEMA = build_schema(
+    """
+    scalar JSON
+
+    type ConcessionsDataset {
+      meta: JSON
+      items: JSON
+    }
+
+    type ConcessionsFilterIndex {
+      regions: [String!]!
+      communes: [String!]!
+      companies: [String!]!
+      tipos: [String!]!
+    }
+
+    type Query {
+      concessionsMapCore: ConcessionsDataset!
+      concessionsMap: ConcessionsDataset!
+      concessionsFilterIndex: ConcessionsFilterIndex!
+      concession(id: Int!): JSON
+    }
+    """
+)
+
+
+def _resolve_concessions_map(_obj: object, _info: GraphQLResolveInfo) -> dict:
+    # No cache: always fetch latest minimal dataset for map usage.
+    return get_concessions_map_dataset()
+
+
+def _resolve_concessions_filter_index(_obj: object, _info: GraphQLResolveInfo) -> dict:
+    return get_concessions_filter_index()
+
+
+def _resolve_concession(_obj: object, _info: GraphQLResolveInfo, id: int) -> dict | None:
+    if id <= 0:
+        return None
+    return get_concession_detail(id)
+
+
+_GRAPHQL_SCHEMA.type_map["Query"].fields["concessionsMapCore"].resolve = _resolve_concessions_map
+_GRAPHQL_SCHEMA.type_map["Query"].fields["concessionsMap"].resolve = _resolve_concessions_map
+_GRAPHQL_SCHEMA.type_map["Query"].fields["concessionsFilterIndex"].resolve = _resolve_concessions_filter_index
+_GRAPHQL_SCHEMA.type_map["Query"].fields["concession"].resolve = _resolve_concession
 
 
 @app.get("/api/health")
@@ -56,76 +111,18 @@ def health() -> dict[str, str]:
     return {"ok": "true", "time": utc_now_iso()}
 
 
-@app.get("/api/yacimientos")
-def api_yacimientos() -> dict:
-    if lite:
-        return _get_cached_concessions_lite_dataset()
-    return _get_cached_concessions_dataset()
-
-
-@app.get("/api/concesiones")
-def api_concesiones(
-    offset: int = Query(default=0, ge=0),
-    limit: int = Query(default=0, ge=0, le=50000),
-    lite: bool = Query(default=False),
-    min_lng: float | None = Query(default=None),
-    min_lat: float | None = Query(default=None),
-    max_lng: float | None = Query(default=None),
-    max_lat: float | None = Query(default=None),
-) -> dict:
-    bbox_filter_on = None not in (min_lng, min_lat, max_lng, max_lat)
-    if bbox_filter_on or limit > 0:
-        page_limit = limit if limit > 0 else 50000
-        cache_key = "|".join(
-            [
-                str(bool(lite)),
-                str(offset),
-                str(page_limit),
-                str(min_lng),
-                str(min_lat),
-                str(max_lng),
-                str(max_lat),
-            ]
-        )
-        now = time.time()
-        cache_entry = _CONCESSIONS_BBOX_CACHE.get(cache_key)
-        if cache_entry:
-            ts = float(cache_entry.get("ts") or 0.0)
-            payload = cache_entry.get("payload")
-            if payload is not None and (now - ts) <= _CONCESSIONS_CACHE_TTL_SECONDS:
-                return payload  # type: ignore[return-value]
-        payload = get_concessions_page(
-            offset=offset,
-            limit=page_limit,
-            lite=lite,
-            min_lng=min_lng,
-            min_lat=min_lat,
-            max_lng=max_lng,
-            max_lat=max_lat,
-        )
-        _CONCESSIONS_BBOX_CACHE[cache_key] = {"payload": payload, "ts": now}
-        if len(_CONCESSIONS_BBOX_CACHE) > 64:
-            # Drop stale entries aggressively; this endpoint is hot in map navigation.
-            stale_keys = [
-                k
-                for k, v in _CONCESSIONS_BBOX_CACHE.items()
-                if (now - float(v.get("ts") or 0.0)) > _CONCESSIONS_CACHE_TTL_SECONDS
-            ]
-            for k in stale_keys:
-                _CONCESSIONS_BBOX_CACHE.pop(k, None)
-            while len(_CONCESSIONS_BBOX_CACHE) > 64:
-                _CONCESSIONS_BBOX_CACHE.pop(next(iter(_CONCESSIONS_BBOX_CACHE)))
-        return payload
-
-    return _get_cached_concessions_dataset()
-
-
-@app.get("/api/concesiones/{concession_id}")
-def api_concesion_detail(concession_id: int) -> dict:
-    item = get_concession_detail(concession_id)
-    if item is None:
-        return JSONResponse(status_code=404, content={"error": "Not Found", "id": concession_id})
-    return {"item": item}
+@app.post("/api/graphql")
+def api_graphql(payload: GraphQLPayload) -> dict:
+    result = graphql_sync(
+        _GRAPHQL_SCHEMA,
+        source=payload.query,
+        variable_values=payload.variables or {},
+        operation_name=payload.operationName,
+    )
+    response: dict[str, object] = {"data": result.data}
+    if result.errors:
+        response["errors"] = [{"message": err.message} for err in result.errors]
+    return response
 
 
 @app.get("/api/minas")
@@ -144,27 +141,3 @@ def api_link_report() -> dict:
 @app.get("/{path:path}")
 def not_found(path: str):
     return JSONResponse(status_code=404, content={"error": "Not Found", "path": f"/{path}"})
-
-
-def _get_cached_concessions_dataset() -> dict:
-    now = time.time()
-    cached_payload = _CONCESSIONS_CACHE.get("payload")
-    cached_ts = float(_CONCESSIONS_CACHE.get("ts") or 0.0)
-    if cached_payload is not None and (now - cached_ts) <= _CONCESSIONS_CACHE_TTL_SECONDS:
-        return cached_payload  # type: ignore[return-value]
-    payload = get_dataset()
-    _CONCESSIONS_CACHE["payload"] = payload
-    _CONCESSIONS_CACHE["ts"] = now
-    return payload
-
-
-def _get_cached_concessions_lite_dataset() -> dict:
-    now = time.time()
-    cached_payload = _CONCESSIONS_LITE_CACHE.get("payload")
-    cached_ts = float(_CONCESSIONS_LITE_CACHE.get("ts") or 0.0)
-    if cached_payload is not None and (now - cached_ts) <= _CONCESSIONS_CACHE_TTL_SECONDS:
-        return cached_payload  # type: ignore[return-value]
-    payload = get_concessions_page(limit=0, lite=True)
-    _CONCESSIONS_LITE_CACHE["payload"] = payload
-    _CONCESSIONS_LITE_CACHE["ts"] = now
-    return payload

@@ -1395,6 +1395,112 @@ def get_concessions_page(
         return {"meta": meta_payload, "items": items}
 
 
+def get_concessions_map_dataset() -> dict[str, Any]:
+    """Return minimal concessions dataset for map rendering in a single payload."""
+    engine = _make_engine()
+    ensure_schema(engine)
+    with Session(engine) as session:
+        meta = session.scalar(
+            select(DatasetMeta).options(selectinload(DatasetMeta.sources), selectinload(DatasetMeta.stats)).where(DatasetMeta.id == 1)
+        )
+        if meta is None:
+            raise RuntimeError("Dataset not found in PostgreSQL. Run daily refresh to bootstrap data.")
+
+        rows = session.execute(
+            select(
+                MineRecord.id,
+                MineRecord.name,
+                MineRecord.latitude,
+                MineRecord.longitude,
+                MineRecord.region,
+                MineRecord.commune,
+                MineRecord.site_type,
+                MineRecord.mining_company,
+                MineRecord.is_available_concession,
+            ).order_by(MineRecord.id.asc())
+        ).all()
+        items = [
+            {
+                "id": row.id,
+                "name": row.name,
+                "latitude": row.latitude,
+                "longitude": row.longitude,
+                "region": row.region,
+                "commune": _display_or_default(row.commune, ""),
+                "site_type": row.site_type,
+                "mining_company": _display_or_default(row.mining_company, "-"),
+                "is_available_concession": row.is_available_concession,
+                "minerals": [],
+            }
+            for row in rows
+        ]
+
+        scrape_stats = {row.key: row.value for row in meta.stats}
+        meta_payload = {
+            "version": meta.version,
+            "source": meta.source,
+            "updatedAt": _datetime_to_iso(meta.updated_at),
+            "lastVerifiedAt": _datetime_to_iso(meta.last_verified_at),
+            "refreshMode": meta.refresh_mode,
+            "scrapeSourceName": meta.scrape_source_name,
+            "sources": [{"name": s.name, "url": s.url, "note": s.note} for s in meta.sources],
+            "scrapeStats": scrape_stats,
+            "pagination": {
+                "offset": 0,
+                "limit": 0,
+                "returned": len(items),
+                "total": len(items),
+                "hasMore": False,
+                "lite": True,
+            },
+        }
+        return {"meta": meta_payload, "items": items}
+
+
+def get_concessions_filter_index() -> dict[str, list[str]]:
+    """Return distinct filter options for concessions mode."""
+    engine = _make_engine()
+    ensure_schema(engine)
+    with Session(engine) as session:
+        regions = [
+            str(value).strip()
+            for value in session.scalars(
+                select(MineRecord.region).where(MineRecord.region.is_not(None)).distinct().order_by(MineRecord.region.asc())
+            ).all()
+            if str(value).strip()
+        ]
+        communes = [
+            str(value).strip()
+            for value in session.scalars(
+                select(MineRecord.commune).where(MineRecord.commune.is_not(None)).distinct().order_by(MineRecord.commune.asc())
+            ).all()
+            if str(value).strip()
+        ]
+        companies = [
+            str(value).strip()
+            for value in session.scalars(
+                select(MineRecord.mining_company)
+                .where(MineRecord.mining_company.is_not(None))
+                .distinct()
+                .order_by(MineRecord.mining_company.asc())
+            ).all()
+            if str(value).strip() and str(value).strip() != "-"
+        ]
+        tipos = [
+            str(value).strip()
+            for value in session.scalars(
+                select(MineRecord.site_type).where(MineRecord.site_type.is_not(None)).distinct().order_by(MineRecord.site_type.asc())
+            ).all()
+            if str(value).strip()
+        ]
+    return {
+        "regions": regions,
+        "communes": communes,
+        "companies": companies,
+        "tipos": tipos,
+    }
+
+
 def get_concession_detail(concession_id: int) -> dict[str, Any] | None:
     """Return full concession detail payload for a single record."""
     engine = _make_engine()
