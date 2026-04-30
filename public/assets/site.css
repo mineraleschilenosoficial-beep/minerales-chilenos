@@ -13,6 +13,8 @@
   --shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
   --header-h: 66px;
   --sidebar-w: 360px;
+  --whatsapp-float-height: 44px;
+  --whatsapp-float-gap: 14px;
 }
 
 * { box-sizing: border-box; }
@@ -458,7 +460,7 @@ body.app-loading {
 .legend {
   position: fixed;
   right: 12px;
-  bottom: 12px;
+  bottom: calc(12px + var(--whatsapp-float-height) + var(--whatsapp-float-gap));
   z-index: 1200;
   border: 1px solid var(--line);
   background: rgba(16, 16, 16, 0.92);
@@ -964,7 +966,7 @@ body.detail-open #detail-backdrop {
   }
 
   .legend {
-    bottom: 68px;
+    bottom: calc(8px + 40px + 10px);
     width: min(240px, calc(100vw - 24px));
     padding: 10px;
     z-index: 1240;
