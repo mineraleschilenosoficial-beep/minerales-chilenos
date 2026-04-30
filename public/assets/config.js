@@ -7,6 +7,7 @@ const API_BASE_URL = runtimeApiBaseUrl || sameMachineDevBaseUrl || (isLocalHost 
 window.APP_CONFIG = {
   API_BASE_URL,
   MINES_URL: `${API_BASE_URL}/api/minas`,
+  GRAPHQL_URL: `${API_BASE_URL}/api/concesiones/graphql`,
   CONCESSIONS_URL: `${API_BASE_URL}/api/concesiones`,
   DATA_URL: `${API_BASE_URL}/api/yacimientos`,
   LINK_REPORT_URL: `${API_BASE_URL}/api/link-report`,

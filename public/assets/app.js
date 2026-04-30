@@ -1,7 +1,7 @@
 (function () {
   const cfg = window.APP_CONFIG || {};
   const MINES_URL = cfg.MINES_URL || "/api/minas";
-  const GRAPHQL_URL = cfg.GRAPHQL_URL || "/api/graphql";
+  const GRAPHQL_URL = cfg.GRAPHQL_URL || "/api/concesiones/graphql";
   const LINK_REPORT_URL = cfg.LINK_REPORT_URL || "/api/link-report";
   const GTM_ID = (cfg.GTM_ID || "").trim();
   const CACHE_KEY_BASE = cfg.CACHE_KEY || "mineraleschilenos:data:v3";

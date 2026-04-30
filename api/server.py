@@ -111,7 +111,7 @@ def health() -> dict[str, str]:
     return {"ok": "true", "time": utc_now_iso()}
 
 
-@app.post("/api/graphql")
+@app.post("/api/concesiones/graphql")
 def api_graphql(payload: GraphQLPayload) -> dict:
     result = graphql_sync(
         _GRAPHQL_SCHEMA,
