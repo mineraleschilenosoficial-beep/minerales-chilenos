@@ -2,19 +2,23 @@ FROM node:20-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    FASTAPI_INTERNAL_URL=http://127.0.0.1:8001
+    FASTAPI_INTERNAL_URL=http://127.0.0.1:8001 \
+    VIRTUAL_ENV=/opt/venv \
+    PATH="/opt/venv/bin:$PATH"
 
 WORKDIR /app
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3 python3-pip \
+    && apt-get install -y --no-install-recommends python3 python3-pip python3-venv \
     && rm -rf /var/lib/apt/lists/*
 
 COPY package.json yarn.lock .yarnrc.yml /app/
 RUN corepack enable && yarn install --immutable
 
 COPY requirements.txt /app/requirements.txt
-RUN pip3 install --no-cache-dir -r /app/requirements.txt
+RUN python3 -m venv "$VIRTUAL_ENV" \
+    && "$VIRTUAL_ENV/bin/pip" install --no-cache-dir --upgrade pip \
+    && "$VIRTUAL_ENV/bin/pip" install --no-cache-dir -r /app/requirements.txt
 
 COPY . /app
 RUN yarn build
