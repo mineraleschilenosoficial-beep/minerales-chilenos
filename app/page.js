@@ -1,8 +1,26 @@
 export default function HomePage() {
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "MineralesChilenos.cl",
+    url: "https://www.mineraleschilenos.cl/",
+    inLanguage: "es-CL",
+    description:
+      "Mapa minero interactivo de Chile para explorar minas y concesiones con filtros geográficos y por empresa.",
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       <div id="gtm-noscript" />
-      <div id="app" className="relative">
+      <main id="app" className="relative">
+        <h1 className="sr-only">Mapa Minero Interactivo de Chile</h1>
+        <p className="sr-only">
+          Plataforma para explorar minas y concesiones mineras en Chile, con filtros por mineral, región, comuna y empresa.
+        </p>
         <header>
           <div className="logo font-semibold tracking-wide">
             <span className="dot" />
@@ -87,7 +105,7 @@ export default function HomePage() {
         </aside>
 
         <div id="map" />
-      </div>
+      </main>
       <div id="global-loading" className="app-loading-overlay is-active" role="status" aria-live="polite" aria-atomic="true">
         <div className="app-loading-card">
           <div className="app-loading-spinner" aria-hidden="true" />

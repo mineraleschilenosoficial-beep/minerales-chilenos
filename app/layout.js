@@ -7,9 +7,50 @@ import "tom-select/dist/css/tom-select.css";
 import MapRuntimeBoot from "./map-runtime-boot";
 
 export const metadata = {
-  title: "MineralesChilenos.cl - Mapa minero interactivo",
+  metadataBase: new URL("https://www.mineraleschilenos.cl"),
+  title: {
+    default: "MineralesChilenos.cl | Mapa Minero Interactivo de Chile",
+    template: "%s | MineralesChilenos.cl",
+  },
   description:
-    "Mapa minero interactivo de Chile con yacimientos y concesiones disponibles.",
+    "Explora el mapa minero interactivo de Chile con yacimientos y concesiones, filtros por región/comuna/empresa y visualización georreferenciada.",
+  applicationName: "MineralesChilenos.cl",
+  keywords: [
+    "mapa minero chile",
+    "minería chile",
+    "concesiones mineras chile",
+    "yacimientos chile",
+    "minerales chilenos",
+  ],
+  alternates: {
+    canonical: "/",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+  openGraph: {
+    type: "website",
+    locale: "es_CL",
+    url: "https://www.mineraleschilenos.cl/",
+    siteName: "MineralesChilenos.cl",
+    title: "MineralesChilenos.cl | Mapa Minero Interactivo de Chile",
+    description:
+      "Visualiza minas y concesiones en Chile con filtros avanzados por mineral, región, comuna y empresa.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "MineralesChilenos.cl | Mapa Minero Interactivo de Chile",
+    description:
+      "Mapa georreferenciado de minas y concesiones en Chile, con filtros y exportación de datos.",
+  },
 };
 
 export default function RootLayout({ children }) {
