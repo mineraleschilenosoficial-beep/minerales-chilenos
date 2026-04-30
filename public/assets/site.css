@@ -192,52 +192,79 @@ header {
   font-size: 14px;
 }
 
-.ts-wrapper.single .ts-control,
-.ts-wrapper.multi .ts-control {
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  color: var(--text);
+.field .ts-wrapper {
+  width: 100%;
+  font-size: 14px;
+}
+
+.field .ts-wrapper.single .ts-control,
+.field .ts-wrapper.multi .ts-control {
+  background: var(--panel-2) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 10px !important;
+  color: var(--text) !important;
   min-height: 42px;
-  box-shadow: none;
-  padding: 8px 10px;
+  box-shadow: none !important;
+  padding: 8px 10px !important;
 }
 
-.ts-wrapper.single .ts-control input,
-.ts-wrapper.multi .ts-control input {
-  color: var(--text);
+.field .ts-wrapper.single .ts-control {
+  padding-right: 34px !important;
 }
 
-.ts-wrapper.single .ts-control .item {
-  color: var(--text);
+.field .ts-wrapper.single .ts-control > input,
+.field .ts-wrapper.multi .ts-control > input {
+  color: var(--text) !important;
 }
 
-.ts-wrapper .ts-control .item {
-  background: rgba(255, 255, 255, 0.07);
+.field .ts-wrapper.single .ts-control .item {
+  color: var(--text) !important;
+  background: transparent !important;
+}
+
+.field .ts-wrapper.multi .ts-control .item {
+  background: rgba(255, 255, 255, 0.07) !important;
   border-radius: 8px;
+  border: 1px solid var(--line) !important;
+  color: #f0f0f0 !important;
 }
 
-.ts-dropdown {
-  border: 1px solid var(--line);
-  background: #151515;
-  color: var(--text);
-  border-radius: 10px;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.38);
+.field .ts-wrapper .ts-control::after {
+  border-color: #bdbdbd transparent transparent transparent !important;
 }
 
-.ts-dropdown .option {
+.field .ts-wrapper.dropdown-active .ts-control::after {
+  border-color: transparent transparent #bdbdbd transparent !important;
+}
+
+.field .ts-wrapper .ts-dropdown {
+  margin-top: 6px;
+  border: 1px solid var(--line) !important;
+  background: #151515 !important;
+  color: var(--text) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.38) !important;
+}
+
+.field .ts-wrapper .ts-dropdown .option,
+.field .ts-wrapper .ts-dropdown .create {
   padding: 9px 11px;
-  color: var(--text);
+  color: var(--text) !important;
 }
 
-.ts-dropdown .active {
-  background: rgba(255, 184, 48, 0.18);
-  color: #ffe7b6;
+.field .ts-wrapper .ts-dropdown .option.active,
+.field .ts-wrapper .ts-dropdown [data-selectable].option.active {
+  background: rgba(255, 184, 48, 0.18) !important;
+  color: #ffe7b6 !important;
 }
 
-.ts-wrapper.focus .ts-control {
-  border-color: rgba(255, 184, 48, 0.6);
-  box-shadow: 0 0 0 2px rgba(255, 184, 48, 0.2);
+.field .ts-wrapper .ts-dropdown .selected {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.field .ts-wrapper.focus .ts-control {
+  border-color: rgba(255, 184, 48, 0.6) !important;
+  box-shadow: 0 0 0 2px rgba(255, 184, 48, 0.2) !important;
 }
 
 .row {
@@ -1091,6 +1118,10 @@ body.detail-open #detail-backdrop {
   .ts-wrapper.multi .ts-control {
     min-height: 42px;
     font-size: 15px;
+  }
+
+  .field .ts-wrapper.single .ts-control {
+    padding-right: 30px !important;
   }
 
   #health-badge {
