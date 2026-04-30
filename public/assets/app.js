@@ -158,6 +158,15 @@
     loadingTitle: document.getElementById("global-loading-title"),
     loadingSubtitle: document.getElementById("global-loading-subtitle")
   };
+  const tomSelectInstances = new Map();
+  const SEARCHABLE_SELECT_IDS = new Set(["f-mineral", "f-region", "f-commune", "f-company", "f-tipo"]);
+  const SEARCHABLE_SELECT_PLACEHOLDERS = {
+    "f-mineral": "Buscar mineral...",
+    "f-region": "Buscar región...",
+    "f-commune": "Buscar comuna...",
+    "f-company": "Buscar empresa...",
+    "f-tipo": "Buscar tipo..."
+  };
 
   const MINERAL_STYLES = [
     { key: "cobre", label: "Cobre", color: "#B87333", symbol: "Cu" },
@@ -712,6 +721,7 @@
     els.tipo.value = optionExists(els.tipo, state.tipo) ? state.tipo : "";
     els.sort.value = optionExists(els.sort, state.sort) ? state.sort : "relevancia";
     onlyLibres = pinViewMode === "concesiones" ? Boolean(state.onlyLibres) : false;
+    syncAllTomSelectValues();
   }
 
   function persistCurrentModeFilters() {
@@ -754,8 +764,59 @@
     els.company.value = "";
     els.tipo.value = "";
     els.sort.value = "relevancia";
+    syncAllTomSelectValues();
     applyFilters();
     els.status.textContent = `Vista por defecto restaurada para ${getModeLabel(getCurrentDatasetMode()).toLowerCase()}.`;
+  }
+
+  function getTomSelectInstance(selectEl) {
+    if (!selectEl) return null;
+    const existing = tomSelectInstances.get(selectEl.id);
+    if (existing) return existing;
+    if (selectEl.tomselect) return selectEl.tomselect;
+    return null;
+  }
+
+  function syncTomSelectValue(selectEl) {
+    const instance = getTomSelectInstance(selectEl);
+    if (!instance) return;
+    instance.sync();
+  }
+
+  function syncAllTomSelectValues() {
+    syncTomSelectValue(els.mineral);
+    syncTomSelectValue(els.region);
+    syncTomSelectValue(els.commune);
+    syncTomSelectValue(els.company);
+    syncTomSelectValue(els.tipo);
+  }
+
+  function setupSearchableSelect(selectEl) {
+    const TomSelectCtor = window["TomSelect"];
+    if (!selectEl || !TomSelectCtor || !SEARCHABLE_SELECT_IDS.has(selectEl.id)) return;
+    const existing = getTomSelectInstance(selectEl);
+    if (existing) {
+      existing.sync();
+      return;
+    }
+    const instance = new TomSelectCtor(selectEl, {
+      create: false,
+      allowEmptyOption: true,
+      closeAfterSelect: true,
+      searchField: ["text"],
+      maxOptions: 800,
+      placeholder: SEARCHABLE_SELECT_PLACEHOLDERS[selectEl.id] || "Buscar..."
+    });
+    tomSelectInstances.set(selectEl.id, instance);
+  }
+
+  function initSearchableSelects() {
+    if (!window["TomSelect"]) return;
+    setupSearchableSelect(els.mineral);
+    setupSearchableSelect(els.region);
+    setupSearchableSelect(els.commune);
+    setupSearchableSelect(els.company);
+    setupSearchableSelect(els.tipo);
   }
 
   function loadAnyCache(cacheKey) {
@@ -1221,6 +1282,7 @@
       options.push(`<option value="${escapeHtml(v)}">${escapeHtml(label)}</option>`);
     });
     selectEl.innerHTML = options.join("");
+    syncTomSelectValue(selectEl);
   }
 
   function escapeHtml(value) {
@@ -1433,6 +1495,7 @@
     els.company.value = "";
     els.tipo.value = "";
     els.sort.value = "relevancia";
+    syncAllTomSelectValues();
     applyFilters();
   }
 
@@ -2003,6 +2066,7 @@
 
   function wireUi() {
     setLegendCollapsed(true);
+    initSearchableSelects();
     const debouncedApply = debounce(applyFilters, 160);
     els.q.addEventListener("input", debouncedApply);
     els.q.addEventListener("change", applyFilters);

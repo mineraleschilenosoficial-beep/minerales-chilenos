@@ -62,6 +62,9 @@ export default function MapRuntimeBoot() {
       const leafletModule = await import("leaflet");
       const L = leafletModule.default || leafletModule;
       window.L = L;
+      const tomSelectModule = await import("tom-select");
+      const TomSelect = tomSelectModule.default || tomSelectModule;
+      window["TomSelect"] = TomSelect;
       await import("leaflet.markercluster");
       if (typeof L.markerClusterGroup !== "function") {
         throw new Error("leaflet.markercluster loaded but markerClusterGroup is missing");

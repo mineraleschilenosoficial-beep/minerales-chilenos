@@ -13,6 +13,7 @@
   --shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
   --header-h: 66px;
   --sidebar-w: 360px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 * { box-sizing: border-box; }
@@ -22,6 +23,7 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  overscroll-behavior: none;
   font-family: "Inter", system-ui, sans-serif;
   color: var(--text);
   background: var(--bg);
@@ -188,6 +190,54 @@ header {
   padding: 10px 11px;
   font: inherit;
   font-size: 14px;
+}
+
+.ts-wrapper.single .ts-control,
+.ts-wrapper.multi .ts-control {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--text);
+  min-height: 42px;
+  box-shadow: none;
+  padding: 8px 10px;
+}
+
+.ts-wrapper.single .ts-control input,
+.ts-wrapper.multi .ts-control input {
+  color: var(--text);
+}
+
+.ts-wrapper.single .ts-control .item {
+  color: var(--text);
+}
+
+.ts-wrapper .ts-control .item {
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+}
+
+.ts-dropdown {
+  border: 1px solid var(--line);
+  background: #151515;
+  color: var(--text);
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.38);
+}
+
+.ts-dropdown .option {
+  padding: 9px 11px;
+  color: var(--text);
+}
+
+.ts-dropdown .active {
+  background: rgba(255, 184, 48, 0.18);
+  color: #ffe7b6;
+}
+
+.ts-wrapper.focus .ts-control {
+  border-color: rgba(255, 184, 48, 0.6);
+  box-shadow: 0 0 0 2px rgba(255, 184, 48, 0.2);
 }
 
 .row {
@@ -397,7 +447,7 @@ button:disabled:hover {
 #map {
   grid-area: map;
   width: 100%;
-  height: calc(100vh - var(--header-h));
+  height: calc(100dvh - var(--header-h));
   background: #101010;
 }
 
@@ -844,6 +894,7 @@ body.detail-open #detail-backdrop {
   .header-mode-btn {
     margin-left: auto;
     margin-right: 6px;
+    min-height: 40px;
   }
 
   .top-kpis {
@@ -860,7 +911,7 @@ body.detail-open #detail-backdrop {
     position: fixed;
     left: 8px;
     right: 8px;
-    top: calc(var(--header-h) + 8px);
+    top: calc(var(--header-h) + 6px);
     z-index: 1245;
     gap: 8px;
     overflow-x: auto;
@@ -899,34 +950,38 @@ body.detail-open #detail-backdrop {
 
   #sidebar {
     position: fixed;
-    top: var(--header-h);
+    top: auto;
     right: 0;
     bottom: 0;
-    left: auto;
+    left: 0;
     z-index: 1300;
-    width: min(88vw, 380px);
+    width: 100%;
+    max-width: none;
+    height: min(84dvh, 700px);
+    max-height: calc(100dvh - var(--header-h) - 6px);
     border-right: none;
-    border-left: 1px solid var(--line);
-    border-top: none;
-    border-radius: 16px 0 0 16px;
-    transform: translateX(102%);
-    transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
-    box-shadow: -14px 0 30px rgba(0, 0, 0, 0.45);
+    border-left: none;
+    border-top: 1px solid var(--line);
+    border-radius: 16px 16px 0 0;
+    transform: translateY(calc(100% - 54px));
+    transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+    box-shadow: 0 -14px 30px rgba(0, 0, 0, 0.45);
     padding-top: 12px;
     will-change: transform;
     overscroll-behavior: contain;
+    padding-bottom: calc(12px + var(--safe-bottom));
   }
 
   body.mobile-sheet-collapsed #sidebar {
-    transform: translateX(102%);
+    transform: translateY(calc(100% - 54px));
   }
 
   body.mobile-sheet-half #sidebar {
-    transform: translateX(0);
+    transform: translateY(40%);
   }
 
   body.mobile-sheet-full #sidebar {
-    transform: translateX(0);
+    transform: translateY(0);
   }
 
   #mobile-backdrop {
@@ -956,19 +1011,23 @@ body.detail-open #detail-backdrop {
   }
 
   .sheet-grab {
-    display: none;
+    display: block;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    margin-bottom: 8px;
   }
 
   #map {
-    height: calc(100vh - var(--header-h));
+    height: calc(100dvh - var(--header-h));
   }
 
   #list {
-    max-height: 32vh;
+    max-height: 34vh;
   }
 
   .legend {
-    bottom: 68px;
+    bottom: calc(58px + var(--safe-bottom));
     width: min(200px, calc(100vw - 24px));
     padding: 7px 8px;
     z-index: 1240;
@@ -976,16 +1035,23 @@ body.detail-open #detail-backdrop {
 
   .whatsapp-contact-float {
     left: 8px;
-    bottom: 8px;
-    min-height: 40px;
-    padding: 8px 12px;
-    font-size: 13px;
-    gap: 6px;
+    bottom: calc(8px + var(--safe-bottom));
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    border-radius: 999px;
+    gap: 0;
   }
 
   .whatsapp-contact-float svg {
-    width: 17px;
-    height: 17px;
+    width: 19px;
+    height: 19px;
+  }
+
+  .whatsapp-contact-float span {
+    display: none;
   }
 }
 
@@ -994,6 +1060,7 @@ body.detail-open #detail-backdrop {
 
   header {
     padding: 0 10px;
+    gap: 8px;
   }
 
   .logo {
@@ -1007,10 +1074,27 @@ body.detail-open #detail-backdrop {
     border-radius: 12px;
   }
 
+  .mobile-panel-btn,
+  .header-mode-btn {
+    padding: 8px 10px;
+    min-height: 38px;
+    font-size: 12px;
+  }
+
   .field input,
   .field select {
     min-height: 42px;
     font-size: 15px;
+  }
+
+  .ts-wrapper.single .ts-control,
+  .ts-wrapper.multi .ts-control {
+    min-height: 42px;
+    font-size: 15px;
+  }
+
+  #health-badge {
+    display: none;
   }
 
   .row button {
@@ -1027,5 +1111,15 @@ body.detail-open #detail-backdrop {
 
   .modal-body {
     padding: 14px 14px 20px;
+  }
+}
+
+@media (max-width: 420px) {
+  .row button {
+    flex: 1 1 100%;
+  }
+
+  #sidebar {
+    max-height: calc(100dvh - var(--header-h) - 4px);
   }
 }

@@ -12,7 +12,8 @@
     "leaflet.markercluster": "1.5.3",
     "next": "^16.2.4",
     "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "react-dom": "^19.2.5",
+    "tom-select": "^2.6.0"
   },
   "devDependencies": {
     "autoprefixer": "^10.5.0",
