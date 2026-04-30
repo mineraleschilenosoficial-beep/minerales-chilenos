@@ -31,6 +31,7 @@ run_schema_migrations()
 
 app = FastAPI(title="minerales-chilenos-api", version="1.0.0")
 _CONCESSIONS_CACHE: dict[str, object] = {"payload": None, "ts": 0.0}
+_CONCESSIONS_LITE_CACHE: dict[str, object] = {"payload": None, "ts": 0.0}
 _CONCESSIONS_CACHE_TTL_SECONDS = int(os.getenv("API_CONCESSIONS_CACHE_TTL_SECONDS", "120"))
 _CONCESSIONS_BBOX_CACHE: dict[str, dict[str, object]] = {}
 
@@ -57,6 +58,8 @@ def health() -> dict[str, str]:
 
 @app.get("/api/yacimientos")
 def api_yacimientos() -> dict:
+    if lite:
+        return _get_cached_concessions_lite_dataset()
     return _get_cached_concessions_dataset()
 
 
@@ -152,4 +155,16 @@ def _get_cached_concessions_dataset() -> dict:
     payload = get_dataset()
     _CONCESSIONS_CACHE["payload"] = payload
     _CONCESSIONS_CACHE["ts"] = now
+    return payload
+
+
+def _get_cached_concessions_lite_dataset() -> dict:
+    now = time.time()
+    cached_payload = _CONCESSIONS_LITE_CACHE.get("payload")
+    cached_ts = float(_CONCESSIONS_LITE_CACHE.get("ts") or 0.0)
+    if cached_payload is not None and (now - cached_ts) <= _CONCESSIONS_CACHE_TTL_SECONDS:
+        return cached_payload  # type: ignore[return-value]
+    payload = get_concessions_page(limit=0, lite=True)
+    _CONCESSIONS_LITE_CACHE["payload"] = payload
+    _CONCESSIONS_LITE_CACHE["ts"] = now
     return payload

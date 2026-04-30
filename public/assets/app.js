@@ -15,21 +15,7 @@
   const CACHE_TTL_MS = cfg.CACHE_TTL_MS || 1000 * 60 * 60 * 6;
   const FETCH_TIMEOUT_MS = cfg.FETCH_TIMEOUT_MS || 12000;
   const FETCH_TIMEOUT_MS_CONCESSIONS = cfg.FETCH_TIMEOUT_MS_CONCESSIONS || 120000;
-  const CONCESSIONS_PAGE_SIZE = cfg.CONCESSIONS_PAGE_SIZE || 8000;
-  const CONCESSIONS_USE_BBOX = cfg.CONCESSIONS_USE_BBOX !== false;
-  const CONCESSIONS_LITE_MODE = cfg.CONCESSIONS_LITE_MODE !== false;
-  const CONCESSIONS_BBOX_SINGLE_FETCH = cfg.CONCESSIONS_BBOX_SINGLE_FETCH === true;
-  const CONCESSIONS_PROGRESSIVE_BACKGROUND = cfg.CONCESSIONS_PROGRESSIVE_BACKGROUND !== false;
-  const CONCESSIONS_PROGRESSIVE_BACKGROUND_BBOX = cfg.CONCESSIONS_PROGRESSIVE_BACKGROUND_BBOX !== false;
-  const CONCESSIONS_BACKGROUND_MAX_PAGES_RAW = Number(cfg.CONCESSIONS_BACKGROUND_MAX_PAGES);
-  const CONCESSIONS_BACKGROUND_MAX_PAGES = Number.isFinite(CONCESSIONS_BACKGROUND_MAX_PAGES_RAW) && CONCESSIONS_BACKGROUND_MAX_PAGES_RAW > 0
-    ? Math.floor(CONCESSIONS_BACKGROUND_MAX_PAGES_RAW)
-    : 0; // 0 => no page cap; load all available records for the viewport.
-  const CONCESSIONS_BACKGROUND_MAX_RECORDS = Math.max(50000, Number(cfg.CONCESSIONS_BACKGROUND_MAX_RECORDS) || 250000);
-  const CONCESSIONS_BBOX_CACHE_MAX = Math.max(1, Number(cfg.CONCESSIONS_BBOX_CACHE_MAX) || 8);
-  const CONCESSIONS_BBOX_SNAP_DECIMALS = Math.min(4, Math.max(1, Number(cfg.CONCESSIONS_BBOX_SNAP_DECIMALS) || 2));
-  const CONCESSIONS_BACKGROUND_UI_THROTTLE_MS = Math.max(120, Number(cfg.CONCESSIONS_BACKGROUND_UI_THROTTLE_MS) || 450);
-  const CHILE_VIEW_BOUNDS = [[-56.2, -76.8], [-17.4, -66.0]];
+  const CONCESSIONS_LITE_MODE = true;
   const MOBILE_SHEET_KEY = "mineraleschilenos:mobile-sheet-state";
 
   const FALLBACK_CONCESSIONS_DATASET = {
@@ -121,14 +107,6 @@
   let libresItems = [];
   let markerRenderVersion = 0;
   let selectedMarkerId = null;
-  let concessionsViewportFetchInFlight = false;
-  let lastConcessionsBboxSignature = "";
-  let suppressConcessionsViewportRefreshUntil = 0;
-  let concessionsViewportUserInteractionPending = false;
-  let concessionsBackgroundToken = 0;
-  let concessionsBackgroundPendingPayload = null;
-  let concessionsBackgroundUiTimer = null;
-  const concessionsViewportCache = new Map();
   const concessionDetailCache = new Map();
 
   const els = {
@@ -340,203 +318,11 @@
     });
   }
 
-  function mergeConcessionsPayload(basePayload, pagePayload, pageSize) {
-    const baseItems = Array.isArray(basePayload && basePayload.items) ? basePayload.items : [];
-    const pageItems = Array.isArray(pagePayload && pagePayload.items) ? pagePayload.items : [];
-    const pageMeta = pagePayload && typeof pagePayload.meta === "object" ? pagePayload.meta : {};
-    const pagePagination = pageMeta && typeof pageMeta.pagination === "object" ? pageMeta.pagination : {};
-    const returned = Number(pagePagination.returned || pageItems.length || 0);
-    const offset = Number(pagePagination.offset || 0);
-    const total = Number(pagePagination.total || (offset + returned) || baseItems.length);
-    const hasMore = Boolean(pagePagination.hasMore);
-    const mergedItems = baseItems.concat(pageItems);
-
-    return {
-      meta: {
-        ...(basePayload && typeof basePayload.meta === "object" ? basePayload.meta : {}),
-        ...pageMeta,
-        pagination: {
-          mode: "progressive",
-          pageSize,
-          offset: 0,
-          returned: mergedItems.length,
-          total,
-          hasMore,
-        },
-      },
-      items: mergedItems,
-    };
-  }
-
-  function applyConcessionsBackgroundPayload(payload) {
-    if (getCurrentDatasetMode() !== "concesiones") return;
-    if (!payload || !Array.isArray(payload.items)) return;
-    const pagination = payload.meta && payload.meta.pagination && typeof payload.meta.pagination === "object"
-      ? payload.meta.pagination
-      : null;
-    const stillStreaming = Boolean(pagination && pagination.hasMore);
-    allItems = normalizeDatasetItems(payload.items);
-    window.__dataUpdatedAt = payload.meta && payload.meta.updatedAt;
-    rebuildIndexes(allItems);
-    // While pages are still streaming, skip expensive resorting on every refresh.
-    applyFilters({ skipSort: stillStreaming, silentStatus: stillStreaming });
-  }
-
-  function scheduleIdleRefresh(cb) {
-    if (typeof window.requestIdleCallback === "function") {
-      window.requestIdleCallback(cb, { timeout: 220 });
-      return;
-    }
-    requestAnimationFrame(cb);
-  }
-
-  function scheduleConcessionsBackgroundUiRefresh(payload, token) {
-    if (token !== concessionsBackgroundToken) return;
-    concessionsBackgroundPendingPayload = payload;
-    if (concessionsBackgroundUiTimer) return;
-    concessionsBackgroundUiTimer = setTimeout(() => {
-      concessionsBackgroundUiTimer = null;
-      if (token !== concessionsBackgroundToken) return;
-      const pending = concessionsBackgroundPendingPayload;
-      concessionsBackgroundPendingPayload = null;
-      if (!pending) return;
-      scheduleIdleRefresh(() => {
-        if (token !== concessionsBackgroundToken) return;
-        applyConcessionsBackgroundPayload(pending);
-      });
-    }, CONCESSIONS_BACKGROUND_UI_THROTTLE_MS);
-  }
-
-  async function fetchConcessionsPaginated(baseUrl, timeoutMs = FETCH_TIMEOUT_MS_CONCESSIONS) {
-    const defaultPageSize = Math.max(500, Number(CONCESSIONS_PAGE_SIZE) || 8000);
+  async function fetchConcessionsSingleBatch(baseUrl, timeoutMs = FETCH_TIMEOUT_MS_CONCESSIONS) {
     const stamp = Date.now();
-    const bboxQuery = buildConcessionsBboxQuery();
-    const bboxSignature = CONCESSIONS_USE_BBOX ? concessionsBboxSignature() : "";
     const liteQuery = CONCESSIONS_LITE_MODE ? "&lite=true" : "";
-    const bboxSingleFetch = CONCESSIONS_USE_BBOX && CONCESSIONS_BBOX_SINGLE_FETCH;
-    const pageSize = bboxSingleFetch ? 50000 : defaultPageSize;
-    const cachedViewportPayload = bboxSignature ? concessionsViewportCache.get(bboxSignature) : null;
-    if (cachedViewportPayload && Array.isArray(cachedViewportPayload.items)) {
-      return cachedViewportPayload;
-    }
-    const firstUrl = `${baseUrl}?offset=0&limit=${pageSize}${bboxQuery}${liteQuery}&v=${stamp}-0`;
-    const firstPage = await fetchJsonWithTimeout(firstUrl, timeoutMs);
-    if (!firstPage || !Array.isArray(firstPage.items)) {
-      return null;
-    }
-
-    const firstMeta = firstPage.meta && typeof firstPage.meta === "object" ? firstPage.meta : {};
-    const firstPagination = firstMeta && typeof firstMeta.pagination === "object" ? firstMeta.pagination : {};
-    const firstReturned = Number(firstPagination.returned || firstPage.items.length || 0);
-    const hasMore = Boolean(firstPagination.hasMore);
-
-    let payload = {
-      meta: {
-        ...firstMeta,
-        viewportSignature: bboxSignature || null,
-        pagination: {
-          mode: "progressive",
-          pageSize,
-          offset: 0,
-          returned: firstPage.items.length,
-          total: Number(firstPagination.total || firstPage.items.length),
-          hasMore,
-        },
-      },
-      items: firstPage.items.slice(),
-    };
-    if (bboxSignature) {
-      cacheConcessionsViewportPayload(bboxSignature, payload);
-    }
-    if (bboxSingleFetch) {
-      return payload;
-    }
-
-    const token = ++concessionsBackgroundToken;
-    const allowBackground = CONCESSIONS_PROGRESSIVE_BACKGROUND
-      && (!CONCESSIONS_USE_BBOX || CONCESSIONS_PROGRESSIVE_BACKGROUND_BBOX);
-    if (!hasMore || firstReturned <= 0 || !allowBackground) {
-      return payload;
-    }
-
-    // Continue loading extra pages without blocking initial paint.
-    (async () => {
-      let offset = firstReturned;
-      let loadedPages = 0;
-      while (CONCESSIONS_BACKGROUND_MAX_PAGES === 0 || loadedPages < CONCESSIONS_BACKGROUND_MAX_PAGES) {
-        if (token !== concessionsBackgroundToken) return;
-        if (payload.items.length >= CONCESSIONS_BACKGROUND_MAX_RECORDS) return;
-        loadedPages += 1;
-        const pageUrl = `${baseUrl}?offset=${offset}&limit=${pageSize}${bboxQuery}${liteQuery}&v=${stamp}-${offset}`;
-        const page = await fetchJsonWithTimeout(pageUrl, timeoutMs);
-        if (!page || !Array.isArray(page.items)) return;
-        payload = mergeConcessionsPayload(payload, page, pageSize);
-        sessionDatasetCache.concesiones = payload;
-        if (bboxSignature) {
-          cacheConcessionsViewportPayload(bboxSignature, payload);
-        }
-        saveCache(getDatasetCacheKey("concesiones"), payload);
-        scheduleConcessionsBackgroundUiRefresh(payload, token);
-
-        const pageMeta = page.meta && typeof page.meta === "object" ? page.meta : {};
-        const pagePagination = pageMeta && typeof pageMeta.pagination === "object" ? pageMeta.pagination : {};
-        const returned = Number(pagePagination.returned || page.items.length || 0);
-        const pageHasMore = Boolean(pagePagination.hasMore);
-        if (!pageHasMore || returned <= 0) return;
-        offset += returned;
-      }
-    })().catch((error) => {
-      console.error("concessions background load failed", error);
-    });
-
-    return payload;
-  }
-
-  function snapBboxValue(value) {
-    const num = Number(value);
-    if (!Number.isFinite(num)) return null;
-    return Number(num.toFixed(CONCESSIONS_BBOX_SNAP_DECIMALS));
-  }
-
-  function getConcessionsViewportBox() {
-    if (!CONCESSIONS_USE_BBOX) return null;
-    if (!mapEnabled || !map || typeof map.getBounds !== "function") return null;
-    const bounds = map.getBounds();
-    if (!bounds) return null;
-    const southWest = bounds.getSouthWest();
-    const northEast = bounds.getNorthEast();
-    if (!southWest || !northEast) return null;
-    const minLng = snapBboxValue(southWest.lng);
-    const minLat = snapBboxValue(southWest.lat);
-    const maxLng = snapBboxValue(northEast.lng);
-    const maxLat = snapBboxValue(northEast.lat);
-    if (![minLng, minLat, maxLng, maxLat].every((v) => Number.isFinite(Number(v)))) return null;
-    return { minLng, minLat, maxLng, maxLat };
-  }
-
-  function buildConcessionsBboxQuery() {
-    const box = getConcessionsViewportBox();
-    if (!box) return "";
-    return `&min_lng=${box.minLng}&min_lat=${box.minLat}&max_lng=${box.maxLng}&max_lat=${box.maxLat}`;
-  }
-
-  function concessionsBboxSignature() {
-    const box = getConcessionsViewportBox();
-    if (!box) return "";
-    return `${box.minLng},${box.minLat},${box.maxLng},${box.maxLat}`;
-  }
-
-  function cacheConcessionsViewportPayload(signature, payload) {
-    if (!signature) return;
-    if (!payload || !Array.isArray(payload.items)) return;
-    if (concessionsViewportCache.has(signature)) {
-      concessionsViewportCache.delete(signature);
-    }
-    concessionsViewportCache.set(signature, payload);
-    while (concessionsViewportCache.size > CONCESSIONS_BBOX_CACHE_MAX) {
-      const oldestKey = concessionsViewportCache.keys().next().value;
-      concessionsViewportCache.delete(oldestKey);
-    }
+    const url = `${baseUrl}?offset=0&limit=0${liteQuery}&v=${stamp}-full`;
+    return await fetchJsonWithTimeout(url, timeoutMs);
   }
 
   async function fetchConcessionDetailById(id, timeoutMs = FETCH_TIMEOUT_MS_CONCESSIONS) {
@@ -590,37 +376,6 @@
     return normalized;
   }
 
-  function suppressConcessionsViewportRefresh(ms = 1200) {
-    suppressConcessionsViewportRefreshUntil = Math.max(
-      suppressConcessionsViewportRefreshUntil,
-      Date.now() + Math.max(0, Number(ms) || 0)
-    );
-  }
-
-  async function refreshConcessionsForViewport() {
-    if (!CONCESSIONS_USE_BBOX || !mapEnabled || !map) return;
-    if (getCurrentDatasetMode() !== "concesiones") return;
-    if (modeSwitchInFlight || concessionsViewportFetchInFlight) return;
-    if (Date.now() < suppressConcessionsViewportRefreshUntil) return;
-    if (!concessionsViewportUserInteractionPending) return;
-    const signature = concessionsBboxSignature();
-    if (!signature || signature === lastConcessionsBboxSignature) return;
-
-    concessionsViewportFetchInFlight = true;
-    try {
-      // Force fresh concessions fetch for new viewport.
-      sessionDatasetCache.concesiones = null;
-      const applied = await loadAndRenderCurrentMode();
-      if (applied) {
-        lastConcessionsBboxSignature = signature;
-        concessionsViewportUserInteractionPending = false;
-      }
-    } catch (error) {
-      console.error("viewport concessions refresh failed", error);
-    } finally {
-      concessionsViewportFetchInFlight = false;
-    }
-  }
 
   function mineralStyle(value) {
     const normalized = normalizeMineral(value);
@@ -924,17 +679,6 @@
     }
   }
 
-  function resetMapViewportForConcessions() {
-    if (!mapEnabled || !map) return;
-    try {
-      suppressConcessionsViewportRefresh(1600);
-      concessionsViewportUserInteractionPending = false;
-      map.fitBounds(CHILE_VIEW_BOUNDS, { animate: false, padding: [12, 12], maxZoom: 5 });
-    } catch (error) {
-      console.warn("cannot reset concessions viewport", error);
-    }
-  }
-
   async function changeMode(nextModeRaw) {
     const nextMode = nextModeRaw === "concesiones" ? "concesiones" : "minas";
     const prevMode = getCurrentDatasetMode();
@@ -965,14 +709,6 @@
     syncLibresButton();
     renderMobileFilterBar();
     els.status.textContent = `Cambiando a mapa ${getModeLabel(nextMode).toLowerCase()}...`;
-
-    if (nextMode === "concesiones" && CONCESSIONS_USE_BBOX) {
-      // BBOX-scoped concessions must start from a national viewport to avoid
-      // getting stuck with data from a previously zoomed-in region.
-      resetMapViewportForConcessions();
-      lastConcessionsBboxSignature = "";
-      sessionDatasetCache.concesiones = null;
-    }
 
     try {
       let applied = await loadAndRenderCurrentMode();
@@ -1041,10 +777,6 @@
   }
 
   async function prefetchMode(mode) {
-    if (mode === "concesiones" && CONCESSIONS_USE_BBOX) {
-      // Concessions payload depends on current viewport; prefetching full dataset is wasteful.
-      return;
-    }
     if (sessionDatasetCache[mode] && Array.isArray(sessionDatasetCache[mode].items)) {
       return;
     }
@@ -1056,7 +788,9 @@
       const candidates = getDatasetCandidates(mode);
       const cacheKey = getDatasetCacheKey(mode);
       const timeoutMs = mode === "concesiones" ? FETCH_TIMEOUT_MS_CONCESSIONS : FETCH_TIMEOUT_MS;
-      const remotePayload = await fetchFirstAvailableDataset(candidates, timeoutMs);
+      const remotePayload = mode === "concesiones"
+        ? await fetchConcessionsSingleBatch(candidates[0], timeoutMs)
+        : await fetchFirstAvailableDataset(candidates, timeoutMs);
       if (remotePayload) {
         sessionDatasetCache[mode] = remotePayload;
         saveCache(cacheKey, remotePayload);
@@ -1089,7 +823,7 @@
     const fallbackDataset = getFallbackDataset(mode);
     const timeoutMs = mode === "concesiones" ? FETCH_TIMEOUT_MS_CONCESSIONS : FETCH_TIMEOUT_MS;
     const remotePayload = mode === "concesiones"
-      ? await fetchConcessionsPaginated(candidates[0], timeoutMs)
+      ? await fetchConcessionsSingleBatch(candidates[0], timeoutMs)
       : await fetchFirstAvailableDataset(candidates, timeoutMs);
     if (remotePayload) {
       saveCache(cacheKey, remotePayload);
@@ -1647,6 +1381,7 @@
   function applyFilters(options = {}) {
     const skipSort = Boolean(options.skipSort);
     const silentStatus = Boolean(options.silentStatus);
+    const persist = options.persist !== false;
     const q = normalizeSearchValue(els.q.value);
     const queryTokens = q ? q.split(/\s+/).filter(Boolean) : [];
     const fMineral = els.mineral.value;
@@ -1695,7 +1430,9 @@
     if (!silentStatus) {
       setStatus(window.__dataOrigin || "remote", filtered.length, allItems.length, window.__dataUpdatedAt || null);
     }
-    persistCurrentModeFilters();
+    if (persist) {
+      persistCurrentModeFilters();
+    }
   }
 
   async function loadAndRenderCurrentMode() {
@@ -1735,8 +1472,6 @@
 
   function fitToFiltered() {
     if (!mapEnabled || !map || !filtered.length) return;
-    suppressConcessionsViewportRefresh(1800);
-    concessionsViewportUserInteractionPending = false;
     const bounds = L.latLngBounds(filtered.map((x) => [x.latitude, x.longitude]));
     map.fitBounds(bounds.pad(0.25), { animate: true, duration: 0.55 });
   }
@@ -2290,17 +2025,6 @@
     mapEnabled = true;
     setTimeout(() => map.invalidateSize(), 100);
     window.addEventListener("resize", () => map.invalidateSize());
-    map.on("movestart", () => {
-      if (Date.now() < suppressConcessionsViewportRefreshUntil) return;
-      concessionsViewportUserInteractionPending = true;
-    });
-    map.on("zoomstart", () => {
-      if (Date.now() < suppressConcessionsViewportRefreshUntil) return;
-      concessionsViewportUserInteractionPending = true;
-    });
-    map.on("moveend", debounce(() => {
-      void refreshConcessionsForViewport();
-    }, 350));
   }
 
   async function waitForLeaflet(maxWaitMs = 12000) {
