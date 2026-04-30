@@ -9,6 +9,7 @@
   const CACHE_KEY_CONCESSIONS = cfg.CACHE_KEY_CONCESSIONS || `${CACHE_KEY_BASE}:concesiones`;
   const FILTER_STATE_KEY = "mineraleschilenos:filters:v1";
   const FILTER_PINNED_KEY = "mineraleschilenos:filters:pinned:v1";
+  const LEGEND_COLLAPSED_KEY = "mineraleschilenos:legend:collapsed:v1";
   const ENABLE_VIEW_STATE_PERSISTENCE = false;
   const LEGACY_VIEW_STATE_PURGE_MARKER_KEY = "mineraleschilenos:viewstate:purged:v1";
   const CACHE_TTL_MS = cfg.CACHE_TTL_MS || 1000 * 60 * 60 * 6;
@@ -17,10 +18,14 @@
   const CONCESSIONS_PAGE_SIZE = cfg.CONCESSIONS_PAGE_SIZE || 8000;
   const CONCESSIONS_USE_BBOX = cfg.CONCESSIONS_USE_BBOX !== false;
   const CONCESSIONS_LITE_MODE = cfg.CONCESSIONS_LITE_MODE !== false;
-  const CONCESSIONS_BBOX_SINGLE_FETCH = cfg.CONCESSIONS_BBOX_SINGLE_FETCH !== false;
+  const CONCESSIONS_BBOX_SINGLE_FETCH = cfg.CONCESSIONS_BBOX_SINGLE_FETCH === true;
   const CONCESSIONS_PROGRESSIVE_BACKGROUND = cfg.CONCESSIONS_PROGRESSIVE_BACKGROUND !== false;
-  const CONCESSIONS_PROGRESSIVE_BACKGROUND_BBOX = cfg.CONCESSIONS_PROGRESSIVE_BACKGROUND_BBOX === true;
-  const CONCESSIONS_BACKGROUND_MAX_PAGES = Math.max(1, Number(cfg.CONCESSIONS_BACKGROUND_MAX_PAGES) || 8);
+  const CONCESSIONS_PROGRESSIVE_BACKGROUND_BBOX = cfg.CONCESSIONS_PROGRESSIVE_BACKGROUND_BBOX !== false;
+  const CONCESSIONS_BACKGROUND_MAX_PAGES_RAW = Number(cfg.CONCESSIONS_BACKGROUND_MAX_PAGES);
+  const CONCESSIONS_BACKGROUND_MAX_PAGES = Number.isFinite(CONCESSIONS_BACKGROUND_MAX_PAGES_RAW) && CONCESSIONS_BACKGROUND_MAX_PAGES_RAW > 0
+    ? Math.floor(CONCESSIONS_BACKGROUND_MAX_PAGES_RAW)
+    : 0; // 0 => no page cap; load all available records for the viewport.
+  const CONCESSIONS_BACKGROUND_MAX_RECORDS = Math.max(50000, Number(cfg.CONCESSIONS_BACKGROUND_MAX_RECORDS) || 250000);
   const CONCESSIONS_BBOX_CACHE_MAX = Math.max(1, Number(cfg.CONCESSIONS_BBOX_CACHE_MAX) || 8);
   const CONCESSIONS_BBOX_SNAP_DECIMALS = Math.min(4, Math.max(1, Number(cfg.CONCESSIONS_BBOX_SNAP_DECIMALS) || 2));
   const CONCESSIONS_BACKGROUND_UI_THROTTLE_MS = Math.max(120, Number(cfg.CONCESSIONS_BACKGROUND_UI_THROTTLE_MS) || 450);
@@ -158,6 +163,8 @@
     modalTitle: document.getElementById("modal-title"),
     modalContent: document.getElementById("modal-content"),
     modalClose: document.getElementById("btn-close-modal"),
+    legendPanel: document.getElementById("legend-panel"),
+    btnLegendToggle: document.getElementById("btn-legend-toggle"),
     legendList: document.getElementById("legend-list"),
     loadingOverlay: document.getElementById("global-loading"),
     loadingTitle: document.getElementById("global-loading-title"),
@@ -456,8 +463,9 @@
     (async () => {
       let offset = firstReturned;
       let loadedPages = 0;
-      while (loadedPages < CONCESSIONS_BACKGROUND_MAX_PAGES) {
+      while (CONCESSIONS_BACKGROUND_MAX_PAGES === 0 || loadedPages < CONCESSIONS_BACKGROUND_MAX_PAGES) {
         if (token !== concessionsBackgroundToken) return;
+        if (payload.items.length >= CONCESSIONS_BACKGROUND_MAX_RECORDS) return;
         loadedPages += 1;
         const pageUrl = `${baseUrl}?offset=${offset}&limit=${pageSize}${bboxQuery}${liteQuery}&v=${stamp}-${offset}`;
         const page = await fetchJsonWithTimeout(pageUrl, timeoutMs);
@@ -1973,6 +1981,30 @@
     document.body.classList.remove("detail-open");
   }
 
+  function loadPersistedLegendCollapsed() {
+    try {
+      const saved = localStorage.getItem(LEGEND_COLLAPSED_KEY);
+      if (saved === "true") return true;
+      if (saved === "false") return false;
+    } catch {}
+    return true;
+  }
+
+  function persistLegendCollapsed(collapsed) {
+    try {
+      localStorage.setItem(LEGEND_COLLAPSED_KEY, collapsed ? "true" : "false");
+    } catch {}
+  }
+
+  function setLegendCollapsed(collapsed) {
+    if (!els.legendPanel || !els.btnLegendToggle) return;
+    const isCollapsed = Boolean(collapsed);
+    els.legendPanel.classList.toggle("is-collapsed", isCollapsed);
+    els.btnLegendToggle.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
+    els.btnLegendToggle.setAttribute("aria-label", isCollapsed ? "Expandir leyenda" : "Ocultar leyenda");
+    persistLegendCollapsed(isCollapsed);
+  }
+
   function isMobileViewport() {
     return window.matchMedia("(max-width: 980px)").matches;
   }
@@ -2182,6 +2214,15 @@
       els.mobileBackdrop.addEventListener("click", () => setMobilePanelOpen(false));
     }
 
+    if (els.btnLegendToggle) {
+      els.btnLegendToggle.addEventListener("click", () => {
+        const isCollapsed = els.legendPanel
+          ? els.legendPanel.classList.contains("is-collapsed")
+          : true;
+        setLegendCollapsed(!isCollapsed);
+      });
+    }
+
     if (els.mapContainer) {
       els.mapContainer.addEventListener("click", () => {
         if (isMobileViewport()) {
@@ -2215,6 +2256,8 @@
     };
     window.addEventListener("resize", syncMobileSheet);
     syncMobileSheet();
+    const persistedLegendCollapsed = loadPersistedLegendCollapsed();
+    setLegendCollapsed(els.legendPanel ? persistedLegendCollapsed : true);
 
     bindMobileSheetGestures();
   }

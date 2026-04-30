@@ -468,6 +468,45 @@ body.app-loading {
   width: min(300px, calc(100vw - 24px));
 }
 
+.legend-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+#btn-legend-toggle {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: rgba(34, 34, 34, 0.9);
+  color: var(--gold);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+#btn-legend-toggle:hover {
+  background: rgba(48, 48, 48, 0.95);
+}
+
+.legend-toggle-icon {
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  margin-top: -2px;
+  transition: transform .18s ease;
+}
+
+.legend.is-collapsed .legend-toggle-icon {
+  transform: rotate(-135deg);
+  margin-top: 1px;
+}
+
 .whatsapp-contact-float {
   position: fixed;
   right: 12px;
@@ -501,12 +540,20 @@ body.app-loading {
 }
 
 .legend h3 {
-  margin: 0 0 10px;
+  margin: 0;
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 1px;
   color: var(--gold);
   font-family: "JetBrains Mono", monospace;
+}
+
+.legend #legend-list {
+  margin-top: 10px;
+}
+
+.legend.is-collapsed #legend-list {
+  display: none;
 }
 
 .legend-row {
