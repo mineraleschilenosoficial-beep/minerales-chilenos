@@ -3,6 +3,7 @@ FROM node:20-slim AS base
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     FASTAPI_INTERNAL_URL=http://127.0.0.1:8001 \
+    AUTO_BOOTSTRAP_DATASET=false \
     VIRTUAL_ENV=/opt/venv \
     PATH="/opt/venv/bin:$PATH"
 
