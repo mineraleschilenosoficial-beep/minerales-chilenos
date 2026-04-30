@@ -1263,95 +1263,7 @@ def get_dataset() -> dict[str, Any]:
             .order_by(MineRecord.id.asc())
         ).all()
 
-        def links_by_category(mine: MineRecord, category: str) -> list[dict[str, str]]:
-            result: list[dict[str, str]] = []
-            for link in mine.links:
-                if link.category != category:
-                    continue
-                row = {"name": link.name, "url": link.url}
-                if link.note:
-                    row["note"] = link.note
-                if link.doc_type:
-                    row["doc_type"] = link.doc_type
-                result.append(row)
-            return result
-
-        items = []
-        for mine in mines:
-            item = {
-                "id": mine.id,
-                "name": mine.name,
-                "minerals": [m.mineral for m in mine.minerals],
-                "latitude": mine.latitude,
-                "longitude": mine.longitude,
-                "region": mine.region,
-                "site_type": mine.site_type,
-                "mining_company": _display_or_default(mine.mining_company, "-"),
-                "surface": _display_or_default(mine.surface, "-"),
-                "altitude": _display_or_default(mine.altitude, "-"),
-                "production": _display_or_default(mine.production, "-"),
-                "workforce": _display_or_default(mine.workforce, "-"),
-                "average_salary": _display_or_default(mine.average_salary, "-"),
-                "annual_revenue": _display_or_default(mine.annual_revenue, "-"),
-                "future_hirings": _display_or_default(mine.future_hirings, "-"),
-                "operation_since": _display_or_default(mine.operation_since, "-"),
-                "direct_workers": _display_or_default(mine.direct_workers, "-"),
-                "indirect_workers": _display_or_default(mine.indirect_workers, "-"),
-                "hiring_plan_2026": _display_or_default(mine.hiring_plan_2026, "-"),
-                "data_origin": mine.data_origin,
-                "confidence_score": mine.confidence_score,
-                "enriched_at": _datetime_to_iso(mine.enriched_at),
-                "notes": _display_or_default(mine.notes, ""),
-                "website": _display_or_default(mine.website, "#"),
-                "is_available_concession": mine.is_available_concession,
-                "sources": links_by_category(mine, "sources"),
-                "docs": links_by_category(mine, "docs"),
-                "environmental_reports": links_by_category(mine, "environmental_reports"),
-                "operating_authorizations": links_by_category(mine, "operating_authorizations"),
-                "geology_studies": links_by_category(mine, "geology_studies"),
-                "mineral_life_studies": links_by_category(mine, "mineral_life_studies"),
-                "mitigation_studies": links_by_category(mine, "mitigation_studies"),
-                "field_provenance": [
-                    {
-                        "field_name": row.field_name,
-                        "field_value": row.field_value,
-                        "source_url": row.source_url,
-                        "source_type": row.source_type,
-                        "confidence_score": row.confidence_score,
-                        "updated_at": _datetime_to_iso(row.updated_at),
-                        "note": row.note,
-                    }
-                    for row in mine.field_provenance
-                ],
-                "source_catalog": [
-                    {
-                        "source_name": row.source_name,
-                        "source_url": row.source_url,
-                        "field_coverage": row.field_coverage,
-                        "last_checked_at": _datetime_to_iso(row.last_checked_at),
-                    }
-                    for row in mine.source_catalog
-                ],
-                "city": _display_or_default(mine.city, ""),
-                "commune": _display_or_default(mine.commune, ""),
-                "province": _display_or_default(mine.province, ""),
-                "locality": _display_or_default(mine.locality, ""),
-                "location": _display_or_default(mine.location, ""),
-                "operation_site": _display_or_default(mine.operation_site, ""),
-                "address": _display_or_default(mine.address, ""),
-                "concession_type": _display_or_default(mine.concession_type, ""),
-                "concession_status": _display_or_default(mine.concession_status, ""),
-                "concession_role": _display_or_default(mine.concession_role, ""),
-                "concession_id": _display_or_default(mine.concession_id, ""),
-                "concession_commune_code": _display_or_default(mine.concession_commune_code, ""),
-                "record_status": str(mine.record_status or "incomplete"),
-                "mandatory_gaps": [
-                    token.strip()
-                    for token in str(mine.mandatory_gaps or "").split(",")
-                    if token.strip()
-                ],
-            }
-            items.append(item)
+        items = [_serialize_mine_full(mine) for mine in mines]
 
         scrape_stats = {row.key: row.value for row in meta.stats}
         payload = {
@@ -1374,6 +1286,7 @@ def get_concessions_page(
     *,
     offset: int = 0,
     limit: int = 10000,
+    lite: bool = False,
     min_lng: float | None = None,
     min_lat: float | None = None,
     max_lng: float | None = None,
@@ -1436,105 +1349,19 @@ def get_concessions_page(
         else:
             page_stmt = base_stmt.order_by(MineRecord.id.asc())
 
-        mines = session.scalars(
-            page_stmt.options(
-                selectinload(MineRecord.minerals),
-                selectinload(MineRecord.links),
-                selectinload(MineRecord.field_provenance),
-                selectinload(MineRecord.source_catalog),
-            )
-        ).all()
-
-        def links_by_category(mine: MineRecord, category: str) -> list[dict[str, str]]:
-            result: list[dict[str, str]] = []
-            for link in mine.links:
-                if link.category != category:
-                    continue
-                row = {"name": link.name, "url": link.url}
-                if link.note:
-                    row["note"] = link.note
-                if link.doc_type:
-                    row["doc_type"] = link.doc_type
-                result.append(row)
-            return result
-
-        items: list[dict[str, Any]] = []
-        for mine in mines:
-            items.append(
-                {
-                    "id": mine.id,
-                    "name": mine.name,
-                    "minerals": [m.mineral for m in mine.minerals],
-                    "latitude": mine.latitude,
-                    "longitude": mine.longitude,
-                    "region": mine.region,
-                    "site_type": mine.site_type,
-                    "mining_company": _display_or_default(mine.mining_company, "-"),
-                    "surface": _display_or_default(mine.surface, "-"),
-                    "altitude": _display_or_default(mine.altitude, "-"),
-                    "production": _display_or_default(mine.production, "-"),
-                    "workforce": _display_or_default(mine.workforce, "-"),
-                    "average_salary": _display_or_default(mine.average_salary, "-"),
-                    "annual_revenue": _display_or_default(mine.annual_revenue, "-"),
-                    "future_hirings": _display_or_default(mine.future_hirings, "-"),
-                    "operation_since": _display_or_default(mine.operation_since, "-"),
-                    "direct_workers": _display_or_default(mine.direct_workers, "-"),
-                    "indirect_workers": _display_or_default(mine.indirect_workers, "-"),
-                    "hiring_plan_2026": _display_or_default(mine.hiring_plan_2026, "-"),
-                    "data_origin": mine.data_origin,
-                    "confidence_score": mine.confidence_score,
-                    "enriched_at": _datetime_to_iso(mine.enriched_at),
-                    "notes": _display_or_default(mine.notes, ""),
-                    "website": _display_or_default(mine.website, "#"),
-                    "is_available_concession": mine.is_available_concession,
-                    "sources": links_by_category(mine, "sources"),
-                    "docs": links_by_category(mine, "docs"),
-                    "environmental_reports": links_by_category(mine, "environmental_reports"),
-                    "operating_authorizations": links_by_category(mine, "operating_authorizations"),
-                    "geology_studies": links_by_category(mine, "geology_studies"),
-                    "mineral_life_studies": links_by_category(mine, "mineral_life_studies"),
-                    "mitigation_studies": links_by_category(mine, "mitigation_studies"),
-                    "field_provenance": [
-                        {
-                            "field_name": row.field_name,
-                            "field_value": row.field_value,
-                            "source_url": row.source_url,
-                            "source_type": row.source_type,
-                            "confidence_score": row.confidence_score,
-                            "updated_at": _datetime_to_iso(row.updated_at),
-                            "note": row.note,
-                        }
-                        for row in mine.field_provenance
-                    ],
-                    "source_catalog": [
-                        {
-                            "source_name": row.source_name,
-                            "source_url": row.source_url,
-                            "field_coverage": row.field_coverage,
-                            "last_checked_at": _datetime_to_iso(row.last_checked_at),
-                        }
-                        for row in mine.source_catalog
-                    ],
-                    "city": _display_or_default(mine.city, ""),
-                    "commune": _display_or_default(mine.commune, ""),
-                    "province": _display_or_default(mine.province, ""),
-                    "locality": _display_or_default(mine.locality, ""),
-                    "location": _display_or_default(mine.location, ""),
-                    "operation_site": _display_or_default(mine.operation_site, ""),
-                    "address": _display_or_default(mine.address, ""),
-                    "concession_type": _display_or_default(mine.concession_type, ""),
-                    "concession_status": _display_or_default(mine.concession_status, ""),
-                    "concession_role": _display_or_default(mine.concession_role, ""),
-                    "concession_id": _display_or_default(mine.concession_id, ""),
-                    "concession_commune_code": _display_or_default(mine.concession_commune_code, ""),
-                    "record_status": str(mine.record_status or "incomplete"),
-                    "mandatory_gaps": [
-                        token.strip()
-                        for token in str(mine.mandatory_gaps or "").split(",")
-                        if token.strip()
-                    ],
-                }
-            )
+        if lite:
+            mines = session.scalars(page_stmt).all()
+            items = [_serialize_mine_lite(mine) for mine in mines]
+        else:
+            mines = session.scalars(
+                page_stmt.options(
+                    selectinload(MineRecord.minerals),
+                    selectinload(MineRecord.links),
+                    selectinload(MineRecord.field_provenance),
+                    selectinload(MineRecord.source_catalog),
+                )
+            ).all()
+            items = [_serialize_mine_full(mine) for mine in mines]
 
         scrape_stats = {row.key: row.value for row in meta.stats}
         meta_payload = {
@@ -1552,6 +1379,7 @@ def get_concessions_page(
                 "returned": len(items),
                 "total": total,
                 "hasMore": (safe_offset + len(items)) < total,
+                "lite": bool(lite),
             },
         }
         if bbox_filter_on:
@@ -1565,6 +1393,135 @@ def get_concessions_page(
             }
 
         return {"meta": meta_payload, "items": items}
+
+
+def get_concession_detail(concession_id: int) -> dict[str, Any] | None:
+    """Return full concession detail payload for a single record."""
+    engine = _make_engine()
+    ensure_schema(engine)
+    with Session(engine) as session:
+        mine = session.scalar(
+            select(MineRecord)
+            .where(MineRecord.id == int(concession_id))
+            .options(
+                selectinload(MineRecord.minerals),
+                selectinload(MineRecord.links),
+                selectinload(MineRecord.field_provenance),
+                selectinload(MineRecord.source_catalog),
+            )
+        )
+        if mine is None:
+            return None
+        return _serialize_mine_full(mine)
+
+
+def _links_by_category(mine: MineRecord, category: str) -> list[dict[str, str]]:
+    result: list[dict[str, str]] = []
+    for link in mine.links:
+        if link.category != category:
+            continue
+        row = {"name": link.name, "url": link.url}
+        if link.note:
+            row["note"] = link.note
+        if link.doc_type:
+            row["doc_type"] = link.doc_type
+        result.append(row)
+    return result
+
+
+def _serialize_mine_lite(mine: MineRecord) -> dict[str, Any]:
+    return {
+        "id": mine.id,
+        "name": mine.name,
+        "minerals": [],
+        "latitude": mine.latitude,
+        "longitude": mine.longitude,
+        "region": mine.region,
+        "commune": _display_or_default(mine.commune, ""),
+        "site_type": mine.site_type,
+        "mining_company": _display_or_default(mine.mining_company, "-"),
+        "is_available_concession": mine.is_available_concession,
+        "concession_type": _display_or_default(mine.concession_type, ""),
+        "concession_status": _display_or_default(mine.concession_status, ""),
+        "concession_role": _display_or_default(mine.concession_role, ""),
+        "record_status": str(mine.record_status or "incomplete"),
+    }
+
+
+def _serialize_mine_full(mine: MineRecord) -> dict[str, Any]:
+    return {
+        "id": mine.id,
+        "name": mine.name,
+        "minerals": [m.mineral for m in mine.minerals],
+        "latitude": mine.latitude,
+        "longitude": mine.longitude,
+        "region": mine.region,
+        "site_type": mine.site_type,
+        "mining_company": _display_or_default(mine.mining_company, "-"),
+        "surface": _display_or_default(mine.surface, "-"),
+        "altitude": _display_or_default(mine.altitude, "-"),
+        "production": _display_or_default(mine.production, "-"),
+        "workforce": _display_or_default(mine.workforce, "-"),
+        "average_salary": _display_or_default(mine.average_salary, "-"),
+        "annual_revenue": _display_or_default(mine.annual_revenue, "-"),
+        "future_hirings": _display_or_default(mine.future_hirings, "-"),
+        "operation_since": _display_or_default(mine.operation_since, "-"),
+        "direct_workers": _display_or_default(mine.direct_workers, "-"),
+        "indirect_workers": _display_or_default(mine.indirect_workers, "-"),
+        "hiring_plan_2026": _display_or_default(mine.hiring_plan_2026, "-"),
+        "data_origin": mine.data_origin,
+        "confidence_score": mine.confidence_score,
+        "enriched_at": _datetime_to_iso(mine.enriched_at),
+        "notes": _display_or_default(mine.notes, ""),
+        "website": _display_or_default(mine.website, "#"),
+        "is_available_concession": mine.is_available_concession,
+        "sources": _links_by_category(mine, "sources"),
+        "docs": _links_by_category(mine, "docs"),
+        "environmental_reports": _links_by_category(mine, "environmental_reports"),
+        "operating_authorizations": _links_by_category(mine, "operating_authorizations"),
+        "geology_studies": _links_by_category(mine, "geology_studies"),
+        "mineral_life_studies": _links_by_category(mine, "mineral_life_studies"),
+        "mitigation_studies": _links_by_category(mine, "mitigation_studies"),
+        "field_provenance": [
+            {
+                "field_name": row.field_name,
+                "field_value": row.field_value,
+                "source_url": row.source_url,
+                "source_type": row.source_type,
+                "confidence_score": row.confidence_score,
+                "updated_at": _datetime_to_iso(row.updated_at),
+                "note": row.note,
+            }
+            for row in mine.field_provenance
+        ],
+        "source_catalog": [
+            {
+                "source_name": row.source_name,
+                "source_url": row.source_url,
+                "field_coverage": row.field_coverage,
+                "last_checked_at": _datetime_to_iso(row.last_checked_at),
+            }
+            for row in mine.source_catalog
+        ],
+        "city": _display_or_default(mine.city, ""),
+        "commune": _display_or_default(mine.commune, ""),
+        "province": _display_or_default(mine.province, ""),
+        "locality": _display_or_default(mine.locality, ""),
+        "location": _display_or_default(mine.location, ""),
+        "operation_site": _display_or_default(mine.operation_site, ""),
+        "address": _display_or_default(mine.address, ""),
+        "concession_type": _display_or_default(mine.concession_type, ""),
+        "concession_status": _display_or_default(mine.concession_status, ""),
+        "concession_role": _display_or_default(mine.concession_role, ""),
+        "concession_id": _display_or_default(mine.concession_id, ""),
+        "concession_commune_code": _display_or_default(mine.concession_commune_code, ""),
+        "record_status": str(mine.record_status or "incomplete"),
+        "mandatory_gaps": [
+            token.strip()
+            for token in str(mine.mandatory_gaps or "").split(",")
+            if token.strip()
+        ],
+    }
 
 
 def _get_mines_dataset_derived_from_concessions() -> dict[str, Any]:

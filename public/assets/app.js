@@ -16,6 +16,7 @@
   const FETCH_TIMEOUT_MS_CONCESSIONS = cfg.FETCH_TIMEOUT_MS_CONCESSIONS || 120000;
   const CONCESSIONS_PAGE_SIZE = cfg.CONCESSIONS_PAGE_SIZE || 8000;
   const CONCESSIONS_USE_BBOX = cfg.CONCESSIONS_USE_BBOX !== false;
+  const CONCESSIONS_LITE_MODE = cfg.CONCESSIONS_LITE_MODE !== false;
   const CONCESSIONS_BBOX_SINGLE_FETCH = cfg.CONCESSIONS_BBOX_SINGLE_FETCH !== false;
   const CONCESSIONS_PROGRESSIVE_BACKGROUND = cfg.CONCESSIONS_PROGRESSIVE_BACKGROUND !== false;
   const CONCESSIONS_PROGRESSIVE_BACKGROUND_BBOX = cfg.CONCESSIONS_PROGRESSIVE_BACKGROUND_BBOX === true;
@@ -123,6 +124,7 @@
   let concessionsBackgroundPendingPayload = null;
   let concessionsBackgroundUiTimer = null;
   const concessionsViewportCache = new Map();
+  const concessionDetailCache = new Map();
 
   const els = {
     q: document.getElementById("q"),
@@ -403,13 +405,14 @@
     const stamp = Date.now();
     const bboxQuery = buildConcessionsBboxQuery();
     const bboxSignature = CONCESSIONS_USE_BBOX ? concessionsBboxSignature() : "";
+    const liteQuery = CONCESSIONS_LITE_MODE ? "&lite=true" : "";
     const bboxSingleFetch = CONCESSIONS_USE_BBOX && CONCESSIONS_BBOX_SINGLE_FETCH;
     const pageSize = bboxSingleFetch ? 50000 : defaultPageSize;
     const cachedViewportPayload = bboxSignature ? concessionsViewportCache.get(bboxSignature) : null;
     if (cachedViewportPayload && Array.isArray(cachedViewportPayload.items)) {
       return cachedViewportPayload;
     }
-    const firstUrl = `${baseUrl}?offset=0&limit=${pageSize}${bboxQuery}&v=${stamp}-0`;
+    const firstUrl = `${baseUrl}?offset=0&limit=${pageSize}${bboxQuery}${liteQuery}&v=${stamp}-0`;
     const firstPage = await fetchJsonWithTimeout(firstUrl, timeoutMs);
     if (!firstPage || !Array.isArray(firstPage.items)) {
       return null;
@@ -456,7 +459,7 @@
       while (loadedPages < CONCESSIONS_BACKGROUND_MAX_PAGES) {
         if (token !== concessionsBackgroundToken) return;
         loadedPages += 1;
-        const pageUrl = `${baseUrl}?offset=${offset}&limit=${pageSize}${bboxQuery}&v=${stamp}-${offset}`;
+        const pageUrl = `${baseUrl}?offset=${offset}&limit=${pageSize}${bboxQuery}${liteQuery}&v=${stamp}-${offset}`;
         const page = await fetchJsonWithTimeout(pageUrl, timeoutMs);
         if (!page || !Array.isArray(page.items)) return;
         payload = mergeConcessionsPayload(payload, page, pageSize);
@@ -526,6 +529,57 @@
       const oldestKey = concessionsViewportCache.keys().next().value;
       concessionsViewportCache.delete(oldestKey);
     }
+  }
+
+  async function fetchConcessionDetailById(id, timeoutMs = FETCH_TIMEOUT_MS_CONCESSIONS) {
+    const numericId = Number(id);
+    if (!Number.isFinite(numericId) || numericId <= 0) return null;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const url = `${CONCESSIONS_URL}/${encodeURIComponent(String(numericId))}?v=${Date.now()}`;
+      const res = await fetch(url, { cache: "no-store", signal: controller.signal });
+      if (!res.ok) return null;
+      const json = await res.json();
+      if (!json || typeof json !== "object" || !json.item || typeof json.item !== "object") return null;
+      return json.item;
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  function replaceItemByIdInCollections(nextItem) {
+    if (!nextItem || typeof nextItem.id !== "number") return;
+    itemById.set(nextItem.id, nextItem);
+    const replaceIn = (arr) => {
+      const idx = arr.findIndex((row) => row && row.id === nextItem.id);
+      if (idx >= 0) arr[idx] = nextItem;
+    };
+    replaceIn(allItems);
+    replaceIn(filtered);
+  }
+
+  async function ensureConcessionDetail(item) {
+    if (!item || getCurrentDatasetMode() !== "concesiones") return item;
+    const id = Number(item.id);
+    if (!Number.isFinite(id)) return item;
+    if (Array.isArray(item.field_provenance) || Array.isArray(item.docs)) {
+      return item;
+    }
+    if (concessionDetailCache.has(id)) {
+      const cached = concessionDetailCache.get(id);
+      const normalizedCached = normalizeDatasetItems([{ ...item, ...cached }])[0];
+      replaceItemByIdInCollections(normalizedCached);
+      return normalizedCached;
+    }
+    const detail = await fetchConcessionDetailById(id);
+    if (!detail) return item;
+    concessionDetailCache.set(id, detail);
+    const normalized = normalizeDatasetItems([{ ...item, ...detail }])[0];
+    replaceItemByIdInCollections(normalized);
+    return normalized;
   }
 
   function suppressConcessionsViewportRefresh(ms = 1200) {
@@ -1277,9 +1331,10 @@
     ].join("");
     const icon = L.divIcon({ html, className: "", iconSize: [36, 36], iconAnchor: [18, 36] });
     const marker = L.marker([item.latitude, item.longitude], { icon });
-    marker.on("click", () => {
+    marker.on("click", async () => {
       setSelectedMarker(item.id);
-      openDetail(item);
+      const detailItem = await ensureConcessionDetail(item);
+      openDetail(detailItem || item);
     });
     return marker;
   }
@@ -2081,7 +2136,7 @@
 
     els.btnFit.addEventListener("click", fitToFiltered);
     els.list.addEventListener("scroll", maybeLoadMoreOnMobileScroll);
-    els.list.addEventListener("click", (event) => {
+    els.list.addEventListener("click", async (event) => {
       const node = event.target instanceof HTMLElement ? event.target.closest(".item[data-id]") : null;
       if (!node) return;
       const id = Number(node.getAttribute("data-id"));
@@ -2093,14 +2148,16 @@
         if (isMobileViewport()) {
           setMobilePanelOpen(false);
         }
-        openDetail(item);
+        const detailItem = await ensureConcessionDetail(item);
+        openDetail(detailItem || item);
         return;
       }
 
       const marker = markerById.get(id);
       if (!marker) {
         setSelectedMarker(id);
-        openDetail(item);
+        const detailItem = await ensureConcessionDetail(item);
+        openDetail(detailItem || item);
         return;
       }
 
