@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import os
 import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable
@@ -15,6 +16,19 @@ from storage import (
     save_dataset,
     utc_now_iso,
 )
+
+
+def _max_workers_from_env() -> int:
+    raw = str(os.getenv("DAILY_REFRESH_MAX_WORKERS", "2")).strip()
+    try:
+        workers = int(raw)
+    except ValueError:
+        workers = 2
+    if workers < 1:
+        return 1
+    if workers > 2:
+        return 2
+    return workers
 
 
 def _load_concessions_with_retries(progress: Callable[[str], None], attempts: int = 3) -> tuple[dict, dict[str, int]]:
@@ -39,26 +53,44 @@ def main() -> int:
         print(f"[daily_refresh +{elapsed:6.1f}s] {message}", flush=True)
 
     progress("start source=sernageomin+mines")
-    progress("fetching concessions and mines in parallel")
+    max_workers = _max_workers_from_env()
+    progress(f"daily refresh workers={max_workers}")
     current: dict | None = None
     source_stats: dict[str, int] = {}
     mines_payload: dict | None = None
     mines_ok = False
     concessions_ok = False
 
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        concessions_future = pool.submit(_load_concessions_with_retries, progress)
-        mines_future = pool.submit(refresh_mines_dataset_cache)
+    if max_workers > 1:
+        progress("fetching concessions and mines in parallel")
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            concessions_future = pool.submit(_load_concessions_with_retries, progress)
+            mines_future = pool.submit(refresh_mines_dataset_cache)
 
+            try:
+                current, source_stats = concessions_future.result()
+                concessions_ok = True
+                progress(f"concessions loaded items={len(current.get('items') or [])}")
+            except Exception as exc:  # noqa: BLE001
+                progress(f"concessions refresh failed after retries: {exc}")
+
+            try:
+                mines_payload = mines_future.result()
+                mines_ok = True
+                progress(f"mines cache refreshed items={len(mines_payload.get('items') or [])}")
+            except Exception as exc:  # noqa: BLE001
+                progress(f"mines cache refresh failed: {exc}")
+    else:
+        progress("fetching concessions and mines sequentially (low-resource mode)")
         try:
-            current, source_stats = concessions_future.result()
+            current, source_stats = _load_concessions_with_retries(progress)
             concessions_ok = True
             progress(f"concessions loaded items={len(current.get('items') or [])}")
         except Exception as exc:  # noqa: BLE001
             progress(f"concessions refresh failed after retries: {exc}")
 
         try:
-            mines_payload = mines_future.result()
+            mines_payload = refresh_mines_dataset_cache()
             mines_ok = True
             progress(f"mines cache refreshed items={len(mines_payload.get('items') or [])}")
         except Exception as exc:  # noqa: BLE001
