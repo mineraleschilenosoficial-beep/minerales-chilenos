@@ -62,9 +62,14 @@ export default function MapRuntimeBoot() {
       const leafletModule = await import("leaflet");
       const L = leafletModule.default || leafletModule;
       window.L = L;
-      const tomSelectModule = await import("tom-select");
-      const TomSelect = tomSelectModule.default || tomSelectModule;
-      window["TomSelect"] = TomSelect;
+      try {
+        const tomSelectModule = await import("tom-select");
+        const TomSelect = tomSelectModule.default || tomSelectModule;
+        window["TomSelect"] = TomSelect;
+      } catch (error) {
+        // TomSelect is optional for map rendering; keep boot flow alive.
+        console.warn("optional tom-select runtime unavailable", error);
+      }
       await import("leaflet.markercluster");
       if (typeof L.markerClusterGroup !== "function") {
         throw new Error("leaflet.markercluster loaded but markerClusterGroup is missing");
