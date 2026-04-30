@@ -66,6 +66,13 @@ def _normalize_text(value: str) -> str:
     return " ".join(token.capitalize() for token in raw.lower().split(" "))
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _format_concession_type(value: str) -> str:
     normalized = _normalize_status(value)
     if normalized == "EXPLOTACION":
@@ -205,6 +212,8 @@ def _iter_sernageomin_features(
     timeout_seconds: float,
     page_size: int,
     max_records: int = 0,
+    geometry_precision: int | None = None,
+    max_allowable_offset: float | None = None,
 ) -> list[dict]:
     query_url = layer_url.rstrip("/") + "/query"
     rows: list[dict] = []
@@ -224,6 +233,10 @@ def _iter_sernageomin_features(
             "resultOffset": str(offset),
             "resultRecordCount": str(page_size),
         }
+        if geometry_precision is not None:
+            params["geometryPrecision"] = str(geometry_precision)
+        if max_allowable_offset is not None and max_allowable_offset > 0:
+            params["maxAllowableOffset"] = str(max_allowable_offset)
         payload = _request_json(query_url, params, timeout_seconds)
         features = payload.get("features")
         if not isinstance(features, list) or not features:
@@ -257,12 +270,23 @@ def build_dataset_from_sernageomin() -> tuple[dict, dict[str, int]]:
     max_records = int(os.getenv("SERNAGEOMIN_MAX_RECORDS", "0") or 0)
     if max_records < 0:
         max_records = 0
+    outlier_filter_enabled = _env_bool("SERNAGEOMIN_ENABLE_COMMUNE_OUTLIER_FILTER", True)
+    geometry_precision = int(os.getenv("SERNAGEOMIN_GEOMETRY_PRECISION", "6") or 6)
+    if geometry_precision < 4:
+        geometry_precision = 4
+    if geometry_precision > 7:
+        geometry_precision = 7
+    max_allowable_offset = float(os.getenv("SERNAGEOMIN_MAX_ALLOWABLE_OFFSET", "0") or 0)
+    if max_allowable_offset < 0:
+        max_allowable_offset = 0
 
     features = _iter_sernageomin_features(
         layer_url,
         timeout_seconds=timeout_seconds,
         page_size=page_size,
         max_records=max_records,
+        geometry_precision=geometry_precision,
+        max_allowable_offset=max_allowable_offset,
     )
     if not features:
         raise ValueError("SERNAGEOMIN query returned 0 features")
@@ -345,27 +369,28 @@ def build_dataset_from_sernageomin() -> tuple[dict, dict[str, int]]:
             }
         )
 
-    commune_points: dict[str, list[tuple[float, float]]] = {}
-    for record in records:
-        commune = str(record["commune"])
-        if commune == "-":
-            continue
-        commune_points.setdefault(commune, []).append((float(record["lat"]), float(record["lng"])))
-
     commune_centroids: dict[str, tuple[float, float]] = {}
-    for commune, points in commune_points.items():
-        if len(points) < COMMUNE_MIN_POINTS_FOR_OUTLIER_CHECK:
-            continue
-        centroid_lat = sum(p[0] for p in points) / len(points)
-        centroid_lng = sum(p[1] for p in points) / len(points)
-        commune_centroids[commune] = (centroid_lat, centroid_lng)
+    if outlier_filter_enabled:
+        commune_points: dict[str, list[tuple[float, float]]] = {}
+        for record in records:
+            commune = str(record["commune"])
+            if commune == "-":
+                continue
+            commune_points.setdefault(commune, []).append((float(record["lat"]), float(record["lng"])))
+
+        for commune, points in commune_points.items():
+            if len(points) < COMMUNE_MIN_POINTS_FOR_OUTLIER_CHECK:
+                continue
+            centroid_lat = sum(p[0] for p in points) / len(points)
+            centroid_lng = sum(p[1] for p in points) / len(points)
+            commune_centroids[commune] = (centroid_lat, centroid_lng)
 
     next_id = 1
     for record in records:
         lat = float(record["lat"])
         lng = float(record["lng"])
         commune = str(record["commune"])
-        centroid = commune_centroids.get(commune)
+        centroid = commune_centroids.get(commune) if outlier_filter_enabled else None
         if centroid is not None:
             distance_km = _haversine_km(lat, lng, centroid[0], centroid[1])
             if distance_km > COMMUNE_OUTLIER_DISTANCE_KM:
@@ -565,6 +590,7 @@ def build_dataset_from_sernageomin() -> tuple[dict, dict[str, int]]:
                     },
                     "commune_outlier_distance_km": COMMUNE_OUTLIER_DISTANCE_KM,
                     "commune_min_points_for_outlier_check": COMMUNE_MIN_POINTS_FOR_OUTLIER_CHECK,
+                    "commune_outlier_filter_enabled": outlier_filter_enabled,
                     "max_drop_samples_per_reason": MAX_DROP_SAMPLES_PER_REASON,
                 },
                 "dropCounts": {

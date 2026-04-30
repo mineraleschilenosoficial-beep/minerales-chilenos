@@ -18,6 +18,26 @@ from storage import (
 )
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _concession_attempts_from_env() -> int:
+    raw = str(os.getenv("SERNAGEOMIN_CONCESSION_ATTEMPTS", "3")).strip()
+    try:
+        attempts = int(raw)
+    except ValueError:
+        attempts = 3
+    if attempts < 1:
+        return 1
+    if attempts > 5:
+        return 5
+    return attempts
+
+
 def _max_workers_from_env() -> int:
     raw = str(os.getenv("DAILY_REFRESH_MAX_WORKERS", "2")).strip()
     try:
@@ -31,15 +51,16 @@ def _max_workers_from_env() -> int:
     return workers
 
 
-def _load_concessions_with_retries(progress: Callable[[str], None], attempts: int = 3) -> tuple[dict, dict[str, int]]:
+def _load_concessions_with_retries(progress: Callable[[str], None], attempts: int | None = None) -> tuple[dict, dict[str, int]]:
+    total_attempts = attempts if attempts is not None else _concession_attempts_from_env()
     last_error: Exception | None = None
-    for attempt in range(1, attempts + 1):
+    for attempt in range(1, total_attempts + 1):
         try:
             return build_dataset_from_sernageomin()
         except Exception as exc:  # noqa: BLE001
             last_error = exc
-            progress(f"concessions attempt {attempt}/{attempts} failed: {exc}")
-            if attempt < attempts:
+            progress(f"concessions attempt {attempt}/{total_attempts} failed: {exc}")
+            if attempt < total_attempts:
                 time.sleep(2.5 * attempt)
     assert last_error is not None
     raise last_error
@@ -52,8 +73,12 @@ def main() -> int:
         elapsed = time.monotonic() - started_at
         print(f"[daily_refresh +{elapsed:6.1f}s] {message}", flush=True)
 
-    progress("start source=sernageomin+mines")
+    skip_mines_refresh = _env_bool("SKIP_MINES_REFRESH", False)
+    refresh_mode = "sernageomin-only" if skip_mines_refresh else "sernageomin+mines"
+    progress(f"start source={refresh_mode}")
     max_workers = _max_workers_from_env()
+    if skip_mines_refresh and max_workers > 1:
+        max_workers = 1
     progress(f"daily refresh workers={max_workers}")
     current: dict | None = None
     source_stats: dict[str, int] = {}
@@ -61,7 +86,15 @@ def main() -> int:
     mines_ok = False
     concessions_ok = False
 
-    if max_workers > 1:
+    if skip_mines_refresh:
+        progress("mines cache refresh skipped (SKIP_MINES_REFRESH enabled)")
+        try:
+            current, source_stats = _load_concessions_with_retries(progress)
+            concessions_ok = True
+            progress(f"concessions loaded items={len(current.get('items') or [])}")
+        except Exception as exc:  # noqa: BLE001
+            progress(f"concessions refresh failed after retries: {exc}")
+    elif max_workers > 1:
         progress("fetching concessions and mines in parallel")
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
             concessions_future = pool.submit(_load_concessions_with_retries, progress)
@@ -101,7 +134,7 @@ def main() -> int:
         current["meta"]["source"] = "sernageomin-catastro"
         current["meta"]["updatedAt"] = utc_now_iso()
         current["meta"]["lastVerifiedAt"] = utc_now_iso()
-        current["meta"]["refreshMode"] = "sernageomin+mines"
+        current["meta"]["refreshMode"] = refresh_mode
         stats = current["meta"].get("scrapeStats")
         if not isinstance(stats, dict):
             stats = {}

@@ -16,9 +16,12 @@
   const FETCH_TIMEOUT_MS_CONCESSIONS = cfg.FETCH_TIMEOUT_MS_CONCESSIONS || 120000;
   const CONCESSIONS_PAGE_SIZE = cfg.CONCESSIONS_PAGE_SIZE || 8000;
   const CONCESSIONS_USE_BBOX = cfg.CONCESSIONS_USE_BBOX !== false;
+  const CONCESSIONS_BBOX_SINGLE_FETCH = cfg.CONCESSIONS_BBOX_SINGLE_FETCH !== false;
   const CONCESSIONS_PROGRESSIVE_BACKGROUND = cfg.CONCESSIONS_PROGRESSIVE_BACKGROUND !== false;
   const CONCESSIONS_PROGRESSIVE_BACKGROUND_BBOX = cfg.CONCESSIONS_PROGRESSIVE_BACKGROUND_BBOX === true;
   const CONCESSIONS_BACKGROUND_MAX_PAGES = Math.max(1, Number(cfg.CONCESSIONS_BACKGROUND_MAX_PAGES) || 8);
+  const CONCESSIONS_BBOX_CACHE_MAX = Math.max(1, Number(cfg.CONCESSIONS_BBOX_CACHE_MAX) || 8);
+  const CONCESSIONS_BBOX_SNAP_DECIMALS = Math.min(4, Math.max(1, Number(cfg.CONCESSIONS_BBOX_SNAP_DECIMALS) || 2));
   const CONCESSIONS_BACKGROUND_UI_THROTTLE_MS = Math.max(120, Number(cfg.CONCESSIONS_BACKGROUND_UI_THROTTLE_MS) || 450);
   const CHILE_VIEW_BOUNDS = [[-56.2, -76.8], [-17.4, -66.0]];
   const MOBILE_SHEET_KEY = "mineraleschilenos:mobile-sheet-state";
@@ -115,9 +118,11 @@
   let concessionsViewportFetchInFlight = false;
   let lastConcessionsBboxSignature = "";
   let suppressConcessionsViewportRefreshUntil = 0;
+  let concessionsViewportUserInteractionPending = false;
   let concessionsBackgroundToken = 0;
   let concessionsBackgroundPendingPayload = null;
   let concessionsBackgroundUiTimer = null;
+  const concessionsViewportCache = new Map();
 
   const els = {
     q: document.getElementById("q"),
@@ -151,21 +156,10 @@
     modalTitle: document.getElementById("modal-title"),
     modalContent: document.getElementById("modal-content"),
     modalClose: document.getElementById("btn-close-modal"),
-    legendPanel: document.getElementById("legend-panel"),
-    btnLegendToggle: document.getElementById("btn-legend-toggle"),
     legendList: document.getElementById("legend-list"),
     loadingOverlay: document.getElementById("global-loading"),
     loadingTitle: document.getElementById("global-loading-title"),
     loadingSubtitle: document.getElementById("global-loading-subtitle")
-  };
-  const tomSelectInstances = new Map();
-  const SEARCHABLE_SELECT_IDS = new Set(["f-mineral", "f-region", "f-commune", "f-company", "f-tipo"]);
-  const SEARCHABLE_SELECT_PLACEHOLDERS = {
-    "f-mineral": "Buscar mineral...",
-    "f-region": "Buscar región...",
-    "f-commune": "Buscar comuna...",
-    "f-company": "Buscar empresa...",
-    "f-tipo": "Buscar tipo..."
   };
 
   const MINERAL_STYLES = [
@@ -405,9 +399,16 @@
   }
 
   async function fetchConcessionsPaginated(baseUrl, timeoutMs = FETCH_TIMEOUT_MS_CONCESSIONS) {
-    const pageSize = Math.max(500, Number(CONCESSIONS_PAGE_SIZE) || 8000);
+    const defaultPageSize = Math.max(500, Number(CONCESSIONS_PAGE_SIZE) || 8000);
     const stamp = Date.now();
     const bboxQuery = buildConcessionsBboxQuery();
+    const bboxSignature = CONCESSIONS_USE_BBOX ? concessionsBboxSignature() : "";
+    const bboxSingleFetch = CONCESSIONS_USE_BBOX && CONCESSIONS_BBOX_SINGLE_FETCH;
+    const pageSize = bboxSingleFetch ? 50000 : defaultPageSize;
+    const cachedViewportPayload = bboxSignature ? concessionsViewportCache.get(bboxSignature) : null;
+    if (cachedViewportPayload && Array.isArray(cachedViewportPayload.items)) {
+      return cachedViewportPayload;
+    }
     const firstUrl = `${baseUrl}?offset=0&limit=${pageSize}${bboxQuery}&v=${stamp}-0`;
     const firstPage = await fetchJsonWithTimeout(firstUrl, timeoutMs);
     if (!firstPage || !Array.isArray(firstPage.items)) {
@@ -422,6 +423,7 @@
     let payload = {
       meta: {
         ...firstMeta,
+        viewportSignature: bboxSignature || null,
         pagination: {
           mode: "progressive",
           pageSize,
@@ -433,6 +435,12 @@
       },
       items: firstPage.items.slice(),
     };
+    if (bboxSignature) {
+      cacheConcessionsViewportPayload(bboxSignature, payload);
+    }
+    if (bboxSingleFetch) {
+      return payload;
+    }
 
     const token = ++concessionsBackgroundToken;
     const allowBackground = CONCESSIONS_PROGRESSIVE_BACKGROUND
@@ -453,6 +461,9 @@
         if (!page || !Array.isArray(page.items)) return;
         payload = mergeConcessionsPayload(payload, page, pageSize);
         sessionDatasetCache.concesiones = payload;
+        if (bboxSignature) {
+          cacheConcessionsViewportPayload(bboxSignature, payload);
+        }
         saveCache(getDatasetCacheKey("concesiones"), payload);
         scheduleConcessionsBackgroundUiRefresh(payload, token);
 
@@ -470,34 +481,51 @@
     return payload;
   }
 
-  function buildConcessionsBboxQuery() {
-    if (!CONCESSIONS_USE_BBOX) return "";
-    if (!mapEnabled || !map || typeof map.getBounds !== "function") return "";
+  function snapBboxValue(value) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return null;
+    return Number(num.toFixed(CONCESSIONS_BBOX_SNAP_DECIMALS));
+  }
+
+  function getConcessionsViewportBox() {
+    if (!CONCESSIONS_USE_BBOX) return null;
+    if (!mapEnabled || !map || typeof map.getBounds !== "function") return null;
     const bounds = map.getBounds();
-    if (!bounds) return "";
+    if (!bounds) return null;
     const southWest = bounds.getSouthWest();
     const northEast = bounds.getNorthEast();
-    if (!southWest || !northEast) return "";
-    const minLng = Number(southWest.lng);
-    const minLat = Number(southWest.lat);
-    const maxLng = Number(northEast.lng);
-    const maxLat = Number(northEast.lat);
-    if (![minLng, minLat, maxLng, maxLat].every(Number.isFinite)) return "";
-    return `&min_lng=${minLng}&min_lat=${minLat}&max_lng=${maxLng}&max_lat=${maxLat}`;
+    if (!southWest || !northEast) return null;
+    const minLng = snapBboxValue(southWest.lng);
+    const minLat = snapBboxValue(southWest.lat);
+    const maxLng = snapBboxValue(northEast.lng);
+    const maxLat = snapBboxValue(northEast.lat);
+    if (![minLng, minLat, maxLng, maxLat].every((v) => Number.isFinite(Number(v)))) return null;
+    return { minLng, minLat, maxLng, maxLat };
+  }
+
+  function buildConcessionsBboxQuery() {
+    const box = getConcessionsViewportBox();
+    if (!box) return "";
+    return `&min_lng=${box.minLng}&min_lat=${box.minLat}&max_lng=${box.maxLng}&max_lat=${box.maxLat}`;
   }
 
   function concessionsBboxSignature() {
-    if (!CONCESSIONS_USE_BBOX || !mapEnabled || !map || typeof map.getBounds !== "function") {
-      return "";
+    const box = getConcessionsViewportBox();
+    if (!box) return "";
+    return `${box.minLng},${box.minLat},${box.maxLng},${box.maxLat}`;
+  }
+
+  function cacheConcessionsViewportPayload(signature, payload) {
+    if (!signature) return;
+    if (!payload || !Array.isArray(payload.items)) return;
+    if (concessionsViewportCache.has(signature)) {
+      concessionsViewportCache.delete(signature);
     }
-    const bounds = map.getBounds();
-    if (!bounds) return "";
-    const sw = bounds.getSouthWest();
-    const ne = bounds.getNorthEast();
-    if (!sw || !ne) return "";
-    const values = [sw.lng, sw.lat, ne.lng, ne.lat];
-    if (!values.every((v) => Number.isFinite(Number(v)))) return "";
-    return values.map((v) => Number(v).toFixed(3)).join(",");
+    concessionsViewportCache.set(signature, payload);
+    while (concessionsViewportCache.size > CONCESSIONS_BBOX_CACHE_MAX) {
+      const oldestKey = concessionsViewportCache.keys().next().value;
+      concessionsViewportCache.delete(oldestKey);
+    }
   }
 
   function suppressConcessionsViewportRefresh(ms = 1200) {
@@ -512,6 +540,7 @@
     if (getCurrentDatasetMode() !== "concesiones") return;
     if (modeSwitchInFlight || concessionsViewportFetchInFlight) return;
     if (Date.now() < suppressConcessionsViewportRefreshUntil) return;
+    if (!concessionsViewportUserInteractionPending) return;
     const signature = concessionsBboxSignature();
     if (!signature || signature === lastConcessionsBboxSignature) return;
 
@@ -522,6 +551,7 @@
       const applied = await loadAndRenderCurrentMode();
       if (applied) {
         lastConcessionsBboxSignature = signature;
+        concessionsViewportUserInteractionPending = false;
       }
     } catch (error) {
       console.error("viewport concessions refresh failed", error);
@@ -721,7 +751,6 @@
     els.tipo.value = optionExists(els.tipo, state.tipo) ? state.tipo : "";
     els.sort.value = optionExists(els.sort, state.sort) ? state.sort : "relevancia";
     onlyLibres = pinViewMode === "concesiones" ? Boolean(state.onlyLibres) : false;
-    syncAllTomSelectValues();
   }
 
   function persistCurrentModeFilters() {
@@ -764,59 +793,8 @@
     els.company.value = "";
     els.tipo.value = "";
     els.sort.value = "relevancia";
-    syncAllTomSelectValues();
     applyFilters();
     els.status.textContent = `Vista por defecto restaurada para ${getModeLabel(getCurrentDatasetMode()).toLowerCase()}.`;
-  }
-
-  function getTomSelectInstance(selectEl) {
-    if (!selectEl) return null;
-    const existing = tomSelectInstances.get(selectEl.id);
-    if (existing) return existing;
-    if (selectEl.tomselect) return selectEl.tomselect;
-    return null;
-  }
-
-  function syncTomSelectValue(selectEl) {
-    const instance = getTomSelectInstance(selectEl);
-    if (!instance) return;
-    instance.sync();
-  }
-
-  function syncAllTomSelectValues() {
-    syncTomSelectValue(els.mineral);
-    syncTomSelectValue(els.region);
-    syncTomSelectValue(els.commune);
-    syncTomSelectValue(els.company);
-    syncTomSelectValue(els.tipo);
-  }
-
-  function setupSearchableSelect(selectEl) {
-    const TomSelectCtor = window["TomSelect"];
-    if (!selectEl || !TomSelectCtor || !SEARCHABLE_SELECT_IDS.has(selectEl.id)) return;
-    const existing = getTomSelectInstance(selectEl);
-    if (existing) {
-      existing.sync();
-      return;
-    }
-    const instance = new TomSelectCtor(selectEl, {
-      create: false,
-      allowEmptyOption: true,
-      closeAfterSelect: true,
-      searchField: ["text"],
-      maxOptions: 800,
-      placeholder: SEARCHABLE_SELECT_PLACEHOLDERS[selectEl.id] || "Buscar..."
-    });
-    tomSelectInstances.set(selectEl.id, instance);
-  }
-
-  function initSearchableSelects() {
-    if (!window["TomSelect"]) return;
-    setupSearchableSelect(els.mineral);
-    setupSearchableSelect(els.region);
-    setupSearchableSelect(els.commune);
-    setupSearchableSelect(els.company);
-    setupSearchableSelect(els.tipo);
   }
 
   function loadAnyCache(cacheKey) {
@@ -888,6 +866,7 @@
     if (!mapEnabled || !map) return;
     try {
       suppressConcessionsViewportRefresh(1600);
+      concessionsViewportUserInteractionPending = false;
       map.fitBounds(CHILE_VIEW_BOUNDS, { animate: false, padding: [12, 12], maxZoom: 5 });
     } catch (error) {
       console.warn("cannot reset concessions viewport", error);
@@ -1208,14 +1187,6 @@
     els.legendList.innerHTML = rows.join("");
   }
 
-  function setLegendCollapsed(collapsed) {
-    if (!els.legendPanel || !els.btnLegendToggle) return;
-    els.legendPanel.classList.toggle("is-collapsed", collapsed);
-    els.btnLegendToggle.classList.toggle("is-expanded", !collapsed);
-    els.btnLegendToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
-    els.btnLegendToggle.setAttribute("aria-label", collapsed ? "Expandir leyenda" : "Esconder leyenda");
-  }
-
   function pluralize(value, singular, plural) {
     return `${value} ${value === 1 ? singular : plural}`;
   }
@@ -1282,7 +1253,6 @@
       options.push(`<option value="${escapeHtml(v)}">${escapeHtml(label)}</option>`);
     });
     selectEl.innerHTML = options.join("");
-    syncTomSelectValue(selectEl);
   }
 
   function escapeHtml(value) {
@@ -1495,7 +1465,6 @@
     els.company.value = "";
     els.tipo.value = "";
     els.sort.value = "relevancia";
-    syncAllTomSelectValues();
     applyFilters();
   }
 
@@ -1704,6 +1673,7 @@
   function fitToFiltered() {
     if (!mapEnabled || !map || !filtered.length) return;
     suppressConcessionsViewportRefresh(1800);
+    concessionsViewportUserInteractionPending = false;
     const bounds = L.latLngBounds(filtered.map((x) => [x.latitude, x.longitude]));
     map.fitBounds(bounds.pad(0.25), { animate: true, duration: 0.55 });
   }
@@ -2065,8 +2035,6 @@
   }
 
   function wireUi() {
-    setLegendCollapsed(true);
-    initSearchableSelects();
     const debouncedApply = debounce(applyFilters, 160);
     els.q.addEventListener("input", debouncedApply);
     els.q.addEventListener("change", applyFilters);
@@ -2153,14 +2121,6 @@
       });
     }
 
-    if (els.btnLegendToggle) {
-      els.btnLegendToggle.addEventListener("click", () => {
-        if (!els.legendPanel) return;
-        const collapsed = !els.legendPanel.classList.contains("is-collapsed");
-        setLegendCollapsed(collapsed);
-      });
-    }
-
     if (els.mobileBackdrop) {
       els.mobileBackdrop.addEventListener("click", () => setMobilePanelOpen(false));
     }
@@ -2230,6 +2190,14 @@
     mapEnabled = true;
     setTimeout(() => map.invalidateSize(), 100);
     window.addEventListener("resize", () => map.invalidateSize());
+    map.on("movestart", () => {
+      if (Date.now() < suppressConcessionsViewportRefreshUntil) return;
+      concessionsViewportUserInteractionPending = true;
+    });
+    map.on("zoomstart", () => {
+      if (Date.now() < suppressConcessionsViewportRefreshUntil) return;
+      concessionsViewportUserInteractionPending = true;
+    });
     map.on("moveend", debounce(() => {
       void refreshConcessionsForViewport();
     }, 350));

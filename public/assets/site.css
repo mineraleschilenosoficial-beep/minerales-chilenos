@@ -13,7 +13,6 @@
   --shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
   --header-h: 66px;
   --sidebar-w: 360px;
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 * { box-sizing: border-box; }
@@ -23,7 +22,6 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  overscroll-behavior: none;
   font-family: "Inter", system-ui, sans-serif;
   color: var(--text);
   background: var(--bg);
@@ -190,94 +188,6 @@ header {
   padding: 10px 11px;
   font: inherit;
   font-size: 14px;
-}
-
-.field .ts-wrapper {
-  width: 100%;
-  font-size: 14px;
-}
-
-.field .ts-wrapper.single .ts-control,
-.field .ts-wrapper.multi .ts-control {
-  background: var(--panel-2) !important;
-  border: 1px solid var(--line) !important;
-  border-radius: 10px !important;
-  color: var(--text) !important;
-  min-height: 38px;
-  box-shadow: none !important;
-  padding: 6px 10px !important;
-  display: flex;
-  align-items: center;
-}
-
-.field .ts-wrapper.single .ts-control {
-  padding-right: 34px !important;
-}
-
-.field .ts-wrapper.single .ts-control > input,
-.field .ts-wrapper.multi .ts-control > input {
-  color: var(--text) !important;
-  line-height: 1.3 !important;
-  min-height: 20px;
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
-.field .ts-wrapper.single .ts-control .item {
-  color: var(--text) !important;
-  background: transparent !important;
-  line-height: 1.3;
-  margin: 0 !important;
-  padding: 0 !important;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.field .ts-wrapper.multi .ts-control .item {
-  background: rgba(255, 255, 255, 0.07) !important;
-  border-radius: 8px;
-  border: 1px solid var(--line) !important;
-  color: #f0f0f0 !important;
-}
-
-.field .ts-wrapper .ts-control::after {
-  border-color: #bdbdbd transparent transparent transparent !important;
-}
-
-.field .ts-wrapper.dropdown-active .ts-control::after {
-  border-color: transparent transparent #bdbdbd transparent !important;
-}
-
-.field .ts-wrapper .ts-dropdown {
-  margin-top: 6px;
-  border: 1px solid var(--line) !important;
-  background: #151515 !important;
-  color: var(--text) !important;
-  border-radius: 10px !important;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.38) !important;
-}
-
-.field .ts-wrapper .ts-dropdown .option,
-.field .ts-wrapper .ts-dropdown .create {
-  padding: 9px 11px;
-  color: var(--text) !important;
-}
-
-.field .ts-wrapper .ts-dropdown .option.active,
-.field .ts-wrapper .ts-dropdown [data-selectable].option.active {
-  background: rgba(255, 184, 48, 0.18) !important;
-  color: #ffe7b6 !important;
-}
-
-.field .ts-wrapper .ts-dropdown .selected {
-  background: rgba(255, 255, 255, 0.08) !important;
-}
-
-.field .ts-wrapper.focus .ts-control {
-  border-color: rgba(255, 184, 48, 0.6) !important;
-  box-shadow: 0 0 0 2px rgba(255, 184, 48, 0.2) !important;
 }
 
 .row {
@@ -487,7 +397,7 @@ button:disabled:hover {
 #map {
   grid-area: map;
   width: 100%;
-  height: calc(100dvh - var(--header-h));
+  height: calc(100vh - var(--header-h));
   background: #101010;
 }
 
@@ -554,63 +464,13 @@ body.app-loading {
   background: rgba(16, 16, 16, 0.92);
   backdrop-filter: blur(8px);
   border-radius: 12px;
-  padding: 8px 10px;
-  width: min(230px, calc(100vw - 24px));
-  max-height: min(55vh, 420px);
-  overflow: auto;
-}
-
-.legend-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-#btn-legend-toggle {
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--muted);
-  border-radius: 999px;
-  width: 24px;
-  height: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  cursor: pointer;
-}
-
-#btn-legend-toggle:hover {
-  border-color: rgba(212, 175, 55, 0.55);
-  color: #f4e3b0;
-}
-
-.legend-toggle-icon {
-  width: 7px;
-  height: 7px;
-  border-right: 2px solid currentColor;
-  border-bottom: 2px solid currentColor;
-  transform: rotate(45deg);
-  transition: transform .16s ease;
-}
-
-#btn-legend-toggle.is-expanded .legend-toggle-icon {
-  transform: rotate(-135deg);
-}
-
-.legend.is-collapsed #legend-list {
-  display: none;
-}
-
-.legend.is-collapsed {
-  width: auto;
-  max-height: none;
+  padding: 12px;
+  width: min(300px, calc(100vw - 24px));
 }
 
 .whatsapp-contact-float {
   position: fixed;
-  left: 12px;
+  right: 12px;
   bottom: 12px;
   z-index: 1230;
   display: inline-flex;
@@ -641,10 +501,10 @@ body.app-loading {
 }
 
 .legend h3 {
-  margin: 0;
-  font-size: 11px;
+  margin: 0 0 10px;
+  font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: .8px;
+  letter-spacing: 1px;
   color: var(--gold);
   font-family: "JetBrains Mono", monospace;
 }
@@ -652,16 +512,15 @@ body.app-loading {
 .legend-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
+  gap: 7px;
+  font-size: 12px;
   color: var(--muted);
-  margin-bottom: 3px;
+  margin-bottom: 4px;
 }
 
 #legend-list {
   display: grid;
-  gap: 1px;
-  margin-top: 8px;
+  gap: 2px;
 }
 
 .sw {
@@ -934,7 +793,6 @@ body.detail-open #detail-backdrop {
   .header-mode-btn {
     margin-left: auto;
     margin-right: 6px;
-    min-height: 40px;
   }
 
   .top-kpis {
@@ -951,7 +809,7 @@ body.detail-open #detail-backdrop {
     position: fixed;
     left: 8px;
     right: 8px;
-    top: calc(var(--header-h) + 6px);
+    top: calc(var(--header-h) + 8px);
     z-index: 1245;
     gap: 8px;
     overflow-x: auto;
@@ -990,38 +848,34 @@ body.detail-open #detail-backdrop {
 
   #sidebar {
     position: fixed;
-    top: auto;
+    top: var(--header-h);
     right: 0;
     bottom: 0;
-    left: 0;
+    left: auto;
     z-index: 1300;
-    width: 100%;
-    max-width: none;
-    height: min(84dvh, 700px);
-    max-height: calc(100dvh - var(--header-h) - 6px);
+    width: min(88vw, 380px);
     border-right: none;
-    border-left: none;
-    border-top: 1px solid var(--line);
-    border-radius: 16px 16px 0 0;
-    transform: translateY(calc(100% - 54px));
-    transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
-    box-shadow: 0 -14px 30px rgba(0, 0, 0, 0.45);
+    border-left: 1px solid var(--line);
+    border-top: none;
+    border-radius: 16px 0 0 16px;
+    transform: translateX(102%);
+    transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+    box-shadow: -14px 0 30px rgba(0, 0, 0, 0.45);
     padding-top: 12px;
     will-change: transform;
     overscroll-behavior: contain;
-    padding-bottom: calc(12px + var(--safe-bottom));
   }
 
   body.mobile-sheet-collapsed #sidebar {
-    transform: translateY(calc(100% - 54px));
+    transform: translateX(102%);
   }
 
   body.mobile-sheet-half #sidebar {
-    transform: translateY(40%);
+    transform: translateX(0);
   }
 
   body.mobile-sheet-full #sidebar {
-    transform: translateY(0);
+    transform: translateX(0);
   }
 
   #mobile-backdrop {
@@ -1051,47 +905,36 @@ body.detail-open #detail-backdrop {
   }
 
   .sheet-grab {
-    display: block;
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    margin-bottom: 8px;
+    display: none;
   }
 
   #map {
-    height: calc(100dvh - var(--header-h));
+    height: calc(100vh - var(--header-h));
   }
 
   #list {
-    max-height: 34vh;
+    max-height: 32vh;
   }
 
   .legend {
-    bottom: calc(58px + var(--safe-bottom));
-    width: min(200px, calc(100vw - 24px));
-    padding: 7px 8px;
+    bottom: 68px;
+    width: min(240px, calc(100vw - 24px));
+    padding: 10px;
     z-index: 1240;
   }
 
   .whatsapp-contact-float {
-    left: 8px;
-    bottom: calc(8px + var(--safe-bottom));
-    width: 44px;
-    min-width: 44px;
-    height: 44px;
-    min-height: 44px;
-    padding: 0;
-    border-radius: 999px;
-    gap: 0;
+    right: 8px;
+    bottom: 8px;
+    min-height: 40px;
+    padding: 8px 12px;
+    font-size: 13px;
+    gap: 6px;
   }
 
   .whatsapp-contact-float svg {
-    width: 19px;
-    height: 19px;
-  }
-
-  .whatsapp-contact-float span {
-    display: none;
+    width: 17px;
+    height: 17px;
   }
 }
 
@@ -1100,7 +943,6 @@ body.detail-open #detail-backdrop {
 
   header {
     padding: 0 10px;
-    gap: 8px;
   }
 
   .logo {
@@ -1114,31 +956,10 @@ body.detail-open #detail-backdrop {
     border-radius: 12px;
   }
 
-  .mobile-panel-btn,
-  .header-mode-btn {
-    padding: 8px 10px;
-    min-height: 38px;
-    font-size: 12px;
-  }
-
   .field input,
   .field select {
     min-height: 42px;
     font-size: 15px;
-  }
-
-  .ts-wrapper.single .ts-control,
-  .ts-wrapper.multi .ts-control {
-    min-height: 40px;
-    font-size: 14px;
-  }
-
-  .field .ts-wrapper.single .ts-control {
-    padding-right: 30px !important;
-  }
-
-  #health-badge {
-    display: none;
   }
 
   .row button {
@@ -1155,15 +976,5 @@ body.detail-open #detail-backdrop {
 
   .modal-body {
     padding: 14px 14px 20px;
-  }
-}
-
-@media (max-width: 420px) {
-  .row button {
-    flex: 1 1 100%;
-  }
-
-  #sidebar {
-    max-height: calc(100dvh - var(--header-h) - 4px);
   }
 }
